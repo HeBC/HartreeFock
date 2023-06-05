@@ -131,6 +131,28 @@ void Hamiltonian::AddHermitation()
         }
     }
     H_has_included_Hermitation = true;
+
+    // add hermitation part for SP energy
+    // Proton
+    int temp_size = OBEs_p.size();
+    for (size_t i = 0; i < temp_size; i++)
+    {
+        if (OBEs_p[i].orbit_a != OBEs_p[i].orbit_b)
+        {
+            OneBodyElement tempele = OneBodyElement(OBEs_p[i].orbit_b, OBEs_p[i].orbit_a, 0, Proton, OBEs_p[i].OBE);
+            OBEs_p.push_back(tempele);
+        }
+    }
+    // Neutron
+    temp_size = OBEs_n.size();
+    for (size_t i = 0; i < temp_size; i++)
+    {
+        if (OBEs_n[i].orbit_a != OBEs_n[i].orbit_b)
+        {
+            OneBodyElement tempele = OneBodyElement(OBEs_n[i].orbit_b, OBEs_n[i].orbit_a, 0, Neutron, OBEs_n[i].OBE);
+            OBEs_n.push_back(tempele);
+        }
+    }
 }
 
 void Hamiltonian::RemoveWhitespaceInFilename()
@@ -677,8 +699,8 @@ double Hamiltonian::Calculate_Q2(int a, int b, int tz)
     }
 }
 
-double Hamiltonian::HarmonicRadialIntegral(int isospin, int lamda, int orbit_a, int orbit_b) 
-    // return R_ab^lamda / b^lamda
+double Hamiltonian::HarmonicRadialIntegral(int isospin, int lamda, int orbit_a, int orbit_b)
+// return R_ab^lamda / b^lamda
 {
     this->ms;
     int na, nb, la, lb;
@@ -961,7 +983,7 @@ int Hamiltonian::GetCoreMass()
     return ms->GetNucleiMassA() - ms->GetProtonNum() - ms->GetNeutronNum();
 }
 
-void Hamiltonian::Prepare_MschemeH_Unrestricted() /// work for the HF_naive code
+void Hamiltonian::Prepare_MschemeH_Unrestricted() /// work for the HF_Diag code
 // Vpp and Vnn stored in a skewed way Vacbd, which may help to speed up the code
 {
     int dim_p = ms->Get_MScheme_dim(Proton);
@@ -1139,7 +1161,10 @@ void Hamiltonian::Prepare_MschemeH_Unrestricted() /// work for the HF_naive code
     }
 
     // Initial index for Quadrupole
-    this->Initial_Q2();
+    if (ms->GetIsShapeConstrained())
+    {
+        this->Initial_Q2();
+    }
 }
 
 void Hamiltonian::Prepare_MschemeH_Unrestricted_ForPhaffian() /// work for the HF_Pfaffian code
@@ -1159,7 +1184,7 @@ void Hamiltonian::Prepare_MschemeH_Unrestricted_ForPhaffian() /// work for the H
         int c = Vpp[i].j3;
         int d = Vpp[i].j4;
         int J = Vpp[i].J;
-        double V = 0.25 *  Vpp[i].V;
+        double V = 0.25 * Vpp[i].V;
         if (a > b or c > d)
         {
             std::cout << " Vpp format error! " << std::endl;
@@ -1383,7 +1408,10 @@ void Hamiltonian::Prepare_MschemeH_Unrestricted_ForPhaffian() /// work for the H
 
     // Initial index for Quadrupole
     // if (ms->GetIsShapeConstrained())  //always initial Q2
-    this->Initial_Q2();
+    if (ms->GetIsShapeConstrained())
+    {
+        this->Initial_Q2();
+    }
 }
 
 void Hamiltonian::Prepare_MschemeH() // restricted H for pfaffian code
@@ -1598,7 +1626,10 @@ void Hamiltonian::Prepare_MschemeH() // restricted H for pfaffian code
 
     // Initial index for Quadrupole
     // if (ms->GetIsShapeConstrained())  //always initial Q2
-    this->Initial_Q2();
+    if (ms->GetIsShapeConstrained())
+    {
+        this->Initial_Q2();
+    }
 }
 
 void Hamiltonian::Initial_Q2()
@@ -1619,7 +1650,7 @@ void Hamiltonian::Initial_Q2()
             // Q2MEs_p.orbit_a.push_back(a);
             // Q2MEs_p.orbit_b.push_back(b);
             double QMEJ = this->Calculate_Q2(a, b, Proton);
-            //std::cout << a << "   " << b << "    " << QMEJ << std::endl;
+            // std::cout << a << "   " << b << "    " << QMEJ << std::endl;
             for (size_t i = 0; i < MSMEs.OB_p.size(); i++) // loop m-scheme OB operator
             {
                 int ia = MSMEs.OB_p[i].GetIndex_a(); // index of a in M scheme

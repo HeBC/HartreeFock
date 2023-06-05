@@ -225,27 +225,57 @@ int main(int argc, char *argv[])
     ReadWriteFiles rw;
     ModelSpace MS;
     Hamiltonian Hinput(MS);
+    // OSLO format interaction
+    /*
+    rw.ReadInputInfo_pnSystem_GCM("InputFile_OSLO.dat", MS, Hinput);
+    MS.InitialModelSpace_pn();
+    Hinput.SetMassDep(true);
+    rw.Read_InteractionFile_Mscheme(Hinput);
+    // rw.Read_InteractionFile_Mscheme_Unrestricted_ForPhaffian(Hinput);
+    */
 
-    rw.ReadInputInfo_HF_GCM("Input_HF_GCM.dat", MS, Hinput);
+    // Kshell format interaction
+    rw.ReadInput_HF("Input_HF.txt", MS, Hinput);
     MS.InitialModelSpace_HF();
     Hinput.Prepare_MschemeH();
-
-    AngMomProjection AngMomProj(MS);
-    AngMomProj.InitInt_HF_Projection();
+    //Hinput.Prepare_MschemeH_Unrestricted_ForPhaffian();
 
     if (myid == 0)
     {
         MS.PrintAllParameters_HF();
         Hinput.PrintHamiltonianInfo_pn();
-        AngMomProj.PrintInfo();
+        // AngMomProj.PrintInfo();
     }
 
-    PNbasis basis_bra(MS, AngMomProj);
-    PNbasis basis_ket(MS, AngMomProj);
+    int N_p = MS.GetProtonNum();
+    int N_n = MS.GetNeutronNum();
+    int dim_p = MS.Get_MScheme_dim(Proton);
+    int dim_n = MS.Get_MScheme_dim(Neutron);
+    double *prt = (double *)mkl_malloc((N_p * dim_p + N_n * dim_n) * sizeof(double), 64);
+    //________________________________________
+    srand(time(NULL)); // seed the random number generator with current time
+    // srand(17);         // seed the random number generator with current time
+
+    rw.Read_HF_Parameters_TXT(argv[1], prt);
+
+
+    MyData paradata;
+    PNbasis basis_bra(MS);
+    PNbasis basis_ket(MS);
+    paradata.Hinput = &Hinput;
+    paradata.Bra = &basis_bra;
+    paradata.Ket = &basis_ket;
+
+    // Output shape
+    normalizeBais(prt, N_p, dim_p, 1);
+    normalizeBais(prt + N_p * dim_p, N_n, dim_n, 1);
+    ShapeParameters(prt, &paradata);
+
+
+    mkl_free(prt);
+    MPI_Finalize();
     
-    
-    
-    
+    /*
     ///// Testing pfaffian
     ComplexNum TestArray[16] = {0., ComplexNum(1., 0.5), ComplexNum(2., 0.7), ComplexNum(15., -3.5),
                                 ComplexNum(-1., -0.5), 0, ComplexNum(-9.1, 4.5), ComplexNum(0.2, -7.5),
@@ -256,8 +286,6 @@ int main(int argc, char *argv[])
     value += ComplexNum(1., 0.5) * ComplexNum(-1.2, -2.5)  - ComplexNum(2., 0.7) * ComplexNum(0.2, -7.5)  +  ComplexNum(-9.1, 4.5) * ComplexNum(15., -3.5); 
     std::cout << value << std::endl;
     /////
+    */
 
-
-    MPI_Finalize();
-    return 0;
 }

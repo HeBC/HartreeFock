@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
     */
 
     // Kshell format interaction
-    rw.ReadInputInfo_HF_GCM("Input_HF_GCM.dat", MS, Hinput);
+    rw.ReadInputInfo_HF_GCM("Input_HF_GCM.txt", MS, Hinput);
     MS.InitialModelSpace_HF();
     Hinput.Prepare_MschemeH();
     // Hinput.Prepare_MschemeH_Unrestricted_ForPhaffian();

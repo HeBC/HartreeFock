@@ -282,7 +282,7 @@ void GCM_Projection::SolveLinearEquationMatrix(int NumJ, ComplexNum *OvlME, Comp
   {
     for (size_t j = 0; j < NumJ; j++)
     {
-      MatrixA[i * NumJ + j] = AngMom::WignerD(GCM_results_J2[j], M2, K2, this->AngMomProj->GetBeta_x(i));
+      MatrixA[i * NumJ + j] = AngMom::Wigner_d(GCM_results_J2[j], M2, K2, this->AngMomProj->GetBeta_x(i));
     }
     Matrixb[i] = OvlME[i];
   }
@@ -291,7 +291,7 @@ void GCM_Projection::SolveLinearEquationMatrix(int NumJ, ComplexNum *OvlME, Comp
   {
     for (size_t j = 0; j < NumJ; j++)
     {
-      MatrixA[i * NumJ + j] = AngMom::WignerD(GCM_results_J2[j], M2, K2, this->AngMomProj->GetBeta_x(i));
+      MatrixA[i * NumJ + j] = AngMom::Wigner_d(GCM_results_J2[j], M2, K2, this->AngMomProj->GetBeta_x(i));
     }
     Matrixb[i] = HamME[i];
   }
@@ -343,6 +343,8 @@ void GCM_Projection::CheckConfigruationValid(ComplexNum *OvlME)
     if (std::abs(OvlME[i * Total_order + i]) < 1.e-10)
     {
       std::cout << "\033[31m   There is a invalid configruation! The \033[0m" << i + 1 << "th configuration (1-" << Total_order << ")" << std::endl;
+      for (size_t j = 0; j < Total_order; j++)
+        std::cout << "   Overlap of the " << i + 1 << "th configuration  " << OvlME[j * Total_order + j] << std::endl;
       exit(0);
     }
   }
@@ -382,19 +384,9 @@ void GCM_Projection::DoCalculation() // Do projection for GCM
   int alpha, beta, gamma;
   int i, MEnum, MEDim, i1, j1;
 
-  if (ms->GetAMProjected_J() % 2) // odd
+  for (i = 0; i < ms->GetTotalOrders(); i++)
   {
-    for (i = 0; i < ms->GetTotalOrders(); i++)
-    {
-      GCM_results_J2.push_back(1 + i * 2);
-    }
-  }
-  else // even
-  {
-    for (i = 0; i < ms->GetTotalOrders(); i++)
-    {
-      GCM_results_J2.push_back(i * 2);
-    }
+    GCM_results_J2.push_back(ms->GetAMProjected_J());
   }
 
   /// MPI inint
@@ -408,7 +400,7 @@ void GCM_Projection::DoCalculation() // Do projection for GCM
     std::cout << "  Eigenvalues of Overlaps without J projection:" << std::endl;
     for (index = 0; index < value.size(); index++)
     {
-      std::cout << "      " << index << "th  configuration :  " << value[index] << std::endl;
+      std::cout << "      " << index + 1 << "th  configuration :  " << value[index] << std::endl;
       if (value[index] < this->Get_Overlap_dependence())
       {
         invalid_configration = 1;
@@ -469,23 +461,29 @@ void GCM_Projection::DoCalculation() // Do projection for GCM
     }
     else
     {
-      std::cout << "  To be developed ... " << std::endl;
-      exit(0);
+      // \hat P = 1/2 ( 1 +- \hat Pi )
+      ComplexNum temp_HamME, temp_OvlME;
+      CalHFKernels_Complex(*Ham, HFBasis_Bra, HFBasis_Ket, temp_HamME, temp_OvlME);
+      MEmatrix[MEind] += 0.5 * weightFactor * temp_HamME;         // Ham
+      MEmatrix[MEind + MEnum] += 0.5 * weightFactor * temp_OvlME; // Ovl
+
+      HFBasis_Ket.ParityProjection();
+      CalHFKernels_Complex(*Ham, HFBasis_Bra, HFBasis_Ket, temp_HamME, temp_OvlME);
+      MEmatrix[MEind] += ParityProj * 0.5 * weightFactor * temp_HamME;         // Ham
+      MEmatrix[MEind + MEnum] += ParityProj * 0.5 * weightFactor * temp_OvlME; // Ovl
     }
   }
 
   //----------------------------------------------
   MPI_Barrier(MPI_COMM_WORLD);
-  // for (size_t i = 0; i < MEnum; i++)
-  //   std::cout << "     " << tempME[i] << "   " << MEmatrix[i] << "  " << MyIndex->MEindex_i[i] << " " << MyIndex->MEindex_j[i] << "  " << myid << std::endl;
   MPI_Reduce(MEmatrix, tempME, MEnum * 4, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
   if (myid == 0)
   {
+    // for (size_t i = 0; i < MEnum; i++)
+    //    std::cout << "     " << tempME[i] << "   " << MEmatrix[i] << "  " << MyIndex->MEindex_i[i] << " " << MyIndex->MEindex_j[i] << "  " << myid << std::endl;
     memset(MEmatrix, 0, sizeof(double) * 4 * (MEnum));
     cblas_zcopy(MEnum, tempME + MEnum, 1, MEmatrix, 1);
     SaveData(MEmatrix, tempME);
-    // for (size_t i = 0; i < MEnum; i++)
-    //   std::cout << "    Ham: " << tempME[i] << "  Ovl: " << tempME[i + MEnum] << "   " << MyIndex->MEindex_i[i] << " " << MyIndex->MEindex_j[i] << std::endl;
     CheckConfigruationValid(MEmatrix);
     GCM_results_E = DealTotalHamiltonianMatrix(MEmatrix, tempME); // input ovl and Ham
   }
@@ -518,7 +516,7 @@ void GCM_Projection::DoCalculation_LAmethod() // Do projection for GCM with line
     std::cout << "  Eigenvalues of Overlaps without J projection:" << std::endl;
     for (index = 0; index < value.size(); index++)
     {
-      std::cout << "      " << index << "th  configuration :  " << value[index] << std::endl;
+      std::cout << "      " << index + 1 << "th  configuration :  " << value[index] << std::endl;
       if (value[index] < this->Get_Overlap_dependence())
       {
         invalid_configration = 1;
@@ -549,6 +547,7 @@ void GCM_Projection::DoCalculation_LAmethod() // Do projection for GCM with line
   MEnum = MyIndex->ME_total;
   MEDim = Total_order * Total_order;
   int NumJ;
+  // int minJ = std::max(abs(ms->GetAMProjected_M()), abs(ms->GetAMProjected_K()));
   if (ms->GetAMProjected_J() % 2) // odd
   {
     NumJ = (ms->GetAMProjected_J() + 1) / 2;
@@ -599,8 +598,16 @@ void GCM_Projection::DoCalculation_LAmethod() // Do projection for GCM with line
     }
     else
     {
-      std::cout << "  To be developed ... " << std::endl;
-      exit(0);
+      // \hat P = 1/2 ( 1 +- \hat Pi )
+      ComplexNum temp_HamME, temp_OvlME;
+      CalHFKernels_Complex(*Ham, HFBasis_Bra, HFBasis_Ket, temp_HamME, temp_OvlME);
+      MEmatrix[MEind * MEnum + beta] += 0.5 * weightFactor * temp_HamME;         // Ham
+      MEmatrix[MEnum * NumJ + MEind * MEnum + beta] += 0.5 * weightFactor * temp_OvlME; // Ovl
+
+      HFBasis_Ket.ParityProjection();
+      CalHFKernels_Complex(*Ham, HFBasis_Bra, HFBasis_Ket, temp_HamME, temp_OvlME);
+      MEmatrix[MEind * MEnum + beta] += ParityProj * 0.5 * weightFactor * temp_HamME;         // Ham
+      MEmatrix[MEnum * NumJ + MEind * MEnum + beta] += ParityProj * 0.5 * weightFactor * temp_OvlME; // Ovl
     }
   }
 

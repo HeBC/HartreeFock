@@ -312,18 +312,21 @@ void ReadWriteFiles::ReadInputInfo_HF_GCM(string filename, ModelSpace &ms, Hamil
   getline(input_file, comment_string);
   getline(input_file, comment_string);
 
-  if (comment_string.substr(0, 10).find("Yes") < 10)
-  {
-    ms.SetProjected_parity(true);
-  }
-  else if (comment_string.substr(0, 10).find("No") < 10)
+  if (comment_string.substr(0, 10).find("No") < 10)
   {
     ms.SetProjected_parity(false);
   }
+  else if (comment_string.substr(0, 10).find("+") < 10)
+  {
+    ms.SetProjected_parity(1);
+  }
+  else if (comment_string.substr(0, 10).find("-") < 10)
+  {
+    ms.SetProjected_parity(-1);
+  }
   else
   {
-    std::cout << comment_string.substr(0, 10).find("Yes") << std::endl;
-    std::cout << " The option for parity projection shoubld be Yes or No!" << std::endl;
+    std::cout << " The option for parity projection shoubld be No , + or -!" << std::endl;
     exit(0);
   }
 
@@ -331,7 +334,6 @@ void ReadWriteFiles::ReadInputInfo_HF_GCM(string filename, ModelSpace &ms, Hamil
   ms.SetGuassQuadMesh(intData, intData2, intData3);
 
   getline(input_file, comment_string);
-
 
   input_file.close();
 }
@@ -625,7 +627,7 @@ void ReadWriteFiles::Read_InteractionFile_pn(Hamiltonian &ReadH)
   }
 }
 
-void ReadWriteFiles::Read_InteractionFile_Mscheme(Hamiltonian &ReadH)  // Read OSLO interaction
+void ReadWriteFiles::Read_InteractionFile_Mscheme(Hamiltonian &ReadH) // Read OSLO interaction
 {
   Read_OSLO_Ham(2 * Proton, ReadH);       // Read Vpp
   Read_OSLO_Ham(2 * Neutron, ReadH);      // Read Vnn
@@ -923,7 +925,7 @@ void ReadWriteFiles::ReadTokyo(std::string filename, ModelSpace &ms, Hamiltonian
   if (!infile.is_open())
   {
     // Failed to open the file
-    std::cout << "Failed to open the file. "<<filename  << std::endl;
+    std::cout << "Failed to open the file. " << filename << std::endl;
     exit(0);
   }
 
@@ -953,8 +955,18 @@ void ReadWriteFiles::ReadTokyo(std::string filename, ModelSpace &ms, Hamiltonian
 
     Orbit temp_orbit = Orbit(read_n, read_l, read_j, tz, read_parity);
     list_Orbit.push_back(temp_orbit);
+    if (tz == Proton)
+    {
+      ms.Orbits_p.push_back(temp_orbit);
+      Orbit_map[i] = ms.Orbits_p.size() - 1;
+    }
+    else
+    {
+      ms.Orbits_n.push_back(temp_orbit);
+      Orbit_map[i] = ms.Orbits_n.size() - 1;
+    }
     skip_comments(infile);
-    //  std::cout << i << " " << iorb << " " << read_n << " " << read_l << " " << read_j << " " << tz << std::endl;
+    // std::cout << i << " " << iorb << " " << read_n << " " << read_l << " " << read_j << " " << tz << std::endl;
   }
 
   skip_comments(infile);
@@ -965,13 +977,13 @@ void ReadWriteFiles::ReadTokyo(std::string filename, ModelSpace &ms, Hamiltonian
     skip_comments(infile);
     std::getline(infile, line);
   }
-
+  skip_comments(infile);
   // Extract the numbers from the line
   std::istringstream iss(line);
   // Read the numbers into a vector
   std::vector<double> numbers;
   double num;
-
+  skip_comments(infile);
   while (iss >> num)
   {
     numbers.push_back(num);
@@ -997,7 +1009,7 @@ void ReadWriteFiles::ReadTokyo(std::string filename, ModelSpace &ms, Hamiltonian
   {
     std::cout << "Error: Unknown format! " << numbers.size() << std::endl;
   }
-  // std::cout << "num orbits = " << numorb << std::endl;
+  // std::cout << "num SPE = " << numorb << std::endl;
 
   skip_comments(infile);
   for (int n = 0; n < numorb; n++)
@@ -1005,17 +1017,21 @@ void ReadWriteFiles::ReadTokyo(std::string filename, ModelSpace &ms, Hamiltonian
     int i, j;
     double h1;
     infile >> i >> j >> h1;
-    list_Orbit[i - 1].SetSPE(h1);
+    // list_Orbit[i - 1].SetSPE(h1); // for valence calculation
     int tz = list_Orbit[i - 1].tz2;
     if (tz == Proton)
     {
-      ms.Orbits_p.push_back(list_Orbit[i - 1]);
-      Orbit_map[n] = ms.Orbits_p.size() - 1;
+      if (i == j)
+        ms.Orbits_p[Orbit_map[i - 1]].SetSPE(h1); // for valence calculation
+      OneBodyElement tempele = OneBodyElement(Orbit_map[i - 1], Orbit_map[j - 1], 0, Proton, h1);
+      inputH.OBEs_p.push_back(tempele);
     }
     else
     {
-      ms.Orbits_n.push_back(list_Orbit[i - 1]);
-      Orbit_map[n] = ms.Orbits_n.size() - 1;
+      if (i == j)
+        ms.Orbits_n[Orbit_map[i - 1]].SetSPE(h1); // for valence calculation
+      OneBodyElement tempele = OneBodyElement(Orbit_map[i - 1], Orbit_map[j - 1], 0, Neutron, h1);
+      inputH.OBEs_n.push_back(tempele);
     }
     // std::cout << i << " " << j << " " << h1 << "   " << list_Orbit[i - 1].tz2 << "   " << list_Orbit[i - 1].j2 << std::endl;
   }
@@ -1064,7 +1080,7 @@ void ReadWriteFiles::ReadTokyo(std::string filename, ModelSpace &ms, Hamiltonian
   {
     std::cout << "Error: Unknown format! TBMEs  " << numbers.size() << std::endl;
   }
-
+  skip_comments(infile);
   for (int n = 0; n < numTBME; n++)
   {
     int i, j, k, l, jj;

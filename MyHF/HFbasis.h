@@ -26,9 +26,9 @@
 #define HFbasis_h 1
 
 #include <cstring>
-#include "mkl.h"
 #include "ModelSpace.h"
 #include "AngMom.h"
+#include "mkl.h"
 
 class HFbasis
 {
@@ -67,6 +67,7 @@ public:
   void MatrixCope(ComplexNum *destination, const ComplexNum *source, int number);
   void MatrixCope(ComplexNum *destination, const double *source, int number);
   int GetTotoalDim() { return dim * N; };
+  void ParityProjection();       // Calculate \Pi^+ A \Pi
 
   // debug
   void PrintAllParameters_Double();
@@ -107,6 +108,7 @@ public:
   int GetProntonInnerDim() { return basis_p->GetInnerDim(); };
   int GetNeutronInnerDim() { return basis_p->GetInnerDim(); };
   void RotatedOperator(int alpha, int beta, int gamma);
+  void ParityProjection();
   void FullBasis(const std::vector<double> para_vector);
   int GetTotalDim() { return basis_p->GetTotoalDim() + basis_n->GetTotoalDim(); };
   int GetBasis_p_Dim() { return basis_p->GetTotoalDim(); };

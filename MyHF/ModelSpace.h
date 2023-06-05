@@ -182,17 +182,7 @@ public:
     int GetCoreNeutronNum() { return ncore; };
     int GetProtonNum() { return MS_N_p; };
     int GetNeutronNum() { return MS_N_n; };
-    int GetParticleNumber(int tz)
-    {
-        if (tz == Proton)
-        {
-            return MS_N_p;
-        }
-        else
-        {
-            return MS_N_n;
-        }
-    } // retrun particle number
+    int GetParticleNumber(int tz); // retrun particle number
 
     int GetPairNumber(int tz); // retrun pair number
     int GetTotalOrders() { return MSTotal_Order; };
@@ -202,7 +192,7 @@ public:
     int GetAMProjected_J() { return MSTotal_J; };
     int GetAMProjected_K() { return MSTotal_K; };
     int GetAMProjected_M() { return MSTotal_M; };
-    double GetProjected_parity() { return (double)MSTotal_Parity; };
+    int GetProjected_parity() { return MSTotal_Parity; };
     double GetEnergyConstantShift() { return MSEnergyShift; };
     int GetGQ_alpha() { return this->GQ_alpha; };
     int GetGQ_beta() { return this->GQ_beta; };
@@ -256,9 +246,11 @@ public:
     int GetNeutronOrbit_n(int index) { return Orbits_n[index].n; };
     double GetProtonSPE(int index) { return Orbits_p[index].SPE; };
     double GetNeutronSPE(int index) { return Orbits_n[index].SPE; };
+    Orbit &GetOrbit(int isospin, int i);
 
     // M-scheme
     void InitMSMatrix(int isospin);
+    void InitMSMatrix_HF(int isospin);
     int Get_Proton_MScheme_dim() { return MSM_p.Get_MScheme_Dim(); };
     int Get_Proton_MScheme_dim2() { return MSM_p.Get_MScheme_Dim2(); };
     int Get_Neutron_MScheme_dim() { return MSM_n.Get_MScheme_Dim(); };

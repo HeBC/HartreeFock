@@ -185,8 +185,8 @@ double AngMom::Factorial(int N) /* Factorial function; assumes N >= 0 */
   }
 }
 
-double AngMom::WignerD(int j, int m1, int m2, double beta) // Wigner small d function
-{                                                          /// j, m1 and m2 are twiced, beta in unit of Pi
+double AngMom::Wigner_d(int j, int m1, int m2, double beta) // Wigner small d function
+{                                                           /// j, m1 and m2 are twiced, beta in unit of Pi
   double value, temp;
   int upperl_x, lowerl_x;
   int x;
@@ -200,6 +200,16 @@ double AngMom::WignerD(int j, int m1, int m2, double beta) // Wigner small d fun
   }
   value *= sqrt(Factorial((j + m1) / 2) * Factorial((j - m1) / 2) * Factorial((j + m2) / 2) * Factorial((j - m2) / 2));
   return value;
+}
+
+ComplexNum AngMom::Wigner_D(int j, int m1, int m2, double alpha, double beta, double gamma) // Wigner small d function
+{                                                                                           /// j, m1 and m2 are twiced, beta in unit of Pi
+  double value, small_d;
+  ComplexNum factor, expPart;
+  expPart = -1.i * ((m1 * alpha + m2 * gamma) * PI);
+  factor = std::exp(expPart);
+  small_d = Wigner_d(j, m1, m2, beta);
+  return value * factor;
 }
 
 ///////////////////////////////////////////
@@ -560,7 +570,7 @@ void AngMomProjection::InitializeMatrix(int isospin)
           {
             m1 = ms->Get_MSmatrix_2m(isospin, index1);
             m2 = ms->Get_MSmatrix_2m(isospin, index2);
-            RotatePairs_p[count + index1 * dim + index2] = AngMom::WignerD(j1, m1, m2, GQBeta.GetX(i));
+            RotatePairs_p[count + index1 * dim + index2] = AngMom::Wigner_d(j1, m1, m2, GQBeta.GetX(i));
           }
         }
       }
@@ -587,7 +597,7 @@ void AngMomProjection::InitializeMatrix(int isospin)
           {
             m1 = ms->Get_MSmatrix_2m(isospin, index1);
             m2 = ms->Get_MSmatrix_2m(isospin, index2);
-            RotatePairs_n[count + index1 * dim + index2] = AngMom::WignerD(j1, m1, m2, GQBeta.GetX(i));
+            RotatePairs_n[count + index1 * dim + index2] = AngMom::Wigner_d(j1, m1, m2, GQBeta.GetX(i));
           }
         }
       }
@@ -611,8 +621,8 @@ void AngMomProjection::InitializeBetaFuncs()
   for (int i = 0; i < GQBeta.GetTotalNumber(); i++)
   {
     // Wigner D function table
-    WDTab[i] = (J + 1) * 0.5 * PI * sin(GQBeta.GetX(i) * PI) * AngMom::WignerD(J, K, M, GQBeta.GetX(i));
-    // printf("%d   %.15lf    %.15lf \n", i, GQBeta.GetX(i),  AngMom::WignerD(J, K, M, GQBeta.GetX(i)));
+    WDTab[i] = (J + 1) * 0.5 * PI * sin(GQBeta.GetX(i) * PI) * AngMom::Wigner_d(J, M, K, GQBeta.GetX(i));
+    // printf("%d   %.15lf    %.15lf \n", i, GQBeta.GetX(i),  AngMom::Wigner_d(J, K, M, GQBeta.GetX(i)));
   }
 }
 
@@ -736,7 +746,7 @@ void AngMomProjection::InitInt_HF_Projection()
   return;
 }
 
-double AngMomProjection::GetWignerDFunc_beta(int isospin, int beta, int i, int j)
+double AngMomProjection::GetWigner_d_beta(int isospin, int beta, int i, int j)
 {
   if (isospin == Proton)
   {
@@ -757,7 +767,7 @@ double AngMomProjection::GetWignerDFunc_beta(int isospin, int beta, int i, int j
   }
 }
 
-double *AngMomProjection::GetWignerDFunc_prt(int isospin, int beta)
+double *AngMomProjection::GetWigner_d_prt(int isospin, int beta)
 {
   if (isospin == Proton)
   {
@@ -814,8 +824,9 @@ ComplexNum AngMomProjection::GuassQuad_weight(int alpha, int beta, int gamma)
   int J = ms->GetAMProjected_J();
   int K = ms->GetAMProjected_K();
   int M = ms->GetAMProjected_M();
-  expPart = 1.i * ((M * GQAlpha.GetX(alpha) + K * GQGamma.GetX(gamma)) * PI);
+  expPart = -1.i * ((M * GQAlpha.GetX(alpha) + K * GQGamma.GetX(gamma)) * PI);
   factor = std::exp(expPart);
+  // std::cout<< WDTab[beta] * GQAlpha.GetWeight(alpha) * GQBeta.GetWeight(beta) * GQGamma.GetWeight(gamma) * factor  <<"  "<<WDTab[beta] << GQAlpha.GetWeight(alpha) << GQBeta.GetWeight(beta) << GQGamma.GetWeight(gamma) << factor << std::endl;
   return WDTab[beta] * GQAlpha.GetWeight(alpha) * GQBeta.GetWeight(beta) * GQGamma.GetWeight(gamma) * factor;
 }
 
@@ -825,15 +836,21 @@ ComplexNum AngMomProjection::LinearAlgebra_weight(int alpha, int gamma)
   int J = ms->GetAMProjected_J();
   int K = ms->GetAMProjected_K();
   int M = ms->GetAMProjected_M();
-  expPart = 1.i * ((M * GQAlpha.GetX(alpha) + K * GQGamma.GetX(gamma)) * PI);
+  expPart = -1.i * ((M * GQAlpha.GetX(alpha) + K * GQGamma.GetX(gamma)) * PI);
   factor = std::exp(expPart);
   return GQAlpha.GetWeight(alpha) * GQGamma.GetWeight(gamma) * factor;
 }
 
 void AngMomProjection::PrintInfo()
 {
-  std::cout << "  mesh points type:      " << ms->Get_MeshType() << std::endl;
+  std::cout << "  mesh points type:  " << ms->Get_MeshType() << std::endl;
   std::cout << "  Projected 2I: " << ms->GetAMProjected_J() << "   2M: " << ms->GetAMProjected_M() << "   2K: " << ms->GetAMProjected_K() << std::endl;
   std::cout << "  number of mesh points: alpha: " << GQAlpha.GetTotalNumber() << "  beta: " << GQBeta.GetTotalNumber() << "  gamma: " << GQGamma.GetTotalNumber() << std::endl;
+  if (ms->GetProjected_parity() == 0)
+    std::cout << "  No parity projection!  " << std::endl;
+  else if (ms->GetProjected_parity() == 1)
+    std::cout << "  Parity projection:  +"<< std::endl;
+  else if (ms->GetProjected_parity() == -1)
+    std::cout << "  Parity projection:  -"<< std::endl;
   std::cout << "/-----------------------------------------------------/" << std::endl;
 }

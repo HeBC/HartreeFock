@@ -57,8 +57,8 @@ public:
     double GetBeta_w(int index) { return GQBeta.GetWeight(index); };
     double GetGamma_x(int index) { return GQGamma.GetX(index); };
     double GetGamma_w(int index) { return GQGamma.GetWeight(index); };
-    double GetWignerDFunc_beta(int isospin, int beta, int i, int j);
-    double *GetWignerDFunc_prt(int isospin, int beta);
+    double GetWigner_d_beta(int isospin, int beta, int i, int j);
+    double *GetWigner_d_prt(int isospin, int beta);
     int GetTotalMeshPoints() { return GQdim; };
     int GetMeshDimensionIn(int type); // type = 0 alpha, 1 beta, 2 gamma
     ComplexNum GuassQuad_weight(int alpha, int beta, int gamma);
@@ -84,7 +84,7 @@ private:
     bool initial_proton = false;
     bool initial_neutron = false;
     void InitializeBetaFuncs();
-    void InitializeMatrix(int isospin);    // for NPSM
+    void InitializeMatrix(int isospin); // for NPSM
 };
 
 /// namespace Angular momentum
@@ -99,7 +99,8 @@ namespace AngMom
     void init_sixj();                                      // Before using sixJ and U. please call init_sixj first!
     double sixJ(int a, int b, int e, int d, int c, int f); /* in units of 2*j */
     double U(int a, int b, int c, int d, int e, int f);
-    double WignerD(int j, int m1, int m2, double beta); // Wigner small d function
+    double Wigner_d(int j, int m1, int m2, double beta); // Wigner small d function
+    ComplexNum Wigner_D(int j, int m1, int m2, double alpha, double beta, double gamma); // Wigner small d function
     double Factorial(int N);
 };
 

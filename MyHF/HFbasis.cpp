@@ -39,7 +39,7 @@ HFbasis::HFbasis(ModelSpace &ms, AngMomProjection &AMJ, int isospin)
     MallocMemoryComplex();
 }
 
-void HFbasis::MallocMemoryComplex()  // only work for the HF with AMJ
+void HFbasis::MallocMemoryComplex() // only work for the HF with AMJ
 {
     if (Malloced_Memory == false)
     {
@@ -103,34 +103,52 @@ void HFbasis::MatrixCope(ComplexNum *destination, const ComplexNum *source, int 
 
 void HFbasis::MatrixCope(ComplexNum *destination, const double *source, int number)
 { // source = destination
-    memset(destination, 0, (number) * 2 * sizeof(double));
+    memset(destination, 0, (number)*2 * sizeof(double));
     cblas_dcopy(number, source, 1, (double *)destination, 2); // b -> a
     return;
 }
 
 void HFbasis::RotatedOperator(int alpha, int beta, int gamma)
 {
-    int i, m1, m, k1, k2;
-    ComplexNum factor1, factor2, expPart;
+    int i, m1, m, matrixdim;
+    matrixdim = this->GetDim();
+    ComplexNum factor, expPart;
     ComplexNum *ystruct, *sourceStruc;
-    double *rotateMatrix;
-    rotateMatrix = AMJ->GetWignerDFunc_prt(isospin, beta);
+    double *d_Matrix;
+    d_Matrix = AMJ->GetWigner_d_prt(isospin, beta);
     ystruct = (ComplexNum *)mkl_malloc(this->GetDim() * sizeof(ComplexNum), 64);
     for (i = 0; i < N; i++)
     {
         sourceStruc = this->GetArrayPointerComplex(i);
         this->ZeroOperatorStructure(ystruct); /// Zero
-        for (m1 = 0; m1 < dim; m1++)
+        for (m1 = 0; m1 < matrixdim; m1++)
         {
-            for (m = 0; m < dim; m++)
+            for (m = 0; m < matrixdim; m++)
             {
                 expPart = -1.i * (AMJ->GetAlpha_x(alpha) * (ms->Get_MSmatrix_2m(isospin, m1)) * PI);
-                factor1 = std::exp(expPart); // Pi and m1 is twiced
-                expPart = -1.i * (AMJ->GetGamma_x(gamma) * (ms->Get_MSmatrix_2m(isospin, m)) * PI);
-                factor2 = std::exp(expPart); // Pi and  m is twiced
-                ystruct[m1] += factor1 * factor2 * rotateMatrix[m1 * dim + m] * (sourceStruc)[m];
+                // factor1 = std::exp(expPart); // m1 is twiced
+                expPart += -1.i * (AMJ->GetGamma_x(gamma) * (ms->Get_MSmatrix_2m(isospin, m)) * PI);
+                factor = std::exp(expPart); // m is twiced
+                ystruct[m1] += factor * d_Matrix[m1 * matrixdim + m] * (sourceStruc)[m];
             }
         }
+        this->MatrixCope(sourceStruc, ystruct, matrixdim);
+    }
+    mkl_free(ystruct);
+}
+
+// Calculate \Pi^+ A \Pi
+void HFbasis::ParityProjection()
+{
+    ComplexNum *ystruct, *sourceStruc;
+    ComplexNum *ProjectionMatrix;
+    ProjectionMatrix = ms->GetParityProjOperator_prt(isospin);
+    ystruct = (ComplexNum *)mkl_malloc(this->GetDim() * sizeof(ComplexNum), 64);
+    for (size_t i = 0 ; i < N; i++)
+    {
+        sourceStruc = this->GetArrayPointerComplex(i);
+        this->ZeroOperatorStructure(ystruct); /// Zero
+        vzMul(this->GetDim(), ProjectionMatrix, sourceStruc, ystruct);
         this->MatrixCope(sourceStruc, ystruct, this->GetDim());
     }
     mkl_free(ystruct);
@@ -259,6 +277,13 @@ void PNbasis::RotatedOperator(int alpha, int beta, int gamma)
     return;
 }
 
+void PNbasis::ParityProjection()
+{
+    this->basis_p->ParityProjection();
+    this->basis_n->ParityProjection();
+    return;
+}
+
 void PNbasis::FullBasis(const std::vector<double> para_vector) // Only work for Complex members
 {
     if (this->GetTotalDim() != para_vector.size())
@@ -269,7 +294,7 @@ void PNbasis::FullBasis(const std::vector<double> para_vector) // Only work for 
     this->basis_p->MatrixCope(this->basis_p->GetArrayPointerComplex(), para_vector.data(), this->basis_p->GetTotoalDim());
     this->basis_n->MatrixCope(this->basis_n->GetArrayPointerComplex(), para_vector.data() + this->basis_p->GetTotoalDim(), this->basis_n->GetTotoalDim());
 
-    //this->basis_p->PrintAllParameters_Complex();
-    //this->basis_n->PrintAllParameters_Complex();
+    // this->basis_p->PrintAllParameters_Complex();
+    // this->basis_n->PrintAllParameters_Complex();
     return;
 }

@@ -55,13 +55,13 @@ void ModelSpace::CheckComplexDefinition()
     return;
 }
 
-void ModelSpace::InitialModelSpace_Iden()
+void ModelSpace::InitialModelSpace_Iden() // FOR NPSM
 {
     InitMSMatrix(Proton);
     InitCollectivePairs(Proton);
 }
 
-void ModelSpace::InitialModelSpace_pn()
+void ModelSpace::InitialModelSpace_pn() // for NPSM
 {
     InitMSMatrix(Proton);
     InitMSMatrix(Neutron);
@@ -71,8 +71,8 @@ void ModelSpace::InitialModelSpace_pn()
 
 void ModelSpace::InitialModelSpace_HF()
 {
-    InitMSMatrix(Proton);
-    InitMSMatrix(Neutron);
+    InitMSMatrix_HF(Proton);
+    InitMSMatrix_HF(Neutron);
 }
 
 int ModelSpace::Get_MScheme_dim(int tz)
@@ -176,6 +176,18 @@ MSchemeMatrix *ModelSpace::GetMSmatrixPointer(int isospin)
         exit(0);
     }
 }
+
+int ModelSpace::GetParticleNumber(int tz)
+{
+    if (tz == Proton)
+    {
+        return MS_N_p;
+    }
+    else
+    {
+        return MS_N_n;
+    }
+} // retrun particle number
 
 int ModelSpace::GetPairNumber(int tz)
 {
@@ -316,6 +328,17 @@ int ModelSpace::GetOrbit_2j(int index, int isospin)
     return -1;
 }
 
+Orbit &ModelSpace::GetOrbit(int isospin, int i)
+{
+    if (isospin == Proton)
+        return (Orbit &)Orbits_p[i];
+    else
+
+    {
+        return (Orbit &)Orbits_n[i];
+    }
+}
+
 void ModelSpace::InitMSMatrix(int isospin)
 {
     int CountDim, countMSMdim;
@@ -374,15 +397,12 @@ void ModelSpace::InitMSMatrix(int isospin)
                 }
             }
         }
-        ///// Initial parity of pair
-        MSM_p.PairParity = (ComplexNum *)mkl_malloc(CountDim * CountDim * sizeof(ComplexNum), 64);
+        ///// Initial parity of operator
+        MSM_p.PairParity = (ComplexNum *)mkl_malloc(CountDim * sizeof(ComplexNum), 64);
         for (i = 0; i < CountDim; i++)
         {
-            for (j = 0; j < CountDim; j++)
-            {
-                t = sgn(GetProtonOrbit_l(MSM_p.j_index[i]) + GetProtonOrbit_l(MSM_p.j_index[j]));
-                MSM_p.PairParity[i * CountDim + j] = t;
-            }
+            t = sgn(GetProtonOrbit_l(MSM_p.j_index[i]));
+            MSM_p.PairParity[i] = t;
         }
     }
     else if (isospin == Neutron)
@@ -438,14 +458,105 @@ void ModelSpace::InitMSMatrix(int isospin)
             }
         }
         ///// Initial parity of pair
-        MSM_n.PairParity = (ComplexNum *)mkl_malloc(CountDim * CountDim * sizeof(ComplexNum), 64);
+        MSM_n.PairParity = (ComplexNum *)mkl_malloc(CountDim * sizeof(ComplexNum), 64);
         for (i = 0; i < CountDim; i++)
         {
-            for (j = 0; j < CountDim; j++)
+            t = sgn(GetProtonOrbit_l(MSM_n.j_index[i]));
+            MSM_n.PairParity[i] = t;
+        }
+    }
+    else
+    {
+        printf("The particle should be proton or neutron!!\n");
+        exit(0);
+    }
+    return;
+}
+
+void ModelSpace::InitMSMatrix_HF(int isospin)
+{
+    int CountDim;
+    int i, j, jm, t, m, t_max;
+    CountDim = 0;
+    t_max = 0;
+    if (isospin == Proton) // iflag=1  proton   else  nuetron
+    {
+        int NJ = this->GetProtonOrbitsNum();
+        for (i = 0; i < NJ; i++)
+        {
+            MSM_p.SPj.push_back(CountDim);
+            j = this->GetProtonOrbit_2j(i);
+            if (t_max < j)
             {
-                t = sgn(GetProtonOrbit_l(MSM_n.j_index[i]) + GetProtonOrbit_l(MSM_n.j_index[j]));
-                MSM_n.PairParity[i * CountDim + j] = t;
+                t_max = j;
             }
+            CountDim += j + 1; // 2j+1
+        }
+        MSM_p.Set_MScheme_Dim(CountDim);
+        j = 0;  // j
+        t = 0;  // j index
+        jm = 0; // count jm
+        for (i = 0; i < CountDim; i++)
+        {
+            j = this->GetProtonOrbit_2j(t);
+            MSM_p.j.push_back(j);
+            MSM_p.j_index.push_back(t);
+            MSM_p.m.push_back(j - 2 * jm);
+            jm++;
+            if (jm == (j + 1))
+            {
+                t++;
+                jm = 0;
+            }
+        }
+        // initial CG coefficient for M matrix
+        // HF don't need it
+        ///// Initial parity of operator
+        MSM_p.PairParity = (ComplexNum *)mkl_malloc(CountDim * sizeof(ComplexNum), 64);
+        for (i = 0; i < CountDim; i++)
+        {
+            t = sgn(GetProtonOrbit_l(MSM_p.j_index[i]));
+            MSM_p.PairParity[i] = t;
+        }
+    }
+    else if (isospin == Neutron)
+    {
+        int NJ = this->GetNeutronOrbitsNum();
+        for (i = 0; i < NJ; i++)
+        {
+            MSM_n.SPj.push_back(CountDim);
+            j = this->GetNeutronOrbit_2j(i);
+            if (t_max < j)
+            {
+                t_max = j;
+            }
+            CountDim += j + 1; // 2j+1
+        }
+        MSM_n.Set_MScheme_Dim(CountDim);
+        j = 0;  // j
+        t = 0;  // j index
+        jm = 0; // count jm
+        for (i = 0; i < CountDim; i++)
+        {
+            j = this->GetNeutronOrbit_2j(t);
+            MSM_n.j.push_back(j);
+            MSM_n.j_index.push_back(t);
+            MSM_n.m.push_back(j - 2 * jm);
+            jm++;
+            if (jm == (j + 1))
+            {
+                t++;
+                jm = 0;
+            }
+        }
+        // initial CG coefficient for M matrix
+        // HF don't need it
+        ///// Initial parity of pair
+        MSM_n.PairParity = (ComplexNum *)mkl_malloc(CountDim * sizeof(ComplexNum), 64);
+        for (i = 0; i < CountDim; i++)
+        {
+            t = sgn(GetProtonOrbit_l(MSM_n.j_index[i]));
+            MSM_n.PairParity[i] = t;
         }
     }
     else

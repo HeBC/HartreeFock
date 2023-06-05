@@ -10,7 +10,7 @@ LIBS = -lmkl_rt -lm -lnlopt -lgsl -lgslcblas
 FC = mpicxx
 OFILES = ModelSpace.o Hamiltonian.o AngMom.o ReadWriteFiles.o HFbasis.o CalHF.o GCM_Tools.o
 
-all: HF_Pfaffian.exe HF_naive.exe HF_Projection.exe
+all: HF_Pfaffian.exe HartreeFock.exe HF_Projection.exe
 
 clean:
 	/bin/rm -f *.o *.exe
@@ -23,8 +23,8 @@ HF_Pfaffian.exe: $(OFILES) HF_Pfaffian.o
 
 
 # HF
-HF_naive.exe: $(OFILES) HF_naive.o 
-	$(FC) -o $@ HF_naive.o $(CFLAGS) $(OFILES) $(LIBS) 
+HartreeFock.exe: $(OFILES) HartreeFock.o 
+	$(FC) -o $@ HartreeFock.o $(CFLAGS) $(OFILES) $(LIBS) 
 
 
 # HF Projection

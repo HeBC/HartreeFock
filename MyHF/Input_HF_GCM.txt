@@ -1,0 +1,26 @@
+!# number of valence protons and neutrons (exp.  4, 4  or 24Mg   Mg24)
+Mg27
+!/////////////////////////////////////////////  Hamiltonian File Kshell format
+Interaction/usdb.snt
+!////////////////////////////////////////////   Projection Parameters
+!#  type of mesh grid, "Qud_" for quadrature 
+!# "Qud_legendre"    # Legendre quadrature integration. alpha and beta are ignored for this type.
+!# "Qud_chebyshev"   # Chebyshev type 1 quadrature integration. alpha and beta are ignored for this type.
+!# "Qud_gegenbauer"  # Gegenbauer quadrature integration. alpha = 1. , beta is ignored for this type.
+!# "Qud_jacobi"      # Jacobi quadrature integration. alpha = 1., beta =1.
+!# "Qud_laguerre"    # Laguerre quadrature integration. alpha = 1., beta is ignored for this type.
+!# "Qud_hermite"     # Hermite quadrature integration. alpha = 1., beta is ignored for this type.
+!# "Qud_exponential" # exponential quadrature integration.  alpha = 1., beta is ignored for this type.
+!# "Qud_rational"    # This specifies rational quadrature integration. alpha = 1., beta =1.
+!# "Qud_chebyshev2"  # Chebyshev type 2 quadrature integration. alpha and beta are ignored for this type.
+!# "ReadFiles"       # Read mesh form mesh/ folder, mesh number are determined by the Files
+!# "LAmethod"        # linear algebra method; the 2J serve as the Jmax, mesh number are determined by the code
+!/////////////////////////////////////////////
+LAmethod             # type of mesh grid  
+25 1 1               # twice Projected angular momentum 2J 2M 2K
+No                   # Projected parity    # +, - or No
+19 24 19             # Guass quadrature mesh for alpha beta gamma 
+
+
+
+

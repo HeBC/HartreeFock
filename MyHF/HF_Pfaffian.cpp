@@ -232,7 +232,7 @@ int main(int argc, char *argv[])
     */
 
     // Kshell format interaction
-    rw.ReadInput_HF("Input_HF.dat", MS, Hinput);
+    rw.ReadInput_HF("Input_HF.txt", MS, Hinput);
     MS.InitialModelSpace_HF();
     Hinput.Prepare_MschemeH();
     //Hinput.Prepare_MschemeH_Unrestricted_ForPhaffian();

@@ -70,6 +70,26 @@ public:
   int Get_tz() { return Tz2; };
 };
 
+class OneBodyElement /// store one body operator, especially single particle energy
+{
+public:
+  int orbit_a, orbit_b, t, Tz2; // (C_a^+ X \tilde C_b)^t, orbit index, t and 2tz
+  double OBE = 0;               // one body elements
+  // method
+  OneBodyElement(){};
+  ~OneBodyElement(){};
+
+  OneBodyElement(int orbit_a, int orbit_b, int t, int Tz2, double OBE)
+      : orbit_a(orbit_a), orbit_b(orbit_b), t(t), Tz2(Tz2), OBE(OBE){};
+
+  // method
+  int GetIndex_a() { return orbit_a; };
+  int GetIndex_b() { return orbit_b; };
+  int Get_t() { return t; };
+  int Get_tz() { return Tz2; };
+  double GetE() { return OBE; }
+};
+
 class Vpn_phCoupledElements
 {
 public:
@@ -181,6 +201,7 @@ public:
   string Vpp_filename, Vnn_filename, Vpn_filename;                  // file name for OSLO format files
   string snt_file;                                                  // snt file for kshell
   vector<HamiltonianElements> Vpp, Vnn, Vpn;                        // normal shell model interaction
+  vector<OneBodyElement> OBEs_p, OBEs_n;                            // store one body operator
   vector<HamiltoaninColllectiveElements> VCol_pp, VCol_nn, VCol_pn; // recasted collective pair interaction
   vector<OneBodyOperatorChannel> OBchannel_p, OBchannel_n;          // record the one body channels
   vector<Vpn_phCoupledElements> Vpn_PHcoupled;                      // Vpn for particle hole channel

@@ -662,6 +662,7 @@ namespace HFMEs
         Hamiltonian = (H_SP + HME_p + HME_n + HME_pn) / (OvlME_p * OvlME_n);
         // std::cout << H_SP << "  " << HME_p << "  " << HME_n << "  " << HME_pn << "  " << OvlME_p <<"  "<< OvlME_n << std::endl;
         //std::cout << H_SP << "  " << HME_p << "  " << HME_n << "  " << HME_pn << "  " << (OvlME_p * OvlME_n) << std::endl;
+        
         double Qud0, Qud2, Qud_2;
         if (Ham.ms->GetIsShapeConstrained())
         {
@@ -701,7 +702,7 @@ namespace HFMEs
             Hamiltonian += Ham.ms->GetShapeConstant() * pow(Qud2 / (OvlME_p * OvlME_n) - Ham.ms->GetShapeQ2(), 2);
             Hamiltonian += Ham.ms->GetShapeConstant() * pow(Qud_2 / (OvlME_p * OvlME_n) - Ham.ms->GetShapeQ2(), 2);
         }
-
+      
         // free memory
         mkl_free(OBoperator_p);
         mkl_free(OBoperator_n);
