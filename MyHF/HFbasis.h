@@ -62,12 +62,13 @@ public:
   int GetDim() { return dim; };
   int GetParticleNumber() { return N; };
   int GetInnerDim() { return vector_dim; };
-  void RotatedOperator(int alpha, int beta, int gamma);
+  void RotatedOperator(int alpha, int beta, int gamma);            // input index of angle
+  void RotatedOperator(double alpha, double beta, double gamma);   // input angle
   void ZeroOperatorStructure(ComplexNum *ystruc);
   void MatrixCope(ComplexNum *destination, const ComplexNum *source, int number);
   void MatrixCope(ComplexNum *destination, const double *source, int number);
   int GetTotoalDim() { return dim * N; };
-  void ParityProjection();       // Calculate \Pi^+ A \Pi
+  void ParityProjection(); // Calculate \Pi^+ A \Pi
 
   // debug
   void PrintAllParameters_Double();
@@ -107,7 +108,8 @@ public:
   HFbasis *GetNeutronPrt() { return basis_n; };
   int GetProntonInnerDim() { return basis_p->GetInnerDim(); };
   int GetNeutronInnerDim() { return basis_p->GetInnerDim(); };
-  void RotatedOperator(int alpha, int beta, int gamma);
+  void RotatedOperator(int alpha, int beta, int gamma);          // input index of angle
+  void RotatedOperator(double alpha, double beta, double gamma); // input angle
   void ParityProjection();
   void FullBasis(const std::vector<double> para_vector);
   int GetTotalDim() { return basis_p->GetTotoalDim() + basis_n->GetTotoalDim(); };

@@ -299,7 +299,7 @@ void GCM_Projection::SolveLinearEquationMatrix(int NumJ, ComplexNum *OvlME, Comp
 
   for (size_t j = 0; j < NumJ; j++)
   {
-    //std::cout << MatrixXH[j] << MatrixXN[j] << std::endl;
+    // std::cout << MatrixXH[j] << MatrixXN[j] << std::endl;
     if (std::abs(MatrixXN[j].real()) < 1.e-8)
     {
       GCM_results_E.push_back(0.);
@@ -457,7 +457,109 @@ void GCM_Projection::DoCalculation() // Do projection for GCM
       CalHFKernels_Complex(*Ham, HFBasis_Bra, HFBasis_Ket, temp_HamME, temp_OvlME);
       MEmatrix[MEind] += weightFactor * temp_HamME;         // Ham
       MEmatrix[MEind + MEnum] += weightFactor * temp_OvlME; // Ovl
+
+      // output
       // std::cout << alpha << "  " << this->AngMomProj->GetAlpha_x(alpha) << "  " << beta << "  " << this->AngMomProj->GetBeta_x(beta) << "  " << gamma << "  " << this->AngMomProj->GetGamma_x(gamma) << "   " << temp_HamME.real() << "  " << temp_HamME.imag() << "   |   " << temp_OvlME.real() << "  " << temp_OvlME.imag() << "   " << weightFactor.real()  << "  "<< weightFactor.imag()  << std::endl;
+
+      //////////////////// Testing derivative
+      /*
+      double h_diff = 0.0001;
+      ComplexNum derivative_a, derivative_b, derivative_c;
+      /// alpha
+      PNbasis HFBasis_Ket_new(basis_stored[j1]);
+      HFBasis_Ket_new.RotatedOperator(this->AngMomProj->GetAlpha_x(alpha) * 2 * PI + h_diff, this->AngMomProj->GetBeta_x(beta) * PI, this->AngMomProj->GetGamma_x(gamma) * 2 * PI);
+      derivative_a = CalHFOverlap_Complex(HFBasis_Bra, HFBasis_Ket_new);
+      derivative_a -= temp_OvlME;
+      derivative_a /= h_diff;
+
+      /// beta
+      HFBasis_Ket_new = basis_stored[j1];
+      HFBasis_Ket_new.RotatedOperator(this->AngMomProj->GetAlpha_x(alpha) * 2 * PI, this->AngMomProj->GetBeta_x(beta) * PI + h_diff, this->AngMomProj->GetGamma_x(gamma) * 2 * PI);
+      derivative_b = CalHFOverlap_Complex(HFBasis_Bra, HFBasis_Ket_new);
+      derivative_b -= temp_OvlME;
+      derivative_b /= h_diff;
+
+      /// gamma
+      HFBasis_Ket_new = basis_stored[j1];
+      HFBasis_Ket_new.RotatedOperator(this->AngMomProj->GetAlpha_x(alpha) * 2 * PI, this->AngMomProj->GetBeta_x(beta) * PI, this->AngMomProj->GetGamma_x(gamma) * 2 * PI + h_diff);
+      derivative_c = CalHFOverlap_Complex(HFBasis_Bra, HFBasis_Ket_new);
+      derivative_c -= temp_OvlME;
+      derivative_c /= h_diff;
+
+
+      std::cout << alpha << "  " << this->AngMomProj->GetAlpha_x(alpha) << "  " << beta << "  " << this->AngMomProj->GetBeta_x(beta) << "  " << gamma << "  " << this->AngMomProj->GetGamma_x(gamma) << "   " << temp_HamME.real() << "  " << temp_HamME.imag() << "   |   " << temp_OvlME.real() << "  " << temp_OvlME.imag() << "   " << weightFactor.real() << "  " << weightFactor.imag() << "   |   " << derivative_a.real() << "  " << derivative_a.imag() << "  " << derivative_b.real() << "  " << derivative_b.imag() << "  " << derivative_c.real() << "  " << derivative_c.imag() << std::endl;
+      */
+
+ 
+      double h_diff = 0.0001;
+      ComplexNum derivative_a, derivative_b, derivative_c;
+      ComplexNum derivative_abh, derivative_bch, derivative_ach;
+      ComplexNum derivative_a_h, derivative_b_h, derivative_c_h;
+
+      ComplexNum derivative_aa, derivative_bb, derivative_cc;
+      ComplexNum derivative_ab, derivative_bc, derivative_ac;
+
+      /// alpha
+      PNbasis HFBasis_Ket_new(basis_stored[j1]);
+      HFBasis_Ket_new.RotatedOperator(this->AngMomProj->GetAlpha_x(alpha) * 2 * PI + h_diff, this->AngMomProj->GetBeta_x(beta) * PI, this->AngMomProj->GetGamma_x(gamma) * 2 * PI);
+      derivative_a = CalHFOverlap_Complex(HFBasis_Bra, HFBasis_Ket_new);
+
+      HFBasis_Ket_new = basis_stored[j1];
+      HFBasis_Ket_new.RotatedOperator(this->AngMomProj->GetAlpha_x(alpha) * 2 * PI - h_diff, this->AngMomProj->GetBeta_x(beta) * PI, this->AngMomProj->GetGamma_x(gamma) * 2 * PI);
+      derivative_a_h = CalHFOverlap_Complex(HFBasis_Bra, HFBasis_Ket_new);
+
+      /// beta
+      HFBasis_Ket_new = basis_stored[j1];
+      HFBasis_Ket_new.RotatedOperator(this->AngMomProj->GetAlpha_x(alpha) * 2 * PI, this->AngMomProj->GetBeta_x(beta) * PI + h_diff, this->AngMomProj->GetGamma_x(gamma) * 2 * PI);
+      derivative_b = CalHFOverlap_Complex(HFBasis_Bra, HFBasis_Ket_new);
+
+      HFBasis_Ket_new = basis_stored[j1];
+      HFBasis_Ket_new.RotatedOperator(this->AngMomProj->GetAlpha_x(alpha) * 2 * PI, this->AngMomProj->GetBeta_x(beta) * PI - h_diff, this->AngMomProj->GetGamma_x(gamma) * 2 * PI);
+      derivative_b_h = CalHFOverlap_Complex(HFBasis_Bra, HFBasis_Ket_new);
+
+      /// gamma
+      HFBasis_Ket_new = basis_stored[j1];
+      HFBasis_Ket_new.RotatedOperator(this->AngMomProj->GetAlpha_x(alpha) * 2 * PI, this->AngMomProj->GetBeta_x(beta) * PI, this->AngMomProj->GetGamma_x(gamma) * 2 * PI + h_diff);
+      derivative_c = CalHFOverlap_Complex(HFBasis_Bra, HFBasis_Ket_new);
+
+      HFBasis_Ket_new = basis_stored[j1];
+      HFBasis_Ket_new.RotatedOperator(this->AngMomProj->GetAlpha_x(alpha) * 2 * PI, this->AngMomProj->GetBeta_x(beta) * PI, this->AngMomProj->GetGamma_x(gamma) * 2 * PI - h_diff);
+      derivative_c_h = CalHFOverlap_Complex(HFBasis_Bra, HFBasis_Ket_new);
+
+      ///
+      HFBasis_Ket_new = basis_stored[j1];
+      HFBasis_Ket_new.RotatedOperator(this->AngMomProj->GetAlpha_x(alpha) * 2 * PI + h_diff, this->AngMomProj->GetBeta_x(beta) * PI + h_diff, this->AngMomProj->GetGamma_x(gamma) * 2 * PI);
+      derivative_abh = CalHFOverlap_Complex(HFBasis_Bra, HFBasis_Ket_new);
+
+      HFBasis_Ket_new = basis_stored[j1];
+      HFBasis_Ket_new.RotatedOperator(this->AngMomProj->GetAlpha_x(alpha) * 2 * PI, this->AngMomProj->GetBeta_x(beta) * PI + h_diff, this->AngMomProj->GetGamma_x(gamma) * 2 * PI + h_diff);
+      derivative_bch = CalHFOverlap_Complex(HFBasis_Bra, HFBasis_Ket_new);
+
+      HFBasis_Ket_new = basis_stored[j1];
+      HFBasis_Ket_new.RotatedOperator(this->AngMomProj->GetAlpha_x(alpha) * 2 * PI + h_diff, this->AngMomProj->GetBeta_x(beta) * PI, this->AngMomProj->GetGamma_x(gamma) * 2 * PI + h_diff);
+      derivative_ach = CalHFOverlap_Complex(HFBasis_Bra, HFBasis_Ket_new);
+
+      //============================================
+      derivative_aa = (-derivative_a_h + 2. * temp_OvlME - derivative_a) / h_diff / h_diff;
+      derivative_bb = (-derivative_b_h + 2. * temp_OvlME - derivative_b) / h_diff / h_diff;
+      derivative_cc = (-derivative_c_h + 2. * temp_OvlME - derivative_c) / h_diff / h_diff;
+      derivative_ab = ( derivative_abh - derivative_a - derivative_b + temp_OvlME ) / h_diff / h_diff;
+      derivative_bc = ( derivative_bch - derivative_b - derivative_c + temp_OvlME ) / h_diff / h_diff;
+      derivative_ac = ( derivative_ach - derivative_a - derivative_c + temp_OvlME ) / h_diff / h_diff;
+
+      //--------------------------------------------
+      derivative_a -= temp_OvlME;
+      derivative_a /= h_diff;
+
+      derivative_b -= temp_OvlME;
+      derivative_b /= h_diff;
+
+      derivative_c -= temp_OvlME;
+      derivative_c /= h_diff;
+
+      std::cout << alpha << "  " << this->AngMomProj->GetAlpha_x(alpha) << "  " << beta << "  " << this->AngMomProj->GetBeta_x(beta) << "  " << gamma << "  " << this->AngMomProj->GetGamma_x(gamma) << "   " << temp_HamME.real() << "  " << temp_HamME.imag() << "   |   " << temp_OvlME.real() << "  " << temp_OvlME.imag() << "   " << weightFactor.real() << "  " << weightFactor.imag() << "   |   " << derivative_a.real() << "  " << derivative_a.imag() << "  " << derivative_b.real() << "  " << derivative_b.imag() << "  " << derivative_c.real() << "  " << derivative_c.imag() << "  |  " << derivative_aa.real() << "  " << derivative_bb.real() << "  " << derivative_cc.real() << "  " << derivative_ab.real() << "  " << derivative_bc.real() << "  " << derivative_ac.real() << std::endl;
+
+      //////////////////// End Test
     }
     else
     {
@@ -601,12 +703,12 @@ void GCM_Projection::DoCalculation_LAmethod() // Do projection for GCM with line
       // \hat P = 1/2 ( 1 +- \hat Pi )
       ComplexNum temp_HamME, temp_OvlME;
       CalHFKernels_Complex(*Ham, HFBasis_Bra, HFBasis_Ket, temp_HamME, temp_OvlME);
-      MEmatrix[MEind * MEnum + beta] += 0.5 * weightFactor * temp_HamME;         // Ham
+      MEmatrix[MEind * MEnum + beta] += 0.5 * weightFactor * temp_HamME;                // Ham
       MEmatrix[MEnum * NumJ + MEind * MEnum + beta] += 0.5 * weightFactor * temp_OvlME; // Ovl
 
       HFBasis_Ket.ParityProjection();
       CalHFKernels_Complex(*Ham, HFBasis_Bra, HFBasis_Ket, temp_HamME, temp_OvlME);
-      MEmatrix[MEind * MEnum + beta] += ParityProj * 0.5 * weightFactor * temp_HamME;         // Ham
+      MEmatrix[MEind * MEnum + beta] += ParityProj * 0.5 * weightFactor * temp_HamME;                // Ham
       MEmatrix[MEnum * NumJ + MEind * MEnum + beta] += ParityProj * 0.5 * weightFactor * temp_OvlME; // Ovl
     }
   }
@@ -658,7 +760,7 @@ std::vector<double> GCM_Projection::Cal_Overlap_before_Porjection()
     j1 = MyIndex->MEindex_j[MEind]; // should always be TotalOrder - 1
     PNbasis MPBasis_Bra(basis_stored[i1]);
     PNbasis MPBasis_Ket(basis_stored[j1]);
-    OvlME[i] = CalHFOverlap_Complex(*Ham, MPBasis_Bra, MPBasis_Ket);
+    OvlME[i] = CalHFOverlap_Complex(MPBasis_Bra, MPBasis_Ket).real();
   }
   MPI_Reduce(OvlME, tempME, MEnum, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 

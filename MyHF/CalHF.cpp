@@ -25,6 +25,7 @@
 #include "CalHF.h"
 namespace HFMEs
 {
+    ///////////////////// Matrix elements ///////////////////////
     // Overlap
     void S_matrix_overlap(HFbasis &Bra, HFbasis &Ket, double *M)
     {
@@ -343,6 +344,7 @@ namespace HFMEs
     }
     // End Twobody
 
+    ///////////////////// Pfaffian codes ///////////////////////
     // out-place Pfaffian
     // return the pfaffian value of the matrix S, N is the dim of S
     // J.R. Stembridge, Adv. Math. 83 (1990) 96.
@@ -540,6 +542,7 @@ namespace HFMEs
         return PF;
     }
 
+    ///////////////////// HF calculations ///////////////////////
     ////// HF kernels
     double CalHFKernels(Hamiltonian &Ham, PNbasis &Bra, PNbasis &Ket)
     {
@@ -661,8 +664,8 @@ namespace HFMEs
 
         Hamiltonian = (H_SP + HME_p + HME_n + HME_pn) / (OvlME_p * OvlME_n);
         // std::cout << H_SP << "  " << HME_p << "  " << HME_n << "  " << HME_pn << "  " << OvlME_p <<"  "<< OvlME_n << std::endl;
-        //std::cout << H_SP << "  " << HME_p << "  " << HME_n << "  " << HME_pn << "  " << (OvlME_p * OvlME_n) << std::endl;
-        
+        // std::cout << H_SP << "  " << HME_p << "  " << HME_n << "  " << HME_pn << "  " << (OvlME_p * OvlME_n) << std::endl;
+
         double Qud0, Qud2, Qud_2;
         if (Ham.ms->GetIsShapeConstrained())
         {
@@ -702,7 +705,7 @@ namespace HFMEs
             Hamiltonian += Ham.ms->GetShapeConstant() * pow(Qud2 / (OvlME_p * OvlME_n) - Ham.ms->GetShapeQ2(), 2);
             Hamiltonian += Ham.ms->GetShapeConstant() * pow(Qud_2 / (OvlME_p * OvlME_n) - Ham.ms->GetShapeQ2(), 2);
         }
-      
+
         // free memory
         mkl_free(OBoperator_p);
         mkl_free(OBoperator_n);
@@ -860,7 +863,7 @@ namespace HFMEs
             OvlME_n = 1.;
         }
         OvlME = (OvlME_p * OvlME_n);
-        
+
         // evaluate Two body Hamiltonian MEs Vpp and Vnn
         MschemeHamiltonian &MSMEs = Ham.MSMEs;
         ComplexNum *TB_p = (ComplexNum *)mkl_malloc(((2 * N_p + 4) * (2 * N_p + 4)) * sizeof(ComplexNum), 64);
@@ -1370,14 +1373,14 @@ namespace HFMEs
         return;
     }
 
-    double CalHFOverlap(Hamiltonian &Ham, PNbasis &Bra, PNbasis &Ket)
+    double CalHFOverlap(PNbasis &Bra, PNbasis &Ket)
     {
         HFbasis *Bra_p = Bra.GetProtonPrt();
         HFbasis *Bra_n = Bra.GetNeutronPrt();
         HFbasis *Ket_p = Ket.GetProtonPrt();
         HFbasis *Ket_n = Ket.GetNeutronPrt();
-        int N_p = Ham.ms->GetProtonNum();
-        int N_n = Ham.ms->GetNeutronNum();
+        int N_p = Bra_p->GetParticleNumber();
+        int N_n = Bra_n->GetParticleNumber();
         double OvlME_p, OvlME_n;
         // evaluate overlap
         double *Ovl_p = (double *)mkl_malloc((4 * N_p * N_p) * sizeof(double), 64);
@@ -1391,14 +1394,14 @@ namespace HFMEs
         return OvlME_p * OvlME_n;
     }
 
-    double CalHFOverlap_Complex(Hamiltonian &Ham, PNbasis &Bra, PNbasis &Ket)
+    ComplexNum CalHFOverlap_Complex(PNbasis &Bra, PNbasis &Ket)
     {
         HFbasis *Bra_p = Bra.GetProtonPrt();
         HFbasis *Bra_n = Bra.GetNeutronPrt();
         HFbasis *Ket_p = Ket.GetProtonPrt();
         HFbasis *Ket_n = Ket.GetNeutronPrt();
-        int N_p = Ham.ms->GetProtonNum();
-        int N_n = Ham.ms->GetNeutronNum();
+        int N_p = Bra_p->GetParticleNumber();
+        int N_n = Bra_n->GetParticleNumber();
         ComplexNum OvlME_p, OvlME_n;
 
         // evaluate overlap
@@ -1412,15 +1415,15 @@ namespace HFMEs
         mkl_free(Ovl_n);
         if (N_p == 0)
         {
-            return (OvlME_n).real();
+            return (OvlME_n);
         }
         else if (N_n == 0)
         {
-            return (OvlME_p).real();
+            return (OvlME_p);
         }
         else
         {
-            return (OvlME_p * OvlME_n).real();
+            return (OvlME_p * OvlME_n);
         }
     }
 

@@ -478,26 +478,14 @@ void AngMomProjection::Generate_LA_Mesh(QuadratureClass &QCprt, std::string type
     if ((Jmax2 + 1) % 4 == 1) // J_max = 0, 2, 4, 6 ...
     {
       mu = Jmax2 / 2;
-      Xprt[2 * mu] = 1.;
-      Wprt[2 * mu] = 1. / Nmesh;
     }
     else if ((Jmax2 + 1) % 4 == 2) // J_max = 1/2, 5/2, 9/2 ...
     {
       mu = (Jmax2 - 1) / 2;
-      Xprt[2 * mu] = 0;
-      Wprt[2 * mu] = 1. / Nmesh;
-      Xprt[2 * mu + 1] = 0;
-      Wprt[2 * mu + 1] = 1. / Nmesh;
     }
     else if ((Jmax2 + 1) % 4 == 3) // J_max = 1, 3, 5, 7 ...
     {
-      mu = (Jmax2 - 1) / 2;
-      Xprt[2 * mu] = 0;
-      Wprt[2 * mu] = 1. / Nmesh;
-      Xprt[2 * mu + 1] = 0.5;
-      Wprt[2 * mu + 1] = 1. / Nmesh;
-      Xprt[2 * mu + 2] = 0.5;
-      Wprt[2 * mu + 2] = 1. / Nmesh;
+      mu = (Jmax2 - 2) / 2;
     }
     else if ((Jmax2 + 1) % 4 == 0) // J_max 3/2, 7/2, 11/2, ...
     {
@@ -508,17 +496,51 @@ void AngMomProjection::Generate_LA_Mesh(QuadratureClass &QCprt, std::string type
       std::cout << "  generate linear algebra mesh error! " << std::endl;
     }
     /// generate mesh
+    /////////////////////////////////////////////////////////////
     for (int k = 0; k < mu; k++)
     {
-      Xprt[k] = 0.5 * (k + 1) / (mu + 1);
+      Xprt[k] = 0.5 * (k + 1.) / (mu + 1.);
       Wprt[k] = 1. / Nmesh;
-      // std::cout << k << "  " << Xprt[k] << "   " << Wprt[k] << std::endl;
+      //std::cout << k << "  " << Xprt[k] << "   " << Wprt[k] << std::endl;
     }
     for (int k = mu; k < 2 * mu; k++)
     {
-      Xprt[k] = 0.5 + 0.5 * (k + 1) / (mu + 1);
+      Xprt[k] = 0.5 + 0.5 * (k - mu + 1. ) / (mu + 1.);
       Wprt[k] = 1. / Nmesh;
-      // std::cout << k << "  " << Xprt[k] << "   " << Wprt[k] << std::endl;
+      //std::cout << k << "  " << Xprt[k] << "   " << Wprt[k] << std::endl;
+    }
+    ///////////////////////////////////////////////////////
+    if ((Jmax2 + 1) % 4 == 1) // J_max = 0, 2, 4, 6 ...
+    {
+      mu = Jmax2 / 2;
+      Xprt[2 * mu] = 1.;
+      Wprt[2 * mu] = 1. / Nmesh;
+    }
+    else if ((Jmax2 + 1) % 4 == 2) // J_max = 1/2, 5/2, 9/2 ...
+    {
+      mu = (Jmax2 - 1) / 2;
+      Xprt[2 * mu] = 0;
+      Wprt[2 * mu] = 1. / Nmesh;
+      Xprt[2 * mu + 1] = 1.;
+      Wprt[2 * mu + 1] = 1. / Nmesh;
+    }
+    else if ((Jmax2 + 1) % 4 == 3) // J_max = 1, 3, 5, 7 ...
+    {
+      mu = (Jmax2 - 2) / 2;
+      Xprt[2 * mu] = 0.;
+      Wprt[2 * mu] = 1. / Nmesh;
+      Xprt[2 * mu + 1] = 0.5;
+      Wprt[2 * mu + 1] = 1. / Nmesh;
+      Xprt[2 * mu + 2] = 1.;
+      Wprt[2 * mu + 2] = 1. / Nmesh;
+    }
+    else if ((Jmax2 + 1) % 4 == 0) // J_max 3/2, 7/2, 11/2, ...
+    {
+      mu = (Jmax2 + 1) / 2;
+    }
+    else
+    {
+      std::cout << "  generate linear algebra mesh error! " << std::endl;
     }
   }
   else if (type == "beta")
@@ -536,6 +558,7 @@ void AngMomProjection::Generate_LA_Mesh(QuadratureClass &QCprt, std::string type
     {
       Xprt[j - 1] = (j - 0.5) / N;
       Wprt[j - 1] = 1;
+      //std::cout << j-1 << "  " << Xprt[j-1] << "   " << Wprt[j-1] << std::endl;
     }
   }
   else
@@ -700,22 +723,28 @@ void AngMomProjection::InitInt_HF_Projection()
   }
   else if (MeshType == "LAmethod")
   {
-    int Jmax2 = ms->GetAMProjected_J();
+    // int Jmax2 = ms->GetAMProjected_J();
+    int Jmax2 = ms->Get2Jmax();
+    ms->SetAMProjected_J(Jmax2);
     int Nmesh = Jmax2 + 1;
     this->GQAlpha.SetNumber(Nmesh);
     this->Generate_LA_Mesh(GQAlpha, "alpha");
 
-    if (Jmax2 % 2 == 0)
+    if (Jmax2 % 2 == 0) // even
     {
       this->GQBeta.SetNumber(Jmax2 / 2 + 1);
       this->Generate_LA_Mesh(GQBeta, "beta");
       ms->SetGuassQuadMesh(Nmesh, Jmax2 / 2 + 1, Nmesh);
+      ms->SetAMProjected_K(0);
+      ms->SetAMProjected_M(0);
     }
     else
     {
       this->GQBeta.SetNumber((Jmax2 + 1) / 2);
       this->Generate_LA_Mesh(GQBeta, "beta");
       ms->SetGuassQuadMesh(Nmesh, (Jmax2 + 1) / 2, Nmesh);
+      ms->SetAMProjected_K(1);
+      ms->SetAMProjected_M(1);
     }
 
     this->GQGamma.SetNumber(Nmesh);
@@ -822,9 +851,9 @@ ComplexNum AngMomProjection::GuassQuad_weight(int alpha, int beta, int gamma)
 { // WHERE alpha gamma are in unit of 2 * PI, beta is in unit of PI
   ComplexNum factor, expPart;
   int J = ms->GetAMProjected_J();
-  int K = ms->GetAMProjected_K();
   int M = ms->GetAMProjected_M();
-  expPart = -1.i * ((M * GQAlpha.GetX(alpha) + K * GQGamma.GetX(gamma)) * PI);
+  int K = ms->GetAMProjected_K();
+  expPart = 1.i * ((M * GQAlpha.GetX(alpha) + K * GQGamma.GetX(gamma)) * PI);
   factor = std::exp(expPart);
   // std::cout<< WDTab[beta] * GQAlpha.GetWeight(alpha) * GQBeta.GetWeight(beta) * GQGamma.GetWeight(gamma) * factor  <<"  "<<WDTab[beta] << GQAlpha.GetWeight(alpha) << GQBeta.GetWeight(beta) << GQGamma.GetWeight(gamma) << factor << std::endl;
   return WDTab[beta] * GQAlpha.GetWeight(alpha) * GQBeta.GetWeight(beta) * GQGamma.GetWeight(gamma) * factor;
@@ -836,7 +865,7 @@ ComplexNum AngMomProjection::LinearAlgebra_weight(int alpha, int gamma)
   int J = ms->GetAMProjected_J();
   int K = ms->GetAMProjected_K();
   int M = ms->GetAMProjected_M();
-  expPart = -1.i * ((M * GQAlpha.GetX(alpha) + K * GQGamma.GetX(gamma)) * PI);
+  expPart = 1.i * ((M * GQAlpha.GetX(alpha) + K * GQGamma.GetX(gamma)) * PI);
   factor = std::exp(expPart);
   return GQAlpha.GetWeight(alpha) * GQGamma.GetWeight(gamma) * factor;
 }
@@ -849,8 +878,8 @@ void AngMomProjection::PrintInfo()
   if (ms->GetProjected_parity() == 0)
     std::cout << "  No parity projection!  " << std::endl;
   else if (ms->GetProjected_parity() == 1)
-    std::cout << "  Parity projection:  +"<< std::endl;
+    std::cout << "  Parity projection:  +" << std::endl;
   else if (ms->GetProjected_parity() == -1)
-    std::cout << "  Parity projection:  -"<< std::endl;
+    std::cout << "  Parity projection:  -" << std::endl;
   std::cout << "/-----------------------------------------------------/" << std::endl;
 }

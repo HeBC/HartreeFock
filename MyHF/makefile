@@ -1,20 +1,32 @@
-# My laptop
-CFLAGS =   -O3 #-std=c++11
-LIBS = -lmkl_rt -lm -lnlopt -lgsl -lgslcblas
-
-# Notre Dame CRC
-# CFLAGS = -O3 -I/opt/crc/i/intel/19.0/mkl/include/  #-fopenmp
-# LIBS = -m64  -Wl,--no-as-needed -lm -lnlopt -lgsl -lgslcblas -lmkl_intel_lp64  -lmkl_sequential -lmkl_gf_ilp64 -lmkl_gnu_thread -lmkl_core -lpthread -ldl  #-lgomp
-
+#--------------------------------------------------
+# Hartree Fock
 #--------------------------------------------------
 FC = mpicxx
-OFILES = ModelSpace.o Hamiltonian.o AngMom.o ReadWriteFiles.o HFbasis.o CalHF.o GCM_Tools.o
+THEHOST = $(shell if [ `hostname|grep bebop` ]; then echo bebop; elif [ `hostname|grep crc` ]; then echo crc; else echo other; fi)
 
+ifeq ($(THEHOST),other)  # default options. test on my laptop
+  CFLAGS =   -O3 #-std=c++11
+  LIBS = -lmkl_rt -lm -lnlopt -lgsl -lgslcblas
+endif
+
+ifeq ($(THEHOST),bebop)  # Argonne bebop
+  CFLAGS = -O3 
+  LIBS = -m64  -Wl,--no-as-needed -lm -lnlopt -lgsl -lgslcblas -lmkl_intel_lp64  -lmkl_sequential -lmkl_gf_ilp64 -lmkl_gnu_thread -lmkl_core -lpthread -ldl  #-lgomp
+endif
+
+ifeq ($(THEHOST),crc)   # Notre Dame CRC
+  CFLAGS = -O3 -I/opt/crc/i/intel/19.0/mkl/include/  #-fopenmp
+  LIBS = -m64  -Wl,--no-as-needed -lm -lnlopt -lgsl -lgslcblas -lmkl_intel_lp64  -lmkl_sequential -lmkl_gf_ilp64 -lmkl_gnu_thread -lmkl_core -lpthread -ldl  #-lgomp
+endif
+
+
+#----------------------------------------------------
 all: HF_Pfaffian.exe HartreeFock.exe HF_Projection.exe
 
 clean:
 	/bin/rm -f *.o *.exe
 
+OFILES = ModelSpace.o Hamiltonian.o AngMom.o ReadWriteFiles.o HFbasis.o CalHF.o GCM_Tools.o
 #--------------------------------------------------
 #   executable files
 # HF

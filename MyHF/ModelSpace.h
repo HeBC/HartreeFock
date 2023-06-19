@@ -273,6 +273,7 @@ public:
     int GetMSchemeNumberOfFreePara(int isospin);
     int GetMS_index_p(int orbit_index, int j, int m) { return MSM_p.LookupIndexInMSmatrix(orbit_index, j, m); };
     int GetMS_index_n(int orbit_index, int j, int m) { return MSM_n.LookupIndexInMSmatrix(orbit_index, j, m); };
+    int Get2Jmax();
 
     // pair structure
     void InitCollectivePairs(int isospin);

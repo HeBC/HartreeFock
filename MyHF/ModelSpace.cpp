@@ -143,6 +143,46 @@ int ModelSpace::Get_MSmatrix_2m(int isospin, int index)
     }
 }
 
+// return 2 * Jmax
+int ModelSpace::Get2Jmax()
+{
+    int Jmax2;
+    std::vector<int> Proton_m, Neutron_m;
+    int dim_proton = this->Get_Proton_MScheme_dim();
+    int dim_neutron = this->Get_Neutron_MScheme_dim();
+    for (size_t i = 0; i < dim_proton; i++)
+    {
+        Proton_m.push_back(this->MSM_p.Get_2m(i));
+    }
+    for (size_t i = 0; i < dim_neutron; i++)
+    {
+        Neutron_m.push_back(this->MSM_n.Get_2m(i));
+    }
+
+    // Sort the vector in descending order using a lambda expression
+    std::sort(Proton_m.begin(), Proton_m.end(), [](int a, int b)
+              {
+                  return a > b; // Sort in descending order
+              });
+
+    // Sort the vector in descending order using a lambda expression
+    std::sort(Neutron_m.begin(), Neutron_m.end(), [](int a, int b)
+              {
+                  return a > b; // Sort in descending order
+              });
+
+    Jmax2 = 0;
+    for (size_t i = 0; i < this->GetProtonNum(); i++)
+    {
+        Jmax2 += Proton_m[i];
+    }
+    for (size_t i = 0; i < this->GetNeutronNum(); i++)
+    {
+        Jmax2 += Neutron_m[i];
+    }
+    return Jmax2;
+}
+
 int ModelSpace::LookupStartingPoint(int isospin, int index)
 {
     if (isospin == Proton) // find proton orbits

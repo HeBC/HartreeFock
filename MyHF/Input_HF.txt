@@ -1,9 +1,9 @@
 # number of valence protons and neutrons (exp.  4, 4  or 24Mg   Mg24)
-Mg24
-/////////////////////////////////////////////  Hamiltonian File Kshell format
+P30
+///////////////////////////////////////////// # Hamiltonian File Kshell format
 Interaction/usdb.snt
-////////////////////////////////////////////   variation parameters
-No  3  0.4                                    # Shape constrains for Q0 and Q2 
+////////////////////////////////////////////  # variation parameters
+No  0.5  0.1                                   # Shape constrains for Q0 and Q2 
 
 
 

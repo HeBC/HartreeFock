@@ -116,7 +116,7 @@ void HFbasis::RotatedOperator(int alpha, int beta, int gamma)
     ComplexNum *ystruct, *sourceStruc;
     double *d_Matrix;
     d_Matrix = AMJ->GetWigner_d_prt(isospin, beta);
-    ystruct = (ComplexNum *)mkl_malloc(this->GetDim() * sizeof(ComplexNum), 64);
+    ystruct = (ComplexNum *)mkl_malloc(matrixdim * sizeof(ComplexNum), 64);
     for (i = 0; i < N; i++)
     {
         sourceStruc = this->GetArrayPointerComplex(i);
@@ -137,6 +137,52 @@ void HFbasis::RotatedOperator(int alpha, int beta, int gamma)
     mkl_free(ystruct);
 }
 
+void HFbasis::RotatedOperator(double alpha, double beta, double gamma) // input angle,
+{
+    int i, m1, m, matrixdim;
+    matrixdim = this->GetDim();
+    ComplexNum factor, expPart;
+    ComplexNum *ystruct, *sourceStruc, *d_Matrix;
+    // d_Matrix = AMJ->GetWigner_d_prt(isospin, beta);
+    d_Matrix = (ComplexNum *)mkl_malloc(matrixdim * matrixdim * sizeof(ComplexNum), 64);
+    memset(d_Matrix, 0, matrixdim * matrixdim * 2 * sizeof(double));
+    for (m1 = 0; m1 < matrixdim; m1++)
+    {
+        for (m = 0; m < matrixdim; m++)
+        {
+            int j1 = ms->Get_MSmatrix_2j(isospin, m1);
+            int j = ms->Get_MSmatrix_2j(isospin, m);
+            if (j != j1)
+            {
+                continue;
+            }
+            int m1_m = ms->Get_MSmatrix_2m(isospin, m1);
+            int m_m = ms->Get_MSmatrix_2m(isospin, m);
+            expPart = -1.i * (alpha * m1_m / 2.); //
+            expPart += -1.i * (gamma * m_m / 2.);
+            factor = std::exp(expPart); // m is twiced
+            d_Matrix[m1 * matrixdim + m] = factor * AngMom::Wigner_d(j, m1_m, m_m, beta / PI);
+        }
+    }
+
+    ystruct = (ComplexNum *)mkl_malloc(matrixdim * sizeof(ComplexNum), 64);
+    for (i = 0; i < N; i++)
+    {
+        sourceStruc = this->GetArrayPointerComplex(i);
+        this->ZeroOperatorStructure(ystruct); /// Zero
+        for (m1 = 0; m1 < matrixdim; m1++)
+        {
+            for (m = 0; m < matrixdim; m++)
+            {
+                ystruct[m1] += d_Matrix[m1 * matrixdim + m] * (sourceStruc)[m];
+            }
+        }
+        this->MatrixCope(sourceStruc, ystruct, matrixdim);
+    }
+    mkl_free(ystruct);
+    mkl_free(d_Matrix);
+}
+
 // Calculate \Pi^+ A \Pi
 void HFbasis::ParityProjection()
 {
@@ -144,7 +190,7 @@ void HFbasis::ParityProjection()
     ComplexNum *ProjectionMatrix;
     ProjectionMatrix = ms->GetParityProjOperator_prt(isospin);
     ystruct = (ComplexNum *)mkl_malloc(this->GetDim() * sizeof(ComplexNum), 64);
-    for (size_t i = 0 ; i < N; i++)
+    for (size_t i = 0; i < N; i++)
     {
         sourceStruc = this->GetArrayPointerComplex(i);
         this->ZeroOperatorStructure(ystruct); /// Zero
@@ -205,8 +251,15 @@ PNbasis::PNbasis(PNbasis &anotherBasis) /// Only work with AMJ
     AMJ = anotherBasis.AMJ;
     Is_basis_complex = anotherBasis.Is_basis_complex;
     InnerVectorParamters = anotherBasis.InnerVectorParamters;
-    this->basis_p = new HFbasis(*ms, *AMJ, Proton);
-    this->basis_n = new HFbasis(*ms, *AMJ, Neutron);
+    if (this->basis_p == nullptr)
+    {
+        this->basis_p = new HFbasis(*ms, *AMJ, Proton);
+    }
+    if (this->basis_n == nullptr)
+    {
+        this->basis_n = new HFbasis(*ms, *AMJ, Neutron);
+    }
+
     this->basis_p->MatrixCope(this->basis_p->GetArrayPointerComplex(), anotherBasis.basis_p->GetArrayPointerComplex(), basis_p->GetTotoalDim());
     this->basis_n->MatrixCope(this->basis_n->GetArrayPointerComplex(), anotherBasis.basis_n->GetArrayPointerComplex(), basis_n->GetTotoalDim());
 }
@@ -218,8 +271,14 @@ PNbasis &PNbasis::operator=(PNbasis &rhs)
     this->AMJ = rhs.AMJ;
     this->Is_basis_complex = rhs.Is_basis_complex;
     this->InnerVectorParamters = rhs.InnerVectorParamters;
-    this->basis_p = new HFbasis(*ms, *AMJ, Proton);
-    this->basis_n = new HFbasis(*ms, *AMJ, Neutron);
+    if (this->basis_p == nullptr)
+    {
+        this->basis_p = new HFbasis(*ms, *AMJ, Proton);
+    }
+    if (this->basis_n == nullptr)
+    {
+        this->basis_n = new HFbasis(*ms, *AMJ, Neutron);
+    }
 
     if (rhs.basis_p != nullptr)
     {
@@ -271,6 +330,13 @@ void PNbasis::SetBaiss(HFbasis &inputbasis_p, HFbasis &inputbasis_n)
 }
 
 void PNbasis::RotatedOperator(int alpha, int beta, int gamma)
+{
+    this->basis_p->RotatedOperator(alpha, beta, gamma);
+    this->basis_n->RotatedOperator(alpha, beta, gamma);
+    return;
+}
+
+void PNbasis::RotatedOperator(double alpha, double beta, double gamma) // input angle
 {
     this->basis_p->RotatedOperator(alpha, beta, gamma);
     this->basis_n->RotatedOperator(alpha, beta, gamma);

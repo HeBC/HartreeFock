@@ -70,8 +70,8 @@ namespace HFMEs
     void CalHFKernels_Complex(Hamiltonian &Ham, PNbasis &Bra, PNbasis &Ket, ComplexNum &HamME, ComplexNum &OvlME);
 
     void CalHFShape(Hamiltonian &Ham, PNbasis &Bra, PNbasis &Ket);
-    double CalHFOverlap(Hamiltonian &Ham, PNbasis &Bra, PNbasis &Ket);
-    double CalHFOverlap_Complex(Hamiltonian &Ham, PNbasis &Bra, PNbasis &Ket);
+    double CalHFOverlap(PNbasis &Bra, PNbasis &Ket);
+    ComplexNum CalHFOverlap_Complex(PNbasis &Bra, PNbasis &Ket);
     double CalHF_Hamiltonian(Hamiltonian &Ham, PNbasis &Bra, PNbasis &Ket);
     void CalHF_Q2(Hamiltonian &Ham, PNbasis &Bra, PNbasis &Ket, double *Q_array);
 

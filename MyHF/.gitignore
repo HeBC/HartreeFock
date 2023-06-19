@@ -31,3 +31,9 @@
 *.out
 *.app
 
+# Folder
+Interaction/*
+
+# Testing files
+Testing.*
+

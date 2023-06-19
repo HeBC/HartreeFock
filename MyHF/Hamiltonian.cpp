@@ -1665,7 +1665,7 @@ void Hamiltonian::Initial_Q2()
                 {
                     continue;
                 }
-                if (am - bm == -4) // 2m
+                if (am - bm == -4) // -2m
                 {
                     double CGC = AngMom::cgc(2., -2., aj * 0.5, am * 0.5, bj * 0.5, -bm * 0.5);
                     QME = QMEJ * sgn((bj - bm) / 2) * CGC;

@@ -64,7 +64,7 @@ double myfuncGradient(unsigned n, const double *x, double *grad, void *my_func_d
     params->Bra->SetArray(prt_p, prt_n);
     params->Ket->SetArray(prt_p, prt_n);
     double E = CalHFKernels(*(params->Hinput), *(params->Bra), *(params->Ket));
-    double overlap = CalHFOverlap(*(params->Hinput), *(params->Bra), *(params->Ket));
+    double overlap = CalHFOverlap(*(params->Bra), *(params->Ket));
     if (params->Hinput->ms->GetIsShapeConstrained())
     {
         CalHF_Q2(*(params->Hinput), *(params->Bra), *(params->Ket), Qconstraint);
@@ -104,7 +104,7 @@ double myfuncGradient(unsigned n, const double *x, double *grad, void *my_func_d
         params->Bra->SetArray(prt_p, prt_n);
         params->Ket->SetArray(prt_grad_p, prt_grad_n);
         grad[i] += (CalHF_Hamiltonian(*(params->Hinput), *(params->Bra), *(params->Ket)) + CalHF_Hamiltonian(*(params->Hinput), *(params->Ket), *(params->Bra))) / overlap;
-        double overlap1 = CalHFOverlap(*(params->Hinput), *(params->Bra), *(params->Ket));
+        double overlap1 = CalHFOverlap( *(params->Bra), *(params->Ket));
         grad[i] -= 2 * overlap1 / overlap * E;
 
         //  Q constrant

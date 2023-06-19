@@ -52,14 +52,17 @@ public:
     ~HartreeFock();
 
     void Solve();
+    void Solve_Qconstraint();
     void Solve_diag();   /// Diagonalize and UpdateF until convergence
     void Solve_noCore(); /// the one body part has been modified for no core!
 
-    void UpdateU_hybrid();      /// Update the Unitary transformation matrix, hybrid method
+    void UpdateU_hybrid(); /// Update the Unitary transformation matrix, hybrid method
+    void UpdateU_Qconstraint(double deltaQ, double *O_p, double *O_n);
     void UpdateDensityMatrix(); /// Update the density matrix with the new coefficients C
     void UpdateDensityMatrix_DIIS();
     void UpdateF(); /// Update the Fock matrix with the new transformation coefficients C
     void UpdateF_noCore();
+    void UpdateF_FromQ(double *O_p, double *O_n);
     void Diagonalize();    /// Diagonalize Fock term
     void CalcEHF();        /// Calculate the HF energy.
     void CalcEHF_noCore(); /// Calculate the HF energy.
@@ -67,7 +70,8 @@ public:
     bool CheckConvergence(); ///
     void SaveHoleParameters(string filename);
     void TransferOperatorToHFbasis(double *Op_p, double *Op_n);
-    void CalOnebodyOperator(double *Op_p, double *Op_n, double Qp, double Qn);
+    void CalOnebodyOperator(double *Op_p, double *Op_n, double &Qp, double &Qn);
+    void Operator_ph(double *Op_p, double *Op_n);
 
     /// debug code
     void Check_orthogonal_U_p(int i, int j);
@@ -361,9 +365,121 @@ void HartreeFock::Solve()
     // std::cout << "HF start  iterations. " << std::endl;
     for (iterations = 0; iterations < maxiter; ++iterations)
     {
+        TransferOperatorToHFbasis(FockTerm_p, FockTerm_n);
         UpdateU_hybrid();
         UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
         UpdateF();             // Update the Fock matrix
+
+        // CalcEHF();
+        // std::cout << "   " << std::setw(5) << iterations << "   " << std::setw(10) << std::setfill(' ') << std::fixed << std::setprecision(4) << EHF << std::endl;
+        if (CheckConvergence())
+            break;
+    }
+    UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
+    UpdateF();             // Update the Fock matrix
+    CalcEHF();
+
+    std::cout << std::setw(15) << std::setprecision(10);
+    if (iterations < maxiter)
+    {
+        std::cout << "  HF converged after " << iterations << " iterations. " << std::endl;
+    }
+    else
+    {
+        std::cout << "\033[31m!!!! Warning: Hartree-Fock calculation didn't converge after " << iterations << " iterations.\033[0m" << std::endl;
+        std::cout << std::endl;
+    }
+    PrintEHF();
+}
+
+void HartreeFock::Solve_Qconstraint()
+{
+    /// inital Q operator
+    double *Q2_p, *Q0_p, *Q_2_p, *Q2_n, *Q0_n, *Q_2_n;
+    Q2_p = (double *)mkl_malloc((dim_p * dim_p) * sizeof(double), 64);
+    Q0_p = (double *)mkl_malloc((dim_p * dim_p) * sizeof(double), 64);
+    Q_2_p = (double *)mkl_malloc((dim_p * dim_p) * sizeof(double), 64);
+    Q2_n = (double *)mkl_malloc((dim_n * dim_n) * sizeof(double), 64);
+    Q0_n = (double *)mkl_malloc((dim_n * dim_n) * sizeof(double), 64);
+    Q_2_n = (double *)mkl_malloc((dim_n * dim_n) * sizeof(double), 64);
+
+    double Q0_expect = modelspace->GetShapeQ0();
+    double Q2_expect = modelspace->GetShapeQ2();
+    double deltaQ0, deltaQ2, deltaQ_2;
+    double tempQp, tempQn;
+
+    memset(Q0_p, 0, (dim_p * dim_p) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_p.Q0_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_p.Q0_list[i];          // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_p[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_p[index].GetIndex_b();
+        Q0_p[ia * dim_p + ib] = Ham->Q2MEs_p.Q0_MSMEs[i];
+    }
+    memset(Q2_p, 0, (dim_p * dim_p) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_p.Q2_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_p.Q2_list[i];          // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_p[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_p[index].GetIndex_b();
+        Q2_p[ia * dim_p + ib] = Ham->Q2MEs_p.Q2_MSMEs[i];
+    }
+    memset(Q_2_p, 0, (dim_p * dim_p) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_p.Q_2_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_p.Q_2_list[i];         // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_p[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_p[index].GetIndex_b();
+        Q_2_p[ia * dim_p + ib] = Ham->Q2MEs_p.Q_2_MSMEs[i];
+    }
+
+    memset(Q0_n, 0, (dim_n * dim_n) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_n.Q0_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_n.Q0_list[i];          // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_n[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_n[index].GetIndex_b();
+        Q0_n[ia * dim_n + ib] = Ham->Q2MEs_n.Q0_MSMEs[i];
+    }
+    memset(Q2_n, 0, (dim_n * dim_n) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_n.Q2_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_n.Q2_list[i];          // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_n[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_n[index].GetIndex_b();
+        Q2_n[ia * dim_n + ib] = Ham->Q2MEs_n.Q2_MSMEs[i];
+    }
+    memset(Q_2_n, 0, (dim_n * dim_n) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_n.Q_2_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_n.Q_2_list[i];         // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_n[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_n[index].GetIndex_b();
+        Q_2_n[ia * dim_n + ib] = Ham->Q2MEs_n.Q_2_MSMEs[i];
+    }
+
+    ////////////////////////////////////////////////////////////
+    iterations = 0;        // count number of iterations
+    UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
+    UpdateF();
+    TransferOperatorToHFbasis(FockTerm_p, FockTerm_n);
+    for (iterations = 0; iterations < maxiter; ++iterations)
+    {
+        CalOnebodyOperator(Q0_p, Q0_n, tempQp, tempQn);
+        deltaQ0 = Q0_expect - tempQp - tempQn;
+        CalOnebodyOperator(Q2_p, Q2_n, tempQp, tempQn);
+        deltaQ2 = Q2_expect - tempQp - tempQn;
+        // CalOnebodyOperator(Q_2_p, Q_2_n, tempQp, tempQn);
+        // deltaQ_2 = Q2_expect - tempQp - tempQn;
+        // std::cout<< deltaQ0 << "  " << deltaQ2 << std::endl;
+
+        UpdateU_Qconstraint(deltaQ0, Q0_p, Q0_n);
+        // UpdateU_Qconstraint(deltaQ2, Q2_p, Q2_n);
+        UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
+        UpdateF();
+        TransferOperatorToHFbasis(FockTerm_p, FockTerm_n);
+        UpdateF_FromQ(Q0_p, Q0_n);
+        UpdateU_hybrid();
 
         // CalcEHF();
         // std::cout << "   " << std::setw(5) << iterations << "   " << std::setw(10) << std::setfill(' ') << std::fixed << std::setprecision(4) << EHF << std::endl;
@@ -601,8 +717,6 @@ void HartreeFock::UpdateU_hybrid()
     Heta_p = (double *)mkl_malloc((dim_p * dim_p) * sizeof(double), 64);
     Heta_n = (double *)mkl_malloc((dim_n * dim_n) * sizeof(double), 64);
 
-    TransferOperatorToHFbasis(FockTerm_p, FockTerm_n);
-
     // F_p = Fii + η (1 − δij) Fij
     cblas_dcopy(dim_p * dim_p, FockTerm_p, 1, Heta_p, 1);
     cblas_dscal(dim_p * dim_p, eta, Heta_p, 1);
@@ -624,6 +738,7 @@ void HartreeFock::UpdateU_hybrid()
         PrintFockMatrix();
         exit(0);
     }
+
     /// Diag Neutron Fock term
     if (LAPACKE_dsyevd(LAPACK_ROW_MAJOR, 'V', 'L', dim_n, Heta_n, dim_n, energies + dim_p) != 0)
     { /// 'V' stand for eigenvalues and vectors
@@ -651,6 +766,110 @@ void HartreeFock::UpdateU_hybrid()
     /// free array
     mkl_free(Heta_p);
     mkl_free(Heta_n);
+    return;
+}
+
+//*********************************************************************
+// update U casued by constraining ⟨Q⟩
+// The code uses a simple Padé approximant to preserve the orthogonal character
+// e^Z \aprox (1 + Z/2)(1 − Z/2)^-1    /// here -1 stand for the inverse of the matrix
+// Zij = (q - <Q>)/ ( Tr[ Q^ph x Q^ph ^T ] ) Q^ph
+// where Q^ph = Q^orb_ij  (fi − fj)    /// Q^orb is the operator in HF basis fi
+// is the occupation
+void HartreeFock::UpdateU_Qconstraint(double deltaQ, double *O_p, double *O_n)
+{
+    double factor_p, factor_n;
+    std::vector<double> Oorb_p(dim_p * dim_p, 0);
+    std::vector<double> Oorb_n(dim_n * dim_n, 0);
+    std::vector<double> Oorb_ph_p(dim_p * dim_p, 0);
+    std::vector<double> Oorb_ph_n(dim_n * dim_n, 0);
+    std::vector<double> Zp_p(dim_p * dim_p, 0);
+    std::vector<double> Zn_p(dim_p * dim_p, 0);
+    std::vector<double> Zp_n(dim_n * dim_n, 0);
+    std::vector<double> Zn_n(dim_n * dim_n, 0);
+
+    cblas_dcopy(dim_p * dim_p, O_p, 1, Oorb_p.data(), 1);
+    cblas_dcopy(dim_n * dim_n, O_n, 1, Oorb_n.data(), 1);
+    TransferOperatorToHFbasis(Oorb_p.data(), Oorb_n.data());
+    cblas_dcopy(dim_p * dim_p, Oorb_p.data(), 1, Oorb_ph_p.data(), 1);
+    cblas_dcopy(dim_n * dim_n, Oorb_n.data(), 1, Oorb_ph_n.data(), 1);
+    Operator_ph(Oorb_ph_p.data(), Oorb_ph_n.data());
+
+    double dotProduct = cblas_ddot(dim_p * dim_p, Oorb_ph_p.data(), 1, Oorb_ph_p.data(), 1);
+    factor_p = deltaQ / dotProduct;
+    ///// update Horb, the Fock term should be transfor to HF basis first
+    // double HdotQ = cblas_ddot(dim_p * dim_p, Oorb_ph_p.data(), 1, FockTerm_p, 1);
+    // cblas_daxpy(dim_p * dim_p, -HdotQ / dotProduct, Oorb_p.data(), 1, FockTerm_p, 1);
+    ////// End
+    dotProduct = cblas_ddot(dim_n * dim_n, Oorb_ph_n.data(), 1, Oorb_ph_n.data(), 1);
+    factor_n = deltaQ / dotProduct;
+    ///// update Horb, the Fock term should be transfor to HF basis first
+    // HdotQ = cblas_ddot(dim_n * dim_n, Oorb_ph_n.data(), 1, FockTerm_n, 1);
+    // cblas_daxpy(dim_n * dim_n, -HdotQ / dotProduct, Oorb_n.data(), 1, FockTerm_n, 1);
+    ////// End
+
+    cblas_dscal(dim_p * dim_p, factor_p, Oorb_ph_p.data(), 1);
+    cblas_dscal(dim_n * dim_n, factor_n, Oorb_ph_n.data(), 1);
+
+    cblas_dcopy(dim_p * dim_p, Oorb_ph_p.data(), 1, Zp_p.data(), 1);
+    cblas_dscal(dim_p * dim_p, 0.5, Zp_p.data(), 1);
+    cblas_dcopy(dim_p * dim_p, Oorb_ph_p.data(), 1, Zn_p.data(), 1);
+    cblas_dscal(dim_p * dim_p, -0.5, Zn_p.data(), 1);
+    for (size_t i = 0; i < dim_p; i++)
+    {
+        Zp_p[i * dim_p + i] += 1.;
+        Zn_p[i * dim_p + i] += 1.;
+    }
+
+    cblas_dcopy(dim_n * dim_n, Oorb_ph_n.data(), 1, Zp_n.data(), 1);
+    cblas_dscal(dim_n * dim_n, 0.5, Zp_n.data(), 1);
+    cblas_dcopy(dim_n * dim_n, Oorb_ph_n.data(), 1, Zn_n.data(), 1);
+    cblas_dscal(dim_n * dim_n, -0.5, Zn_n.data(), 1);
+    for (size_t i = 0; i < dim_n; i++)
+    {
+        Zp_n[i * dim_n + i] += 1.;
+        Zn_n[i * dim_n + i] += 1.;
+    }
+
+    ///////////
+    std::vector<int> ipiv_p(dim_p); // Allocate memory for the ipiv array
+    std::vector<int> ipiv_n(dim_n); // Allocate memory for the ipiv array
+    // Perform LU factorization
+    int info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, dim_p, dim_p, Zn_p.data(), dim_p, ipiv_p.data());
+    if (info != 0)
+    {
+        std::cerr << "LU factorization failed with error code: " << info << std::endl;
+        return;
+    }
+    // Compute the inverse
+    info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, dim_p, Zn_p.data(), dim_p, ipiv_p.data());
+    if (info != 0)
+    {
+        std::cerr << "Matrix inverse calculation failed with error code: " << info << std::endl;
+        return;
+    }
+    // Perform LU factorization
+    info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, dim_n, dim_n, Zn_n.data(), dim_n, ipiv_n.data());
+    if (info != 0)
+    {
+        std::cerr << "LU factorization failed with error code: " << info << std::endl;
+        return;
+    }
+    // Compute the inverse
+    info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, dim_n, Zn_n.data(), dim_n, ipiv_n.data());
+    if (info != 0)
+    {
+        std::cerr << "Matrix inverse calculation failed with error code: " << info << std::endl;
+        return;
+    }
+    ///////////////////////////////////////////  update U
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_p, dim_p, dim_p, 1.0, Zn_p.data(), dim_p, Zp_p.data(), dim_p, 0.0, Oorb_p.data(), dim_p);
+    cblas_dcopy(dim_p * dim_p, U_p, 1, Zp_p.data(), 1);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_p, dim_p, dim_p, 1., Zp_p.data(), dim_p, Oorb_p.data(), dim_p, 0, U_p, dim_p);
+
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_n, dim_n, dim_n, 1.0, Zn_n.data(), dim_n, Zp_n.data(), dim_n, 0.0, Oorb_n.data(), dim_n);
+    cblas_dcopy(dim_n * dim_n, U_n, 1, Zp_n.data(), 1);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_n, dim_n, dim_n, 1., Zp_n.data(), dim_n, Oorb_n.data(), dim_n, 0, U_n, dim_n);
     return;
 }
 
@@ -924,6 +1143,38 @@ void HartreeFock::UpdateF_noCore()
     cblas_daxpy(dim_n * dim_n, 1., T_term_n, 1, FockTerm_n, 1);
 }
 
+// the F matrix should transfer to HF orbits first
+// add constribution to Horb
+// Horb' = Horb -  Tr[ Horb x Q^ph ^T ] / ( Tr[ Q^ph x Q^ph ^T ] ) Q^ph
+void HartreeFock::UpdateF_FromQ(double *O_p, double *O_n)
+{
+    std::vector<double> Oorb_p(dim_p * dim_p, 0);
+    std::vector<double> Oorb_n(dim_n * dim_n, 0);
+    std::vector<double> Oorb_ph_p(dim_p * dim_p, 0);
+    std::vector<double> Oorb_ph_n(dim_n * dim_n, 0);
+
+    cblas_dcopy(dim_p * dim_p, O_p, 1, Oorb_p.data(), 1);
+    cblas_dcopy(dim_n * dim_n, O_n, 1, Oorb_n.data(), 1);
+    TransferOperatorToHFbasis(Oorb_p.data(), Oorb_n.data());
+    cblas_dcopy(dim_p * dim_p, Oorb_p.data(), 1, Oorb_ph_p.data(), 1);
+    cblas_dcopy(dim_n * dim_n, Oorb_n.data(), 1, Oorb_ph_n.data(), 1);
+    Operator_ph(Oorb_ph_p.data(), Oorb_ph_n.data());
+
+    ///// update Horb, the Fock term should be transfor to HF basis first
+    double dotProduct = cblas_ddot(dim_p * dim_p, Oorb_ph_p.data(), 1, Oorb_ph_p.data(), 1);
+    double HdotQ = cblas_ddot(dim_p * dim_p, FockTerm_p, 1, Oorb_p.data(), 1);
+    // std::cout << "  " << dotProduct << "  " << HdotQ <<std::endl;
+    cblas_daxpy(dim_p * dim_p, -HdotQ / dotProduct, Oorb_p.data(), 1, FockTerm_p, 1);
+    ////// End
+
+    ///// update Horb, the Fock term should be transfor to HF basis first
+    dotProduct = cblas_ddot(dim_n * dim_n, Oorb_ph_n.data(), 1, Oorb_ph_n.data(), 1);
+    HdotQ = cblas_ddot(dim_n * dim_n, FockTerm_n, 1, Oorb_n.data(), 1);
+    cblas_daxpy(dim_n * dim_n, -HdotQ / dotProduct, Oorb_n.data(), 1, FockTerm_n, 1);
+    // std::cout << "  " << dotProduct << "  " << HdotQ <<std::endl;
+    ////// End
+}
+
 //*********************************************************************
 /// [See Suhonen eq. 4.85]
 /// Diagonalize the fock matrix \f$ <i|F|j> \f$ and put the
@@ -1070,13 +1321,44 @@ void HartreeFock::TransferOperatorToHFbasis(double *Op_p, double *Op_n)
 
 /// evaluate one body term
 /// Qp = \sum_{ij} Op_{ij} * rho_{ij}
-void HartreeFock::CalOnebodyOperator(double *Op_p, double *Op_n, double Qp, double Qn)
+void HartreeFock::CalOnebodyOperator(double *Op_p, double *Op_n, double &Qp, double &Qn)
 {
     Qp = cblas_ddot(dim_p * dim_p, rho_p, 1, Op_p, 1);
     Qn = cblas_ddot(dim_n * dim_n, rho_n, 1, Op_n, 1);
 }
 
-/// for debug
+/// evaluate one body term
+//  multiply (fa-fb) to operator Oorb_ab
+void HartreeFock::Operator_ph(double *Op_p, double *Op_n)
+{
+    std::vector<int> Occ_p(dim_p, 0);
+    std::vector<int> Occ_n(dim_n, 0);
+    for (size_t i = 0; i < N_p; i++)
+    {
+        Occ_p[holeorbs_p[i]] = 1;
+    }
+    for (size_t i = 0; i < N_n; i++)
+    {
+        Occ_n[holeorbs_n[i]] = 1;
+    }
+    for (size_t i = 0; i < dim_p; i++)
+    {
+        for (size_t j = 0; j < dim_p; j++)
+        {
+            Op_p[i * dim_p + j] *= (Occ_p[i] - Occ_p[j]);
+        }
+    }
+    for (size_t i = 0; i < dim_n; i++)
+    {
+        for (size_t j = 0; j < dim_n; j++)
+        {
+            Op_n[i * dim_n + j] *= (Occ_n[i] - Occ_n[j]);
+        }
+    }
+    return;
+}
+
+/// for debug **********************************************************
 /// check { a^+_i, a_j } = delta_ij
 void HartreeFock::Check_orthogonal_U_p(int i, int j)
 {
@@ -1356,22 +1638,25 @@ int main(int argc, char *argv[])
 
     if (argc == 1)
     {
-        HartreeFock hf(Hinput);
+        HartreeFock hf(Hinput, 525);
+        //HartreeFock hf(Hinput);
         // hf.Solve_diag();
-        hf.Solve();
-        // hf.Solve_noCore();
+        // hf.Solve();
+        // hf.Solve_Qconstraint();
+        hf.Solve_noCore();
         // hf.PrintAllHFEnergies();
         // hf.PrintOccupationHO();
-        // hf.SaveHoleParameters("Output/HF_para.dat");
+        hf.SaveHoleParameters("Output/HF_para.dat");
     }
     else if (argc == 2)
     {
         HartreeFock hf(Hinput, std::stoi(argv[1]));
         hf.Solve();
+        // hf.Solve_Qconstraint();
         // hf.Solve_diag();
         // hf.Solve_noCore();
         // hf.PrintAllHFEnergies();
-        // hf.SaveHoleParameters("Output/HF_para.dat");
+        hf.SaveHoleParameters("Output/HF_para.dat");
     }
     return 0;
 }
