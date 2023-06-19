@@ -595,7 +595,7 @@ void ModelSpace::InitMSMatrix_HF(int isospin)
         MSM_n.PairParity = (ComplexNum *)mkl_malloc(CountDim * sizeof(ComplexNum), 64);
         for (i = 0; i < CountDim; i++)
         {
-            t = sgn(GetProtonOrbit_l(MSM_n.j_index[i]));
+            t = sgn(GetNeutronOrbit_l(MSM_n.j_index[i]));
             MSM_n.PairParity[i] = t;
         }
     }

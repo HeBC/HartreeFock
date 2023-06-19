@@ -1,7 +1,7 @@
 # number of valence protons and neutrons (exp.  4, 4  or 24Mg   Mg24)
-P30
+Pb209
 ///////////////////////////////////////////// # Hamiltonian File Kshell format
-Interaction/usdb.snt
+Interaction/IMSRG2_Pb209_e14_hw12.snt
 ////////////////////////////////////////////  # variation parameters
 No  0.5  0.1                                   # Shape constrains for Q0 and Q2 
 

@@ -1139,8 +1139,11 @@ void HartreeFock::UpdateF_noCore()
     cblas_dcopy(dim_n * dim_n, FockTerm_n, 1, Vij_n, 1);
 
     // add SP term
-    cblas_daxpy(dim_p * dim_p, 1., T_term_p, 1, FockTerm_p, 1);
-    cblas_daxpy(dim_n * dim_n, 1., T_term_n, 1, FockTerm_n, 1);
+    if (dim_p != 0)
+        cblas_daxpy(dim_p * dim_p, 1., T_term_p, 1, FockTerm_p, 1);
+
+    if (dim_n != 0)
+        cblas_daxpy(dim_n * dim_n, 1., T_term_n, 1, FockTerm_n, 1);
 }
 
 // the F matrix should transfer to HF orbits first
@@ -1291,7 +1294,7 @@ void HartreeFock::CalcEHF_noCore()
     e2hf += cblas_ddot(dim_p * dim_p, rho_p, 1, Vij_p, 1);
 
     // Neutron part
-    e1hf += cblas_ddot(dim_p * dim_p, rho_n, 1, T_term_n, 1);
+    e1hf += cblas_ddot(dim_n * dim_n, rho_n, 1, T_term_n, 1);
     e2hf += cblas_ddot(dim_n * dim_n, rho_n, 1, Vij_n, 1);
 
     // Total HF energy
@@ -1639,10 +1642,10 @@ int main(int argc, char *argv[])
     if (argc == 1)
     {
         HartreeFock hf(Hinput, 525);
-        //HartreeFock hf(Hinput);
-        // hf.Solve_diag();
-        // hf.Solve();
-        // hf.Solve_Qconstraint();
+        // HartreeFock hf(Hinput);
+        //hf.Solve_diag();
+        //  hf.Solve();
+        //  hf.Solve_Qconstraint();
         hf.Solve_noCore();
         // hf.PrintAllHFEnergies();
         // hf.PrintOccupationHO();
@@ -1651,9 +1654,9 @@ int main(int argc, char *argv[])
     else if (argc == 2)
     {
         HartreeFock hf(Hinput, std::stoi(argv[1]));
-        hf.Solve();
+        //hf.Solve();
         // hf.Solve_Qconstraint();
-        // hf.Solve_diag();
+        hf.Solve_diag();
         // hf.Solve_noCore();
         // hf.PrintAllHFEnergies();
         hf.SaveHoleParameters("Output/HF_para.dat");
