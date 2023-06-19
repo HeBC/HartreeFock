@@ -33,6 +33,8 @@
 
 # Folder
 Interaction/*
+Output/*
+mesh/*
 
 # Testing files
 Testing.*
