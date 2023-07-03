@@ -34,6 +34,7 @@
 # Folder
 Interaction/*
 Output/*
+Input/*
 mesh/*
 
 # Testing files
