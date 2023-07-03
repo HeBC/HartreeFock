@@ -19,6 +19,10 @@ class ReadWriteFiles
 {
 #define OneLine 200
 public:
+    /// wrapped interface for Hartree-Fock 
+    void Read_KShell_HF_input(string filename, ModelSpace &ms, Hamiltonian &inputH);// read input parameters and Hamiltonian
+    void Read_OSLO_HF_input(string filename, ModelSpace &ms, Hamiltonian &inputH);// read input parameters and Hamiltonian
+
     /// read Kshell format interaction
     void ReadInput_HF(string filename, ModelSpace &ms, Hamiltonian &inputH);
     void ReadInputInfo_HF_GCM(string filename, ModelSpace &ms, Hamiltonian &inputH);

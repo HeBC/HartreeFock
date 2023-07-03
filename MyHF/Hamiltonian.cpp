@@ -814,6 +814,8 @@ void Hamiltonian::PrintHamiltonianInfo_pn()
     }
     else
     {
+        if (std::fabs(ms->GetEnergyConstantShift()) > 0.1)
+            std::cout << "  Found Zero body term: " << ms->GetEnergyConstantShift() << "  MeV"<< std::endl;
         std::cout << "  the num of Vpp terms: " << this->GetVppNum() << std::endl;
         std::cout << "  the num of Vnn terms: " << this->GetVnnNum() << std::endl;
         std::cout << "  the num of Vpn terms: " << this->GetVpnNum() << std::endl;

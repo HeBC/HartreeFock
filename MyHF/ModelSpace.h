@@ -304,7 +304,7 @@ private:
     int MSTotal_K;                // twice total K of final state
     int MSTotal_M;                // twice total M of final state
     int MSTotal_Parity;
-    double MSEnergyShift;
+    double MSEnergyShift = 0;
     double hw = 0.;         // frequency of the oscillator
     bool Diag_Print = true; // Turn off the Diagonalization output, 0 Turn off; 1 turn on
     bool SavingWalkingHistory = false;

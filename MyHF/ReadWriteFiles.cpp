@@ -23,6 +23,31 @@
 */
 #include "ReadWriteFiles.h"
 
+// wrapped interface
+
+// Kshell format interaction and HF only
+// read input parameters and Hamiltonian
+void ReadWriteFiles::Read_KShell_HF_input(string filename, ModelSpace &ms, Hamiltonian &inputH)
+{
+  this->ReadInput_HF(filename, ms, inputH);
+  ms.InitialModelSpace_HF();
+  inputH.Prepare_MschemeH_Unrestricted();
+  return;
+}
+
+void ReadWriteFiles::Read_OSLO_HF_input(string filename, ModelSpace &ms, Hamiltonian &inputH)
+{
+  this->ReadInputInfo_pnSystem_GCM("InputFile_OSLO.dat", ms, inputH);
+  ms.InitialModelSpace_pn();
+  if (std::fabs(ms.GetMassPowerFactor() - 1) > 1.e-7)
+  {
+    inputH.SetMassDep(true);
+  }
+  this->Read_InteractionFile_Mscheme_Unrestricted(inputH);
+  return;
+}
+
+// Tools
 void ReadWriteFiles::ReadInputInfo_Identical(string filename, ModelSpace &ms, Hamiltonian &inputH)
 {
 
@@ -887,7 +912,7 @@ void ReadWriteFiles::skip_comments(std::ifstream &in)
 double ReadWriteFiles::skip_comments_Zerobody(std::ifstream &in)
 {
   size_t pos1, pos2, size_check = 8;
-  double ZeroBodyE;
+  double ZeroBodyE = 0.;
   std::streampos oldpos = in.tellg();
   for (std::string line; getline(in, line);)
   {
@@ -900,7 +925,6 @@ double ReadWriteFiles::skip_comments_Zerobody(std::ifstream &in)
     {
       // Extract the floating number from the first submatch
       ZeroBodyE = std::stod(match[1]);
-      std::cout << "Found Zero body term: " << ZeroBodyE << std::endl;
     }
 
     std::string com = line.substr(0, size_check);
