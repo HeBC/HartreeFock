@@ -35,7 +35,7 @@
 Interaction/*
 Output/*
 Input/*
-mesh/*
+mesh/
 
 # Testing files
 Testing*
