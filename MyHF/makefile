@@ -54,6 +54,4 @@ HF_Projection.exe: $(OFILES) HF_Projection.o
 Testing.exe: $(OFILES) Testing.o 
 	$(FC) -o $@ Testing.o $(CFLAGS) $(OFILES) $(LIBS) 
 
-TestingHF.exe: $(OFILES) TestingHF.o 
-	$(FC) -o $@ TestingHF.o $(CFLAGS) $(OFILES) $(LIBS) 
 

@@ -1,7 +1,7 @@
 !# number of valence protons and neutrons (exp.  4, 4  or 24Mg   Mg24)
-Mg24
+Pb209
 !/////////////////////////////////////////////  Hamiltonian File Kshell format
-Interaction/usdb.snt
+Interaction/IMSRG2_Pb209_e14_hw12.snt
 !////////////////////////////////////////////   Projection Parameters
 !#  type of mesh grid, "Qud_" for quadrature 
 !# "Qud_legendre"    # Legendre quadrature integration. alpha and beta are ignored for this type.
@@ -16,9 +16,9 @@ Interaction/usdb.snt
 !# "ReadFiles"       # Read mesh form mesh/ folder, mesh number are determined by the Files
 !# "LAmethod"        # linear algebra method; the 2J serve as the Jmax, mesh number are determined by the code
 !/////////////////////////////////////////////
-Qud_legendre          # type of mesh grid   
-12 0 0                   # twice Projected angular momentum 2J 2M 2K
-No                     # Projected parity    # +, - or No
+LAmethod              # type of mesh grid   
+0 0 0                 # twice Projected angular momentum 2J 2M 2K
+No                    # Projected parity    # +, - or No
 27 27 27              # Guass quadrature mesh for alpha beta gamma 
 
 

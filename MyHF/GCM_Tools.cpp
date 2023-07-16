@@ -489,8 +489,8 @@ void GCM_Projection::DoCalculation() // Do projection for GCM
 
       std::cout << alpha << "  " << this->AngMomProj->GetAlpha_x(alpha) << "  " << beta << "  " << this->AngMomProj->GetBeta_x(beta) << "  " << gamma << "  " << this->AngMomProj->GetGamma_x(gamma) << "   " << temp_HamME.real() << "  " << temp_HamME.imag() << "   |   " << temp_OvlME.real() << "  " << temp_OvlME.imag() << "   " << weightFactor.real() << "  " << weightFactor.imag() << "   |   " << derivative_a.real() << "  " << derivative_a.imag() << "  " << derivative_b.real() << "  " << derivative_b.imag() << "  " << derivative_c.real() << "  " << derivative_c.imag() << std::endl;
       */
-
- 
+      // derivative
+      /*
       double h_diff = 0.0001;
       ComplexNum derivative_a, derivative_b, derivative_c;
       ComplexNum derivative_abh, derivative_bch, derivative_ach;
@@ -558,7 +558,7 @@ void GCM_Projection::DoCalculation() // Do projection for GCM
       derivative_c /= h_diff;
 
       std::cout << alpha << "  " << this->AngMomProj->GetAlpha_x(alpha) << "  " << beta << "  " << this->AngMomProj->GetBeta_x(beta) << "  " << gamma << "  " << this->AngMomProj->GetGamma_x(gamma) << "   " << temp_HamME.real() << "  " << temp_HamME.imag() << "   |   " << temp_OvlME.real() << "  " << temp_OvlME.imag() << "   " << weightFactor.real() << "  " << weightFactor.imag() << "   |   " << derivative_a.real() << "  " << derivative_a.imag() << "  " << derivative_b.real() << "  " << derivative_b.imag() << "  " << derivative_c.real() << "  " << derivative_c.imag() << "  |  " << derivative_aa.real() << "  " << derivative_bb.real() << "  " << derivative_cc.real() << "  " << derivative_ab.real() << "  " << derivative_bc.real() << "  " << derivative_ac.real() << std::endl;
-
+      */
       //////////////////// End Test
     }
     else

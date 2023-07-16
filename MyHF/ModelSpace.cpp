@@ -183,6 +183,7 @@ int ModelSpace::Get2Jmax()
     return Jmax2;
 }
 
+// Look up the starting point in the M-scheme matrix
 int ModelSpace::LookupStartingPoint(int isospin, int index)
 {
     if (isospin == Proton) // find proton orbits

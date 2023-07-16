@@ -118,6 +118,24 @@ void ReadWriteFiles::ReadInputInfo_pnSystem_GCM(string filename, ModelSpace &ms,
   Read_GCM_Parameters(input_file, ms);
   // Read interaction file name
   ReadInteractionFileName(input_file, inputH);
+
+  // Set SPE for OSLO interaction
+  // add hermitation part for SP energy
+  // Proton
+  int temp_size = ms.Orbits_p.size();
+  for (size_t i = 0; i < temp_size; i++)
+  {
+    OneBodyElement tempele = OneBodyElement(i, i, 0, Proton, ms.Orbits_p[i].SPE);
+    inputH.OBEs_p.push_back(tempele);
+  }
+  // Neutron
+  temp_size = ms.Orbits_n.size();
+  for (size_t i = 0; i < temp_size; i++)
+  {
+    OneBodyElement tempele = OneBodyElement(i, i, 0, Neutron, ms.Orbits_n[i].SPE);
+    inputH.OBEs_n.push_back(tempele);
+  }
+
   input_file.close();
 }
 
@@ -172,6 +190,7 @@ void ReadWriteFiles::ReadInput_HF(string filename, ModelSpace &ms, Hamiltonian &
   if (!isInteger(comment_string))
   {
     ms.GetAZfromString(comment_string, A, Z);
+    ms.Set_RefString(comment_string);
     // std::cout << "The input is a string: " << comment_string << std::endl;
     //  std::cout << A << "   " << Z << std::endl;
     ReadEle = true;
@@ -1946,7 +1965,7 @@ void ReadWriteFiles::Read_HF_Parameters_TXT(string Filename, double *para_x)
     printf("input file error!!\n");
     exit(0);
   }
-  // std::cout << N_p << N_n << dim_p << dim_n << std::endl;
+  // std::cout << N_p << N_n << dim_p << dim_n << E_cal << std::endl;
   for (int i = 0; i < N_p * dim_p + N_n * dim_n; i++)
   {
     chr = fgets(cmd, OneLine, ff);

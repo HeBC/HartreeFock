@@ -40,7 +40,7 @@ double myfunc(unsigned n, const double *x, double *grad, void *my_func_data)
     params->Ket->SetArray(prt_p, prt_n);
     double E = CalHFKernels(*(params->Hinput), *(params->Bra), *(params->Ket));
     mkl_free(prt);
-    printf("%f \n", E);
+    printf("  E:  %f \n", E);
     return E;
 }
 
@@ -104,7 +104,7 @@ double myfuncGradient(unsigned n, const double *x, double *grad, void *my_func_d
         params->Bra->SetArray(prt_p, prt_n);
         params->Ket->SetArray(prt_grad_p, prt_grad_n);
         grad[i] += (CalHF_Hamiltonian(*(params->Hinput), *(params->Bra), *(params->Ket)) + CalHF_Hamiltonian(*(params->Hinput), *(params->Ket), *(params->Bra))) / overlap;
-        double overlap1 = CalHFOverlap( *(params->Bra), *(params->Ket));
+        double overlap1 = CalHFOverlap(*(params->Bra), *(params->Ket));
         grad[i] -= 2 * overlap1 / overlap * E;
 
         //  Q constrant
@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
     rw.ReadInput_HF("Input_HF.txt", MS, Hinput);
     MS.InitialModelSpace_HF();
     Hinput.Prepare_MschemeH();
-    //Hinput.Prepare_MschemeH_Unrestricted_ForPhaffian();
+    // Hinput.Prepare_MschemeH_Unrestricted_ForPhaffian();
 
     if (myid == 0)
     {
@@ -253,11 +253,10 @@ int main(int argc, char *argv[])
     int dim_n = MS.Get_MScheme_dim(Neutron);
     double *prt = (double *)mkl_malloc((N_p * dim_p + N_n * dim_n) * sizeof(double), 64);
     //________________________________________
-    srand(time(NULL)); // seed the random number generator with current time
+    // srand(time(NULL)); // seed the random number generator with current time
     // srand(17);         // seed the random number generator with current time
 
     rw.Read_HF_Parameters_TXT(argv[1], prt);
-
 
     MyData paradata;
     PNbasis basis_bra(MS);
@@ -269,23 +268,11 @@ int main(int argc, char *argv[])
     // Output shape
     normalizeBais(prt, N_p, dim_p, 1);
     normalizeBais(prt + N_p * dim_p, N_n, dim_n, 1);
+    myfunc(N_p * dim_p + N_n * dim_n, prt,prt, &paradata);
     ShapeParameters(prt, &paradata);
 
 
     mkl_free(prt);
     MPI_Finalize();
-    
-    /*
-    ///// Testing pfaffian
-    ComplexNum TestArray[16] = {0., ComplexNum(1., 0.5), ComplexNum(2., 0.7), ComplexNum(15., -3.5),
-                                ComplexNum(-1., -0.5), 0, ComplexNum(-9.1, 4.5), ComplexNum(0.2, -7.5),
-                                ComplexNum(-2., -0.7), ComplexNum(9.1, -4.5), 0, ComplexNum(-1.2, -2.5),
-                                ComplexNum(-15., 3.5), ComplexNum(-0.2, 7.5), ComplexNum(1.2, 2.5), 0.};
-    std::cout << HFMEs::PFAFFIAN(4, TestArray) << std::endl;
-    ComplexNum value = 0;
-    value += ComplexNum(1., 0.5) * ComplexNum(-1.2, -2.5)  - ComplexNum(2., 0.7) * ComplexNum(0.2, -7.5)  +  ComplexNum(-9.1, 4.5) * ComplexNum(15., -3.5); 
-    std::cout << value << std::endl;
-    /////
-    */
 
 }

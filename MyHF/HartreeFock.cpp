@@ -1,3 +1,26 @@
+/*
+                    _ooOoo_
+                   o8888888o
+                   88" . "88
+                   (| -_- |)
+                   O\  =  /O
+                ____/`---'\____
+              .'  \\|     |//  `.
+             /  \\|||  :  |||//  \
+            /  _||||| -:- |||||-  \
+            |   | \\\  -  /// |   |
+            | \_|  ''\---/''  |   |
+            \  .-\__  `-`  ___/-. /
+          ___`. .'  /--.--\  `. . __
+       ."" '<  `.___\_<|>_/___.'  >'"".
+      | | :  `- \`.;`\ _ /`;.`/ - ` : | |
+      \  \ `-.   \_ __\ /__ _/   .-` /  /
+======`-.____`-.___\_____/___.-`____.-'======
+                   `=---='
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+         Codes are far away from bugs
+          with the Buddha protecting
+*/
 
 ///////////////////////////////////////////////////////////////////////////////////
 //   Deformed Hatree Fock code for the valence space calculation
@@ -5,143 +28,7 @@
 //   Copyright (C) 2023  Bingcheng He
 ///////////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
-#include <string>
-#include <vector>
-#include <iomanip>
-#include <cstdlib>
-#include <cstring>
-#include <algorithm>
-#include <cmath>
-#include <numeric>
-#include <deque>
-#include <mkl.h>
-using namespace std;
-
-#include "ReadWriteFiles.h"
-
-class HartreeFock
-{
-public:
-    ModelSpace *modelspace;          /// Model Space
-    Hamiltonian *Ham;                /// Hamiltonian
-    double *U_p, *U_n;               /// transformation coefficients, 1st index is ho basis, 2nd = HF basis
-    double *rho_p, *rho_n;           /// density matrix rho_ij, the index in order of dim_p * dim_p dim_n * dim_n
-    double *FockTerm_p, *FockTerm_n; /// Fock matrix
-    double *Vij_p, *Vij_n;           /// Two body term
-    double *T_term;                  /// SP energies
-    double *T_term_p = nullptr,
-           *T_term_n = nullptr;       /// SP energies for no core
-    double tolerance;                 /// tolerance for convergence
-    int iterations;                   /// record iterations used in Solve()
-    int maxiter = 1000;               /// max number of iteration
-    int *holeorbs_p, *holeorbs_n;     /// record the hole orbit in Hatree Fock space// 1 for hole, 0 for particle
-    double *energies, *prev_energies; /// vector of single particle energies [Proton, Neutron]
-    double EHF;                       /// Hartree-Fock energy (Normal-ordered 0-body term)
-    double e1hf;                      /// One-body contribution to EHF
-    double e2hf;                      /// Two-body contribution to EHF
-    double eta = 1.0;                 /// 1. will be Diagonalization method, use a small number
-    std::deque<std::vector<double>> DIIS_density_mats_p, DIIS_density_mats_n;
-    ///< Save density matrix from past iterations for DIIS
-    std::deque<std::vector<double>> DIIS_error_mats_p, DIIS_error_mats_n;
-    ///< Save error from past iterations for DIIS
-
-    // method
-    HartreeFock(Hamiltonian &H);                 /// Constructor
-    HartreeFock(Hamiltonian &H, int RandomSeed); /// Random starting transformation matrix
-    ~HartreeFock();
-
-    // Solve functions
-    void Solve_graient();
-    void Solve_graient_constrainted();
-    void Solve_hybrid();
-    void Solve_Qconstraint();
-    void Solve_diag();   /// Diagonalize and UpdateF until convergence
-    void Solve_noCore(); /// the one body part has been modified for no core!
-
-    //---------------------
-    // Tools
-    void RandomTransformationU(int RandomSeed = 525); // Random transformation matrix U
-    void UpdateU_hybrid();                            /// Update the Unitary transformation matrix, hybrid method
-    void UpdateU_Qconstraint(double deltaQ, double *O_p, double *O_n);
-    void UpdateDensityMatrix(); /// Update the density matrix with the new coefficients C
-    void UpdateDensityMatrix_DIIS();
-    void UpdateF(); /// Update the Fock matrix with the new transformation coefficients C
-    void UpdateF_noCore();
-    void UpdateF_FromQ(double *O_p, double *O_n);
-    void Diagonalize();    /// Diagonalize Fock term
-    void CalcEHF();        /// Calculate the HF energy.
-    void CalcEHF_noCore(); /// Calculate the HF energy.
-    void PrintEHF();
-    bool CheckConvergence(); ///
-    void SaveHoleParameters(string filename);
-    void TransferOperatorToHFbasis(double *Op_p, double *Op_n);
-    void CalOnebodyOperator(double *Op_p, double *Op_n, double &Qp, double &Qn);
-    void Operator_ph(double *Op_p, double *Op_n);
-    void Reset_U();
-    static bool comparePairs(const std::pair<int, int> &p1, const std::pair<int, int> &p2) { return (p1.first < p2.first); }
-
-    // gradient method
-    double gradient_eta = 0.1; // eta for steepest descent method.
-    void Cal_Gradient(double *Z_p, double *Z_n);
-    void Cal_Gradient_preconditioned(double *Z_p, double *Z_n);
-    void Cal_Gradient_preconditioned_SRG(double *Z_p, double *Z_n);
-    void UpdateU_Thouless(double *Z_p, double *Z_n);
-    void UpdateU_Qconstraint_generatZ(double deltaQ, double *O_p, double *O_n);
-    void UpdateU_Qconstraint_updateU(double *O_p, double *O_n);
-
-    /// debug code
-    void Check_orthogonal_U_p(int i, int j);
-    void Check_orthogonal_U_n(int i, int j);
-    void Check_matrix(int dim, double *Matrix);
-    void PrintParameters_Hole();
-    void PrintAllParameters();
-    void PrintDensity();
-    void PrintFockMatrix();
-    void PrintVtb();
-    void PrintAllHFEnergies();
-    void PrintHoleOrbitsIndex();
-    void CheckDensity();
-    void PrintOccupationHO();
-
-private:
-    int N_p, N_n, dim_p, dim_n;
-    double frobenius_norm(const std::vector<double> &A);
-};
-
-struct Triple
-{
-    double first;
-    int second;
-    int third;
-    Triple(){};
-    Triple(double f, int s, int t) : first(f), second(s), third(t) {}
-};
-
-bool compareTriples(const Triple &t1, const Triple &t2)
-{
-
-    if (fabs(t1.first - t2.first) < 1.e-5)
-    {
-        if (abs(t1.third) < abs(t2.third))
-        {
-            return true;
-        }
-        else
-            return false;
-    }
-    else
-    {
-        if (t1.first < t2.first)
-        {
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
-}
+#include "HartreeFock.h"
 
 HartreeFock::HartreeFock(Hamiltonian &H)
     : Ham(&H), modelspace(H.GetModelSpace()), tolerance(1e-8)
@@ -174,16 +61,6 @@ HartreeFock::HartreeFock(Hamiltonian &H)
     memset(rho_n, 0, (dim_n) * (dim_n) * sizeof(double));
 
     // One body part
-    this->T_term = (double *)mkl_malloc((dim_p + dim_n) * sizeof(double), 64);
-    for (size_t i = 0; i < dim_p; i++)
-    {
-        T_term[i] = Ham->GetProtonSPE_Mscheme(i);
-    }
-    for (size_t i = 0; i < dim_n; i++)
-    {
-        T_term[dim_p + i] = Ham->GetNeutronSPE_Mscheme(i);
-    }
-
     T_term_p = (double *)mkl_malloc((dim_p * dim_p) * sizeof(double), 64);
     T_term_n = (double *)mkl_malloc((dim_n * dim_n) * sizeof(double), 64);
     memset(T_term_p, 0, (dim_p) * (dim_p) * sizeof(double));
@@ -217,21 +94,11 @@ HartreeFock::HartreeFock(Hamiltonian &H)
     }
 
     // SPE in ascending order
-    /*std::vector<std::pair<double, int>> SPEpairs_p(dim_p);
-    for (int i = 0; i < dim_p; ++i)
-    {
-        // std::cout << i << "  " << T_term[i] << "  " << modelspace->Get_MSmatrix_2j(Proton, i) << "  " << modelspace->Get_MSmatrix_2m(Proton, i) << std::endl;
-        SPEpairs_p[i] = std::make_pair(T_term[i], i);
-    }
-    // Sort the vector of pairs based on the first element of each pair, which is the value of the
-    // element in the original array.
-    std::sort(SPEpairs_p.begin(), SPEpairs_p.end());
-    */
     std::vector<Triple> SPEpairs_p(dim_p);
     for (int i = 0; i < dim_p; ++i)
     {
         // std::cout << i << "  " << T_term[i] << "  " << modelspace->Get_MSmatrix_2j(Proton, i) << "  " << modelspace->Get_MSmatrix_2m(Proton, i) << std::endl;
-        SPEpairs_p[i] = Triple(T_term[i], i, modelspace->Get_MSmatrix_2m(Proton, i));
+        SPEpairs_p[i] = Triple(T_term_p[i * dim_p + i], i, modelspace->Get_MSmatrix_2m(Proton, i));
     }
     std::sort(SPEpairs_p.begin(), SPEpairs_p.end(), compareTriples);
     /*
@@ -247,21 +114,13 @@ HartreeFock::HartreeFock(Hamiltonian &H)
     }
 
     //-----------
-    /*
-    std::vector<std::pair<double, int>> SPEpairs_n(dim_n);
-    for (int i = 0; i < dim_n; ++i)
-    {
-        SPEpairs_n[i] = std::make_pair(T_term[dim_p + i], i);
-    }
-    std::sort(SPEpairs_n.begin(), SPEpairs_n.end());
-    */
     // Sort the vector of pairs based on the first element of each pair, which is the value of the
     // element in the original array.
     std::vector<Triple> SPEpairs_n(dim_n);
     for (int i = 0; i < dim_n; ++i)
     {
         // std::cout << i << "  " << T_term[i] << "  " << modelspace->Get_MSmatrix_2j(Proton, i) << "  " << modelspace->Get_MSmatrix_2m(Proton, i) << std::endl;
-        SPEpairs_n[i] = Triple(T_term[dim_p + i], i, modelspace->Get_MSmatrix_2m(Neutron, i));
+        SPEpairs_n[i] = Triple(T_term_n[i * dim_n + i], i, modelspace->Get_MSmatrix_2m(Neutron, i));
     }
     std::sort(SPEpairs_n.begin(), SPEpairs_n.end(), compareTriples);
 
@@ -290,7 +149,6 @@ HartreeFock::~HartreeFock()
     mkl_free(holeorbs_n);
     mkl_free(rho_p);
     mkl_free(rho_n);
-    mkl_free(T_term);
     mkl_free(energies);
     mkl_free(prev_energies);
     if (T_term_p != nullptr)
@@ -332,7 +190,6 @@ void HartreeFock::Solve_hybrid()
             field_mixing_factor = 1 - 0.005 * (std::rand() % 100);
             density_mixing_factor = 1 - 0.005 * (std::rand() % 100);
         }
-
         cblas_daxpby(dim_p * dim_p, density_mixing_factor, rho_p, 1, 0.0, rho_last_p, 1);
         cblas_daxpby(dim_n * dim_n, density_mixing_factor, rho_n, 1, 0.0, rho_last_n, 1);
 
@@ -344,7 +201,8 @@ void HartreeFock::Solve_hybrid()
         // Cal_Gradient(Z_p.data(), Z_n.data());
         // Cal_Gradient_preconditioned(Z_p.data(), Z_n.data());
         Cal_Gradient_preconditioned_SRG(Z_p.data(), Z_n.data());
-        UpdateU_Thouless(Z_p.data(), Z_n.data());
+        UpdateU_Thouless_pade(Z_p.data(), Z_n.data());
+
         UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
 
         cblas_daxpby(dim_p * dim_p, 1., rho_last_p, 1, (1.0 - density_mixing_factor), rho_p, 1);
@@ -355,7 +213,6 @@ void HartreeFock::Solve_hybrid()
         UpdateF(); // Update the Fock matrix
         cblas_daxpby(dim_p * dim_p, 1., rho_last_p, 1, (1.0 - field_mixing_factor), FockTerm_p, 1);
         cblas_daxpby(dim_n * dim_n, 1., rho_last_n, 1, (1.0 - field_mixing_factor), FockTerm_n, 1);
-
         // CalcEHF();
         // save hole parameters
         // string filename = "Output/HF_para_" + std::to_string(iterations) + ".dat";
@@ -371,35 +228,6 @@ void HartreeFock::Solve_hybrid()
     mkl_free(rho_last_p);
     mkl_free(rho_last_n);
 
-    /*
-        iterations = 0; // count number of iterations
-        // std::cout << "HF start  iterations. " << std::endl;
-        for (iterations = 0; iterations < maxiter; ++iterations)
-        {
-            UpdateDensityMatrix();
-            UpdateF();
-            TransferOperatorToHFbasis(FockTerm_p, FockTerm_n);
-            std::vector<double> Z_p(dim_p * dim_p, 0); // gradient matrix
-            std::vector<double> Z_n(dim_n * dim_n, 0);
-
-            // Cal_Gradient(Z_p.data(), Z_n.data());
-            // Cal_Gradient_preconditioned(Z_p.data(), Z_n.data());
-            Cal_Gradient_preconditioned_SRG(Z_p.data(), Z_n.data());
-            UpdateU_Thouless(Z_p.data(), Z_n.data());
-
-            // UpdateU_hybrid();
-            UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
-            UpdateF();             // Update the Fock matrix
-            Diagonalize();
-            // std::cout << "   " << std::setw(5) << iterations << "   " << std::setw(10) << std::setfill(' ') << std::fixed << std::setprecision(4) << EHF << std::endl;
-            if (CheckConvergence())
-                break;
-        }
-        UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
-        UpdateF();             // Update the Fock matrix
-        CalcEHF();
-    */
-
     std::cout << std::setw(15) << std::setprecision(10);
     if (iterations < maxiter)
     {
@@ -413,7 +241,292 @@ void HartreeFock::Solve_hybrid()
     PrintEHF();
 }
 
-void HartreeFock::Solve_Qconstraint()
+void HartreeFock::Solve_hybrid_Constraint()
+{
+    /// inital Q operator
+    std::vector<double> Q2_p(dim_p * dim_p, 0);
+    std::vector<double> Q0_p(dim_p * dim_p, 0);
+    std::vector<double> Q2_n(dim_n * dim_n, 0);
+    std::vector<double> Q0_n(dim_n * dim_n, 0);
+
+    double Q0_expect = modelspace->GetShapeQ0();
+    double Q2_expect = modelspace->GetShapeQ2();
+    double deltaQ0, deltaQ2, deltaQ_2;
+    double tempQp, tempQn;
+    int number_of_Q = 2;
+
+    memset(Q0_p.data(), 0, (dim_p * dim_p) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_p.Q0_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_p.Q0_list[i];          // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_p[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_p[index].GetIndex_b();
+        Q0_p[ia * dim_p + ib] = Ham->Q2MEs_p.Q0_MSMEs[i];
+    }
+    memset(Q2_p.data(), 0, (dim_p * dim_p) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_p.Q2_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_p.Q2_list[i];          // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_p[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_p[index].GetIndex_b();
+        Q2_p[ia * dim_p + ib] = Ham->Q2MEs_p.Q2_MSMEs[i];
+    }
+    // memset(Q_2_p.data(), 0, (dim_p * dim_p) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_p.Q_2_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_p.Q_2_list[i];         // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_p[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_p[index].GetIndex_b();
+        Q2_p[ia * dim_p + ib] += Ham->Q2MEs_p.Q_2_MSMEs[i];
+    }
+
+    memset(Q0_n.data(), 0, (dim_n * dim_n) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_n.Q0_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_n.Q0_list[i];          // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_n[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_n[index].GetIndex_b();
+        Q0_n[ia * dim_n + ib] = Ham->Q2MEs_n.Q0_MSMEs[i];
+    }
+    memset(Q2_n.data(), 0, (dim_n * dim_n) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_n.Q2_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_n.Q2_list[i];          // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_n[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_n[index].GetIndex_b();
+        Q2_n[ia * dim_n + ib] = Ham->Q2MEs_n.Q2_MSMEs[i];
+    }
+    // memset(Q_2_n.data(), 0, (dim_n * dim_n) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_n.Q_2_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_n.Q_2_list[i];         // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_n[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_n[index].GetIndex_b();
+        Q2_n[ia * dim_n + ib] += Ham->Q2MEs_n.Q_2_MSMEs[i];
+    }
+
+    ////////////////////////////////////////////////////////////
+    double density_mixing_factor = 0.2;
+    double field_mixing_factor = 0.;
+    double *rho_last_p, *rho_last_n;
+    rho_last_p = (double *)mkl_malloc((dim_p * dim_p) * sizeof(double), 64);
+    rho_last_n = (double *)mkl_malloc((dim_n * dim_n) * sizeof(double), 64);
+    gradient_eta = 0.01;
+    iterations = 0; // count number of iterations
+
+    double E_previous = 1.e10;
+    double constrainedQ, ConstarinedLargeNum = 1000.;
+
+    for (iterations = 0; iterations < maxiter; ++iterations)
+    {
+        UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
+        UpdateF();
+        CalOnebodyOperator(Q0_p.data(), Q0_n.data(), tempQp, tempQn);
+        deltaQ0 = tempQp + tempQn - Q0_expect;
+        // std::cout << deltaQ0 << "  " << Q0_expect << "   " << tempQn + tempQp << "   " << tempQp << "   " << tempQn << std::endl;
+        CalOnebodyOperator(Q2_p.data(), Q2_n.data(), tempQp, tempQn);
+        deltaQ2 = (tempQp + tempQn) - Q2_expect;
+        // std::cout << deltaQ2 << "  " << Q2_expect << "   " << tempQn + tempQp << "   " << tempQp << "   " << tempQn << std::endl;
+
+        constrainedQ = ConstarinedLargeNum * deltaQ0 * deltaQ0;
+        constrainedQ += ConstarinedLargeNum * deltaQ2 * deltaQ2;
+        CalcEHF(constrainedQ);
+
+        //-------------------------------------------
+        if (iterations == 500)
+        {
+            density_mixing_factor = 0.5;
+            gradient_eta *= 0.1;
+            // field_mixing_factor = 0.5;
+            std::cout << "Still not converged after 500 iterations. Setting density_mixing_factor => " << density_mixing_factor
+                      << " field_mixing_factor => " << field_mixing_factor << std::endl;
+        }
+        if (iterations > 600 and iterations % 20 == 2) // if we've made it to 600, really put on the brakes with a big mixing factor, with random noise
+        {
+            // field_mixing_factor = 1 - 0.005 * (std::rand() % 100);
+            density_mixing_factor = 1 - 0.005 * (std::rand() % 100);
+        }
+        cblas_daxpby(dim_p * dim_p, density_mixing_factor, rho_p, 1, 0.0, rho_last_p, 1);
+        cblas_daxpby(dim_n * dim_n, density_mixing_factor, rho_n, 1, 0.0, rho_last_n, 1);
+        std::vector<double> Qorb0_p(dim_p * dim_p, 0);
+        std::vector<double> Qorb0_n(dim_n * dim_n, 0);
+        std::vector<double> Qorb2_p(dim_p * dim_p, 0);
+        std::vector<double> Qorb2_n(dim_n * dim_n, 0);
+        std::vector<double> Z_p(dim_p * dim_p, 0); // gradient matrix
+        std::vector<double> Z_n(dim_n * dim_n, 0);
+
+        TransferOperatorToHFbasis(FockTerm_p, FockTerm_n);
+        cblas_dcopy(dim_p * dim_p, FockTerm_p, 1, Z_p.data(), 1);
+        cblas_dcopy(dim_n * dim_n, FockTerm_n, 1, Z_n.data(), 1);
+        Operator_ph(Z_p.data(), Z_n.data());
+
+        cblas_dcopy(dim_p * dim_p, Q0_p.data(), 1, Qorb0_p.data(), 1);
+        cblas_dcopy(dim_n * dim_n, Q0_n.data(), 1, Qorb0_n.data(), 1);
+        cblas_dcopy(dim_p * dim_p, Q2_p.data(), 1, Qorb2_p.data(), 1);
+        cblas_dcopy(dim_n * dim_n, Q2_n.data(), 1, Qorb2_n.data(), 1);
+
+        TransferOperatorToHFbasis(Qorb0_p.data(), Qorb0_n.data());
+        TransferOperatorToHFbasis(Qorb2_p.data(), Qorb2_n.data());
+        Operator_ph(Qorb0_p.data(), Qorb0_n.data());
+        Operator_ph(Qorb2_p.data(), Qorb2_n.data());
+
+        //---------------------------------------------
+        std::vector<double> Fph_p(dim_p * dim_p, 0);
+        std::vector<double> Fph_n(dim_n * dim_n, 0);
+        cblas_dcopy(dim_p * dim_p, FockTerm_p, 1, Fph_p.data(), 1);
+        cblas_dcopy(dim_n * dim_n, FockTerm_n, 1, Fph_n.data(), 1);
+        Operator_ph(Fph_p.data(), Fph_n.data());
+
+        double dotProduct_p, QdotHProduct_p, dotProduct_n, QdotHProduct_n;
+        QdotHProduct_p = -cblas_ddot(dim_p * dim_p, Fph_p.data(), 1, Qorb0_p.data(), 1);
+        dotProduct_p = -cblas_ddot(dim_p * dim_p, Qorb0_p.data(), 1, Qorb0_p.data(), 1);
+        QdotHProduct_n = -cblas_ddot(dim_n * dim_n, Fph_n.data(), 1, Qorb0_n.data(), 1);
+        dotProduct_n = -cblas_ddot(dim_n * dim_n, Qorb0_n.data(), 1, Qorb0_n.data(), 1);
+
+        double Q2dotProduct_p, Q2dotHProduct_p, Q2dotProduct_n, Q2dotHProduct_n;
+        Q2dotHProduct_p = -cblas_ddot(dim_p * dim_p, Fph_p.data(), 1, Qorb2_p.data(), 1);
+        Q2dotProduct_p = -cblas_ddot(dim_p * dim_p, Qorb2_p.data(), 1, Qorb2_p.data(), 1);
+        Q2dotHProduct_n = -cblas_ddot(dim_n * dim_n, Fph_n.data(), 1, Qorb2_n.data(), 1);
+        Q2dotProduct_n = -cblas_ddot(dim_n * dim_n, Qorb2_n.data(), 1, Qorb2_n.data(), 1);
+
+        double Q1Q2dotProduct_p, Q1Q2dotProduct_n;
+        Q1Q2dotProduct_p = -cblas_ddot(dim_p * dim_p, Qorb0_p.data(), 1, Qorb2_p.data(), 1);
+        Q1Q2dotProduct_n = -cblas_ddot(dim_n * dim_n, Qorb0_n.data(), 1, Qorb2_n.data(), 1);
+
+        //----------------------------------------
+        std::vector<double> A_p(number_of_Q * number_of_Q, 0);
+        std::vector<double> b_p(number_of_Q, 0);
+        std::vector<int> ipiv_p(number_of_Q, 0);
+
+        A_p[0] = dotProduct_p;
+        A_p[1] = Q1Q2dotProduct_p;
+        A_p[2] = Q1Q2dotProduct_p;
+        A_p[3] = Q2dotProduct_p;
+
+        b_p[0] = QdotHProduct_p + deltaQ0 / (gradient_eta);
+        b_p[1] = Q2dotHProduct_p + deltaQ2 / (gradient_eta);
+        b_p[0] = QdotHProduct_p;
+        b_p[1] = Q2dotHProduct_p;
+
+        if (LAPACKE_dgesv(LAPACK_ROW_MAJOR, number_of_Q, 1, A_p.data(), number_of_Q, ipiv_p.data(), b_p.data(), 1) != 0)
+        {
+            std::cout << "  Linear equation error!" << std::endl;
+            exit(0);
+        }
+
+        std::vector<double> A_n(number_of_Q * number_of_Q, 0);
+        std::vector<double> b_n(number_of_Q, 0);
+        std::vector<int> ipiv_n(number_of_Q, 0);
+
+        A_n[0] = dotProduct_n;
+        A_n[1] = Q1Q2dotProduct_n;
+        A_n[2] = Q1Q2dotProduct_n;
+        A_n[3] = Q2dotProduct_n;
+
+        b_n[0] = QdotHProduct_n + deltaQ0 / (gradient_eta);
+        b_n[1] = Q2dotHProduct_n + deltaQ2 / (gradient_eta);
+        b_n[0] = QdotHProduct_n;
+        b_n[1] = Q2dotHProduct_n;
+
+        if (LAPACKE_dgesv(LAPACK_ROW_MAJOR, number_of_Q, 1, A_n.data(), number_of_Q, ipiv_n.data(), b_n.data(), 1) != 0)
+        {
+            std::cout << "  Linear equation error!" << std::endl;
+            exit(0);
+        }
+
+        cblas_daxpy(dim_p * dim_p, -b_p[0], Qorb0_p.data(), 1, Z_p.data(), 1);
+        cblas_daxpy(dim_p * dim_p, -b_p[1], Qorb2_p.data(), 1, Z_p.data(), 1);
+        cblas_daxpy(dim_n * dim_n, -b_n[0], Qorb0_n.data(), 1, Z_n.data(), 1);
+        cblas_daxpy(dim_n * dim_n, -b_n[1], Qorb2_n.data(), 1, Z_n.data(), 1);
+        Cal_Gradient_preconditioned_given_gradient(Z_p.data(), Z_n.data());
+        // Cal_Gradient_given_gradient(Z_p.data(), Z_n.data());
+        //--------------------------------
+        //  cblas_daxpy(dim_p * dim_p, -1. * QdotHProduct_p / (dotProduct_p), Qorb0_p.data(), 1, Z_p.data(), 1);
+        //  cblas_daxpy(dim_n * dim_n, -1. * QdotHProduct_n / (dotProduct_n), Qorb0_n.data(), 1, Z_n.data(), 1);
+        //  Cal_Gradient_preconditioned_given_gradient(Z_p.data(), Z_n.data());
+        //  cblas_daxpy(dim_p * dim_p, -1. * deltaQ0 / (dotProduct_p), Qorb0_p.data(), 1, Z_p.data(), 1);
+        //  cblas_daxpy(dim_n * dim_n, -1. * deltaQ0 / (dotProduct_n), Qorb0_n.data(), 1, Z_n.data(), 1);
+
+        A_p[0] = dotProduct_p;
+        A_p[1] = Q1Q2dotProduct_p;
+        A_p[2] = Q1Q2dotProduct_p;
+        A_p[3] = Q2dotProduct_p;
+
+        b_p[0] = deltaQ0;
+        b_p[1] = deltaQ2;
+
+        if (LAPACKE_dgesv(LAPACK_ROW_MAJOR, number_of_Q, 1, A_p.data(), number_of_Q, ipiv_p.data(), b_p.data(), 1) != 0)
+        {
+            std::cout << "  Linear equation error!" << std::endl;
+            exit(0);
+        }
+
+        A_n[0] = dotProduct_n;
+        A_n[1] = Q1Q2dotProduct_n;
+        A_n[2] = Q1Q2dotProduct_n;
+        A_n[3] = Q2dotProduct_n;
+
+        b_n[0] = deltaQ0;
+        b_n[1] = deltaQ2;
+
+        if (LAPACKE_dgesv(LAPACK_ROW_MAJOR, number_of_Q, 1, A_n.data(), number_of_Q, ipiv_n.data(), b_n.data(), 1) != 0)
+        {
+            std::cout << "  Linear equation error!" << std::endl;
+            exit(0);
+        }
+
+        cblas_daxpy(dim_p * dim_p, 1. * -b_p[0], Qorb0_p.data(), 1, Z_p.data(), 1);
+        cblas_daxpy(dim_p * dim_p, 1. * -b_p[1], Qorb2_p.data(), 1, Z_p.data(), 1);
+        cblas_daxpy(dim_n * dim_n, 1. * -b_n[0], Qorb0_n.data(), 1, Z_n.data(), 1);
+        cblas_daxpy(dim_n * dim_n, 1. * -b_n[1], Qorb2_n.data(), 1, Z_n.data(), 1);
+
+        // UpdateU_Thouless_pade(Z_p.data(), Z_n.data());
+        UpdateU_Thouless_1st(Z_p.data(), Z_n.data());
+        UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
+
+        cblas_daxpby(dim_p * dim_p, 1., rho_last_p, 1, (1.0 - density_mixing_factor), rho_p, 1);
+        cblas_daxpby(dim_n * dim_n, 1., rho_last_n, 1, (1.0 - density_mixing_factor), rho_n, 1);
+        // cblas_daxpby(dim_p * dim_p, field_mixing_factor, FockTerm_p, 1, 0.0, rho_last_p, 1);
+        // cblas_daxpby(dim_n * dim_n, field_mixing_factor, FockTerm_n, 1, 0.0, rho_last_n, 1);
+        UpdateF(); // Update the Fock matrix
+        // cblas_daxpby(dim_p * dim_p, 1., rho_last_p, 1, (1.0 - field_mixing_factor), FockTerm_p, 1);
+        // cblas_daxpby(dim_n * dim_n, 1., rho_last_n, 1, (1.0 - field_mixing_factor), FockTerm_n, 1);
+
+        Diagonalize();
+
+        if (fabs(E_previous - EHF) < this->tolerance)
+            break;
+        E_previous = this->EHF;
+        // std::cout << "   " << std::setw(5) << iterations << "   " << std::setw(10) << std::setfill(' ') << std::fixed << std::setprecision(4) << EHF << std::endl;
+        // if (CheckConvergence())
+        //    break;
+    }
+    UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
+    UpdateF();             // Update the Fock matrix
+    CalcEHF();
+    mkl_free(rho_last_p);
+    mkl_free(rho_last_n);
+    CalOnebodyOperator(Q0_p.data(), Q0_n.data(), tempQp, tempQn);
+    deltaQ0 = tempQn + tempQp;
+    CalOnebodyOperator(Q2_p.data(), Q2_n.data(), tempQp, tempQn);
+    deltaQ2 = tempQn + tempQp;
+    std::cout << "  Q0  " << Q0_expect << "   " << deltaQ0 << "    Q2 " << Q2_expect << "   " << deltaQ2 << std::endl;
+
+    std::cout << std::setw(15) << std::setprecision(10);
+    if (iterations < maxiter)
+    {
+        std::cout << "  HF converged after " << iterations << " iterations. " << std::endl;
+    }
+    else
+    {
+        std::cout << "\033[31m!!!! Warning: Restricted Hartree-Fock calculation didn't converge after " << iterations << " iterations.\033[0m" << std::endl;
+        std::cout << std::endl;
+    }
+    PrintEHF();
+}
+
+/*
+void HartreeFock::Solve_hybrid_Constraint()
 {
     /// inital Q operator
     double *Q2_p, *Q0_p, *Q_2_p, *Q2_n, *Q0_n, *Q_2_n;
@@ -451,7 +564,7 @@ void HartreeFock::Solve_Qconstraint()
         int index = Ham->Q2MEs_p.Q_2_list[i];         // index of M scheme One body operator
         int ia = Ham->MSMEs.OB_p[index].GetIndex_a(); // index of a in M scheme
         int ib = Ham->MSMEs.OB_p[index].GetIndex_b();
-        Q2_p[ia * dim_p + ib] += Ham->Q2MEs_p.Q_2_MSMEs[i];
+        Q_2_p[ia * dim_p + ib] += Ham->Q2MEs_p.Q_2_MSMEs[i];
     }
 
     memset(Q0_n, 0, (dim_n * dim_n) * sizeof(double));
@@ -476,68 +589,117 @@ void HartreeFock::Solve_Qconstraint()
         int index = Ham->Q2MEs_n.Q_2_list[i];         // index of M scheme One body operator
         int ia = Ham->MSMEs.OB_n[index].GetIndex_a(); // index of a in M scheme
         int ib = Ham->MSMEs.OB_n[index].GetIndex_b();
-        Q2_n[ia * dim_n + ib] += Ham->Q2MEs_n.Q_2_MSMEs[i];
+        Q_2_n[ia * dim_n + ib] += Ham->Q2MEs_n.Q_2_MSMEs[i];
     }
 
     ////////////////////////////////////////////////////////////
+    double density_mixing_factor = 0.2;
+    double field_mixing_factor = 0.0;
+    double *rho_last_p, *rho_last_n;
+    rho_last_p = (double *)mkl_malloc((dim_p * dim_p) * sizeof(double), 64);
+    rho_last_n = (double *)mkl_malloc((dim_n * dim_n) * sizeof(double), 64);
+    gradient_eta = 0.00001;
+    double E_previous = 1.e10;
+    double ConstarinedLargeNum = 1.e5;
+    double constrainedQ = 0;
     iterations = 0; // count number of iterations
-    tolerance = 1.e-4;
     for (iterations = 0; iterations < maxiter; ++iterations)
     {
         UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
         UpdateF();
         CalOnebodyOperator(Q0_p, Q0_n, tempQp, tempQn);
         deltaQ0 = Q0_expect - tempQp - tempQn;
+        // constrainedQ = ConstarinedLargeNum * deltaQ0 * deltaQ0;
         // std::cout << deltaQ0 << "  " << Q0_expect << "   " << tempQn + tempQp << "   " << tempQp << "   " << tempQn << std::endl;
-
         CalOnebodyOperator(Q2_p, Q2_n, tempQp, tempQn);
-        deltaQ2 = Q2_expect - tempQp - tempQn;
-        // std::cout << deltaQ2 << "  " << Q2_expect << "   " << tempQn + tempQp << "   " << tempQp << "   " << tempQn << std::endl;
+        // deltaQ2 = Q2_expect - tempQp - tempQn;
+        //    std::cout << deltaQ2 << "  " << Q2_expect << "   " << tempQn + tempQp << "   " << tempQp << "   " << tempQn << std::endl;
+        // CalcEHF(constrainedQ);
+        // CalcEHF();
 
-        TransferOperatorToHFbasis(FockTerm_p, FockTerm_n);
+        if (iterations == 500)
+        {
+            density_mixing_factor = 0.7;
+            field_mixing_factor = 0.5;
+            std::cout << "Still not converged after 500 iterations. Setting density_mixing_factor => " << density_mixing_factor
+                      << " field_mixing_factor => " << field_mixing_factor << std::endl;
+        }
+        if (iterations > 600 and iterations % 20 == 2) // if we've made it to 600, really put on the brakes with a big mixing factor, with random noise
+        {
+            field_mixing_factor = 1 - 0.005 * (std::rand() % 100);
+            density_mixing_factor = 1 - 0.005 * (std::rand() % 100);
+        }
 
+        // E_previous = this->EHF;
         std::vector<double> Qorb0_p(dim_p * dim_p, 0);
         std::vector<double> Qorb0_n(dim_n * dim_n, 0);
         std::vector<double> Qorb2_p(dim_p * dim_p, 0);
         std::vector<double> Qorb2_n(dim_n * dim_n, 0);
-
-        cblas_dcopy(dim_p * dim_p, Q0_p, 1, Qorb0_p.data(), 1);
-        cblas_dcopy(dim_n * dim_n, Q0_n, 1, Qorb0_n.data(), 1);
-        cblas_dcopy(dim_p * dim_p, Q2_p, 1, Qorb2_p.data(), 1);
-        cblas_dcopy(dim_n * dim_n, Q2_n, 1, Qorb2_n.data(), 1);
-
-        TransferOperatorToHFbasis(Qorb0_p.data(), Qorb0_n.data());
-        TransferOperatorToHFbasis(Qorb2_p.data(), Qorb2_n.data());
-
-        // UpdateU_Qconstraint(deltaQ0, Q0_p, Q0_n);
-        // UpdateU_Qconstraint(deltaQ2, Q2_p, Q2_n);
-
-        // UpdateU_Qconstraint(deltaQ0, Qorb0_p.data(), Qorb0_n.data());
-        // UpdateU_Qconstraint(deltaQ2, Qorb2_p.data(), Qorb2_n.data());
-
-        UpdateU_Qconstraint_generatZ(deltaQ0, Qorb0_p.data(), Qorb0_n.data());
-        UpdateU_Qconstraint_generatZ(deltaQ2, Qorb2_p.data(), Qorb2_n.data());
-
-        cblas_daxpy(dim_p * dim_p, 1., Qorb0_p.data(), 1, Qorb2_p.data(), 1);
-        cblas_daxpy(dim_n * dim_n, 1., Qorb0_n.data(), 1, Qorb2_n.data(), 1);
-
-        UpdateU_Qconstraint_updateU(Qorb2_p.data(), Qorb2_n.data());
-
-        UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
-        UpdateF();
+        std::vector<double> Z_p(dim_p * dim_p, 0); // gradient matrix
+        std::vector<double> Z_n(dim_n * dim_n, 0);
 
         TransferOperatorToHFbasis(FockTerm_p, FockTerm_n);
 
-        memset(Vij_p, 0, dim_p * dim_p * sizeof(double));
-        memset(Vij_n, 0, dim_n * dim_n * sizeof(double));
+        // Cal_Gradient(Z_p.data(), Z_n.data());
+        cblas_dcopy(dim_p * dim_p, FockTerm_p, 1, Z_p.data(), 1);
+        cblas_dcopy(dim_n * dim_n, FockTerm_n, 1, Z_n.data(), 1);
+        Operator_ph(Z_p.data(), Z_n.data());
 
-        UpdateF_FromQ(Q0_p, Q0_n);
-        UpdateF_FromQ(Q2_p, Q2_n);
+        cblas_dcopy(dim_p * dim_p, Q0_p, 1, Qorb0_p.data(), 1);
+        cblas_dcopy(dim_n * dim_n, Q0_n, 1, Qorb0_n.data(), 1);
+        // cblas_dcopy(dim_p * dim_p, Q2_p, 1, Qorb2_p.data(), 1);
+        // cblas_dcopy(dim_n * dim_n, Q2_n, 1, Qorb2_n.data(), 1);
 
-        cblas_daxpy(dim_p * dim_p, 1., Vij_p, 1, FockTerm_p, 1);
-        cblas_daxpy(dim_n * dim_n, 1., Vij_n, 1, FockTerm_n, 1);
+        TransferOperatorToHFbasis(Qorb0_p.data(), Qorb0_n.data());
+        Operator_ph(Qorb0_p.data(), Qorb0_n.data());
 
-        UpdateU_hybrid();
+        //---------------------------------------------
+        std::vector<double> Fph_p(dim_p * dim_p, 0);
+        std::vector<double> Fph_n(dim_n * dim_n, 0);
+        cblas_dcopy(dim_p * dim_p, FockTerm_p, 1, Fph_p.data(), 1);
+        cblas_dcopy(dim_n * dim_n, FockTerm_n, 1, Fph_n.data(), 1);
+        Operator_ph(Fph_p.data(), Fph_n.data());
+
+        double dotProduct_p, QdotHProduct_p, dotProduct_n, QdotHProduct_n, factor_p, factor_n;
+
+        QdotHProduct_p = cblas_ddot(dim_p * dim_p, Fph_p.data(), 1, Qorb0_p.data(), 1);
+        dotProduct_p = cblas_ddot(dim_p * dim_p, Qorb0_p.data(), 1, Qorb0_p.data(), 1);
+        // factor_p = deltaQ0 / dotProduct;
+        // factor_p = -1. * gradient_eta * QdotHProduct / (dotProduct)-deltaQ0 / (dotProduct);
+
+        QdotHProduct_n = cblas_ddot(dim_n * dim_n, Fph_n.data(), 1, Qorb0_n.data(), 1);
+        dotProduct_n = cblas_ddot(dim_n * dim_n, Qorb0_n.data(), 1, Qorb0_n.data(), 1);
+        // factor_n = deltaQ0 / (dotProduct);
+        // factor_n = -1. * gradient_eta * QdotHProduct / (dotProduct)-deltaQ0 / (dotProduct);
+
+        //--------------------------------
+        cblas_daxpy(dim_p * dim_p, -1. * QdotHProduct_p / (dotProduct_p), Qorb0_p.data(), 1, Z_p.data(), 1);
+        cblas_daxpy(dim_n * dim_n, -1. * QdotHProduct_n / (dotProduct_n), Qorb0_n.data(), 1, Z_n.data(), 1);
+        Cal_Gradient_preconditioned_given_gradient(Z_p.data(), Z_n.data());
+
+        cblas_daxpy(dim_p * dim_p, -deltaQ0 / (dotProduct_p), Qorb0_p.data(), 1, Z_p.data(), 1);
+        cblas_daxpy(dim_n * dim_n, -deltaQ0 / (dotProduct_n), Qorb0_n.data(), 1, Z_n.data(), 1);
+
+        // UpdateU_Thouless_pade(Z_p.data(), Z_n.data());
+        UpdateU_Thouless_1st(Z_p.data(), Z_n.data());
+        UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
+
+        cblas_daxpby(dim_p * dim_p, 1., rho_last_p, 1, (1.0 - density_mixing_factor), rho_p, 1);
+        cblas_daxpby(dim_n * dim_n, 1., rho_last_n, 1, (1.0 - density_mixing_factor), rho_n, 1);
+
+        cblas_daxpby(dim_p * dim_p, field_mixing_factor, FockTerm_p, 1, 0.0, rho_last_p, 1);
+        cblas_daxpby(dim_n * dim_n, field_mixing_factor, FockTerm_n, 1, 0.0, rho_last_n, 1);
+        UpdateF(); // Update the Fock matrix
+        cblas_daxpby(dim_p * dim_p, 1., rho_last_p, 1, (1.0 - field_mixing_factor), FockTerm_p, 1);
+        cblas_daxpby(dim_n * dim_n, 1., rho_last_n, 1, (1.0 - field_mixing_factor), FockTerm_n, 1);
+
+        // TransferOperatorToHFbasis(FockTerm_p, FockTerm_n);
+        // cblas_daxpy(dim_p * dim_p, -1. * QdotHProduct_p / (dotProduct_p), Qorb0_p.data(), 1, FockTerm_p, 1);
+        // cblas_daxpy(dim_n * dim_n, -1. * QdotHProduct_n / (dotProduct_n), Qorb0_n.data(), 1, FockTerm_n, 1);
+
+        Diagonalize();
+        // if (fabs(E_previous - EHF) < this->tolerance)
+        //     break;
         //---------------------------------------------------------------
 
         // CalcEHF();
@@ -548,12 +710,13 @@ void HartreeFock::Solve_Qconstraint()
     UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
     UpdateF();             // Update the Fock matrix
     CalcEHF();
-
+    mkl_free(rho_last_p);
+    mkl_free(rho_last_n);
     CalOnebodyOperator(Q0_p, Q0_n, tempQp, tempQn);
     deltaQ0 = tempQn + tempQp;
     CalOnebodyOperator(Q2_p, Q2_n, tempQp, tempQn);
     deltaQ2 = tempQn + tempQp;
-    std::cout << "   Q0  " << Q0_expect << "   " << deltaQ0 << "    Q2 " << Q2_expect << "   " << deltaQ2 << std::endl;
+    std::cout << "  Q0  " << Q0_expect << "   " << deltaQ0 << "    Q2 " << Q2_expect << "   " << deltaQ2 << std::endl;
 
     std::cout << std::setw(15) << std::setprecision(10);
     if (iterations < maxiter)
@@ -574,6 +737,273 @@ void HartreeFock::Solve_Qconstraint()
     mkl_free(Q_2_n);
 }
 
+void HartreeFock::Solve_hybrid_Constraint()
+{
+    /// inital Q operator
+    std::vector<double> Q2_p(dim_p * dim_p, 0);
+    std::vector<double> Q0_p(dim_p * dim_p, 0);
+    std::vector<double> Q2_n(dim_n * dim_n, 0);
+    std::vector<double> Q0_n(dim_n * dim_n, 0);
+
+    double Q0_expect = modelspace->GetShapeQ0();
+    double Q2_expect = modelspace->GetShapeQ2();
+    double deltaQ0, deltaQ2, deltaQ_2;
+    double tempQp, tempQn;
+
+    memset(Q0_p.data(), 0, (dim_p * dim_p) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_p.Q0_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_p.Q0_list[i];          // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_p[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_p[index].GetIndex_b();
+        Q0_p[ia * dim_p + ib] = Ham->Q2MEs_p.Q0_MSMEs[i];
+    }
+    memset(Q2_p.data(), 0, (dim_p * dim_p) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_p.Q2_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_p.Q2_list[i];          // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_p[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_p[index].GetIndex_b();
+        Q2_p[ia * dim_p + ib] = Ham->Q2MEs_p.Q2_MSMEs[i];
+    }
+    // memset(Q_2_p.data(), 0, (dim_p * dim_p) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_p.Q_2_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_p.Q_2_list[i];         // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_p[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_p[index].GetIndex_b();
+        Q2_p[ia * dim_p + ib] += Ham->Q2MEs_p.Q_2_MSMEs[i];
+    }
+
+    memset(Q0_n.data(), 0, (dim_n * dim_n) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_n.Q0_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_n.Q0_list[i];          // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_n[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_n[index].GetIndex_b();
+        Q0_n[ia * dim_n + ib] = Ham->Q2MEs_n.Q0_MSMEs[i];
+    }
+    memset(Q2_n.data(), 0, (dim_n * dim_n) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_n.Q2_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_n.Q2_list[i];          // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_n[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_n[index].GetIndex_b();
+        Q2_n[ia * dim_n + ib] = Ham->Q2MEs_n.Q2_MSMEs[i];
+    }
+    // memset(Q_2_n.data(), 0, (dim_n * dim_n) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_n.Q_2_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_n.Q_2_list[i];         // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_n[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_n[index].GetIndex_b();
+        Q2_n[ia * dim_n + ib] += Ham->Q2MEs_n.Q_2_MSMEs[i];
+    }
+
+    ////////////////////////////////////////////////////////////
+    double density_mixing_factor = 0.2;
+    double field_mixing_factor = 0.;
+    double *rho_last_p, *rho_last_n;
+    rho_last_p = (double *)mkl_malloc((dim_p * dim_p) * sizeof(double), 64);
+    rho_last_n = (double *)mkl_malloc((dim_n * dim_n) * sizeof(double), 64);
+    gradient_eta = 0.000001;
+    double E_previous = 1.e10;
+    double ConstarinedLargeNum = 1.e5;
+    double constrainedQ = 0;
+    iterations = 0; // count number of iterations
+    for (iterations = 0; iterations < maxiter; ++iterations)
+    {
+        UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
+        UpdateF();
+        CalOnebodyOperator(Q0_p.data(), Q0_n.data(), tempQp, tempQn);
+        deltaQ0 = Q0_expect - tempQp - tempQn;
+        // constrainedQ = ConstarinedLargeNum * deltaQ0 * deltaQ0;
+        std::cout << deltaQ0 << "  " << Q0_expect << "   " << tempQn + tempQp << "   " << tempQp << "   " << tempQn << std::endl;
+        CalOnebodyOperator(Q2_p.data(), Q2_n.data(), tempQp, tempQn);
+        deltaQ2 = Q2_expect - tempQp - tempQn;
+        std::cout << deltaQ2 << "  " << Q2_expect << "   " << tempQn + tempQp << "   " << tempQp << "   " << tempQn << std::endl;
+        // CalcEHF(constrainedQ);
+        // CalcEHF();
+        //-------------------------------------------
+        if (iterations == 500)
+        {
+            density_mixing_factor = 0.7;
+            gradient_eta *= 0.1;
+            // field_mixing_factor = 0.5;
+            std::cout << "Still not converged after 500 iterations. Setting density_mixing_factor => " << density_mixing_factor
+                      << " field_mixing_factor => " << field_mixing_factor << std::endl;
+        }
+        if (iterations > 600 and iterations % 20 == 2) // if we've made it to 600, really put on the brakes with a big mixing factor, with random noise
+        {
+            // field_mixing_factor = 1 - 0.005 * (std::rand() % 100);
+            density_mixing_factor = 1 - 0.005 * (std::rand() % 100);
+        }
+
+        // E_previous = this->EHF;
+        std::vector<double> Qorb0_p(dim_p * dim_p, 0);
+        std::vector<double> Qorb0_n(dim_n * dim_n, 0);
+        std::vector<double> Qorb2_p(dim_p * dim_p, 0);
+        std::vector<double> Qorb2_n(dim_n * dim_n, 0);
+        std::vector<double> Z_p(dim_p * dim_p, 0); // gradient matrix
+        std::vector<double> Z_n(dim_n * dim_n, 0);
+
+        TransferOperatorToHFbasis(FockTerm_p, FockTerm_n);
+        cblas_dcopy(dim_p * dim_p, FockTerm_p, 1, Z_p.data(), 1);
+        cblas_dcopy(dim_n * dim_n, FockTerm_n, 1, Z_n.data(), 1);
+        Operator_ph(Z_p.data(), Z_n.data());
+
+        cblas_dcopy(dim_p * dim_p, Q0_p.data(), 1, Qorb0_p.data(), 1);
+        cblas_dcopy(dim_n * dim_n, Q0_n.data(), 1, Qorb0_n.data(), 1);
+        cblas_dcopy(dim_p * dim_p, Q2_p.data(), 1, Qorb2_p.data(), 1);
+        cblas_dcopy(dim_n * dim_n, Q2_n.data(), 1, Qorb2_n.data(), 1);
+
+        TransferOperatorToHFbasis(Qorb0_p.data(), Qorb0_n.data());
+        TransferOperatorToHFbasis(Qorb2_p.data(), Qorb2_n.data());
+        Operator_ph(Qorb0_p.data(), Qorb0_n.data());
+        Operator_ph(Qorb2_p.data(), Qorb2_n.data());
+
+        //---------------------------------------------
+        std::vector<double> Fph_p(dim_p * dim_p, 0);
+        std::vector<double> Fph_n(dim_n * dim_n, 0);
+        cblas_dcopy(dim_p * dim_p, FockTerm_p, 1, Fph_p.data(), 1);
+        cblas_dcopy(dim_n * dim_n, FockTerm_n, 1, Fph_n.data(), 1);
+        Operator_ph(Fph_p.data(), Fph_n.data());
+
+        double dotProduct_p, QdotHProduct_p, dotProduct_n, QdotHProduct_n;
+        QdotHProduct_p = cblas_ddot(dim_p * dim_p, Fph_p.data(), 1, Qorb0_p.data(), 1);
+        dotProduct_p = cblas_ddot(dim_p * dim_p, Qorb0_p.data(), 1, Qorb0_p.data(), 1);
+        QdotHProduct_n = cblas_ddot(dim_n * dim_n, Fph_n.data(), 1, Qorb0_n.data(), 1);
+        dotProduct_n = cblas_ddot(dim_n * dim_n, Qorb0_n.data(), 1, Qorb0_n.data(), 1);
+
+        double Q2dotProduct_p, Q2dotHProduct_p, Q2dotProduct_n, Q2dotHProduct_n;
+        Q2dotHProduct_p = cblas_ddot(dim_p * dim_p, Fph_p.data(), 1, Qorb2_p.data(), 1);
+        Q2dotProduct_p = cblas_ddot(dim_p * dim_p, Qorb2_p.data(), 1, Qorb2_p.data(), 1);
+        Q2dotHProduct_n = cblas_ddot(dim_n * dim_n, Fph_n.data(), 1, Qorb2_n.data(), 1);
+        Q2dotProduct_n = cblas_ddot(dim_n * dim_n, Qorb2_n.data(), 1, Qorb2_n.data(), 1);
+
+        double Q1Q2dotProduct_p, Q1Q2dotProduct_n;
+        Q1Q2dotProduct_p = cblas_ddot(dim_p * dim_p, Qorb0_p.data(), 1, Qorb2_p.data(), 1);
+        Q1Q2dotProduct_n = cblas_ddot(dim_n * dim_n, Qorb0_n.data(), 1, Qorb2_n.data(), 1);
+
+        double factor_p, factor_n;
+        // Q0
+        if (fabs(Q1Q2dotProduct_p) > 1.e-3)
+        {
+            factor_p = (QdotHProduct_p) / Q1Q2dotProduct_p - (Q2dotHProduct_p) / Q2dotProduct_p;
+        }
+        else
+            factor_p = -(Q2dotHProduct_p) / Q2dotProduct_p;
+        factor_p /= (dotProduct_p - Q1Q2dotProduct_p);
+        if (fabs(Q1Q2dotProduct_n) > 1.e-3)
+        {
+
+            factor_n = (QdotHProduct_n) / Q1Q2dotProduct_n - (Q2dotHProduct_n) / Q2dotProduct_n;
+        }
+        else
+            factor_n = -(Q2dotHProduct_n - deltaQ2 / gradient_eta) / Q2dotProduct_n;
+        factor_n /= (dotProduct_n - Q1Q2dotProduct_n);
+        cblas_daxpy(dim_p * dim_p, -factor_p, Qorb0_p.data(), 1, Z_p.data(), 1);
+        cblas_daxpy(dim_n * dim_n, -factor_n, Qorb0_n.data(), 1, Z_n.data(), 1);
+
+        // Q2
+        if (fabs(Q1Q2dotProduct_p) > 1.e-3)
+        {
+            factor_p = (QdotHProduct_p) / dotProduct_p - (Q2dotHProduct_p) / Q1Q2dotProduct_p;
+        }
+        else
+            factor_p = (QdotHProduct_p) / dotProduct_p;
+        factor_p /= (Q1Q2dotProduct_p - Q2dotProduct_p);
+
+        if (fabs(Q1Q2dotProduct_n) > 1.e-3)
+        {
+            factor_n = (QdotHProduct_n) / dotProduct_n - (Q2dotHProduct_n) / Q1Q2dotProduct_n;
+        }
+        else
+            factor_n = (QdotHProduct_n) / dotProduct_n;
+        factor_n /= (Q1Q2dotProduct_p - Q2dotProduct_n);
+        // std::cout << factor_p << "  " << factor_n << "   " << Q2dotProduct_p << "  " << Q2dotHProduct_p << "  " << Q1Q2dotProduct_p << std::endl;
+        // std::cout << QdotHProduct_p << "  " << deltaQ0 << "  " << gradient_eta << "  " << dotProduct_p << "  " << Q2dotHProduct_p << "  " << deltaQ2 << "  " << gradient_eta << "  " << Q1Q2dotProduct_p << std::endl;
+        cblas_daxpy(dim_p * dim_p, -factor_p, Qorb2_p.data(), 1, Z_p.data(), 1);
+        cblas_daxpy(dim_n * dim_n, -factor_n, Qorb2_n.data(), 1, Z_n.data(), 1);
+        Cal_Gradient_preconditioned_given_gradient(Z_p.data(), Z_n.data());
+
+        //--------------------------------
+        // cblas_daxpy(dim_p * dim_p, -1. * QdotHProduct_p / (dotProduct_p), Qorb0_p.data(), 1, Z_p.data(), 1);
+        // cblas_daxpy(dim_n * dim_n, -1. * QdotHProduct_n / (dotProduct_n), Qorb0_n.data(), 1, Z_n.data(), 1);
+        // Cal_Gradient_preconditioned_given_gradient(Z_p.data(), Z_n.data());
+        // cblas_daxpy(dim_p * dim_p, -1. * deltaQ0 / (dotProduct_p), Qorb0_p.data(), 1, Z_p.data(), 1);
+        // cblas_daxpy(dim_n * dim_n, -1. * deltaQ0 / (dotProduct_n), Qorb0_n.data(), 1, Z_n.data(), 1);
+
+        factor_p = -1. * deltaQ0 / (dotProduct_p);
+        if (fabs(Q1Q2dotProduct_p) > 1.e-3)
+            factor_p += -1. * deltaQ2 / (Q1Q2dotProduct_p);
+        cblas_daxpy(dim_p * dim_p, factor_p, Qorb0_p.data(), 1, Z_p.data(), 1);
+
+        factor_p = -1. * deltaQ2 / (Q2dotProduct_p);
+        if (fabs(Q1Q2dotProduct_p) > 1.e-3)
+            factor_p += -1. * deltaQ0 / (Q1Q2dotProduct_p);
+        cblas_daxpy(dim_p * dim_p, factor_p, Qorb0_p.data(), 1, Z_p.data(), 1);
+
+
+        factor_n = -1. * deltaQ0 / (dotProduct_n);
+        if (fabs(Q1Q2dotProduct_n) > 1.e-3)
+            factor_n += -1. * deltaQ2 / (Q1Q2dotProduct_n);
+        cblas_daxpy(dim_n * dim_n, factor_n, Qorb0_n.data(), 1, Z_n.data(), 1);
+
+        factor_n = -1. * deltaQ2 / (Q2dotProduct_n);
+        if (fabs(Q1Q2dotProduct_n) > 1.e-3)
+            factor_n += -1. * deltaQ0 / (Q1Q2dotProduct_n);
+        cblas_daxpy(dim_n * dim_n, factor_n, Qorb0_n.data(), 1, Z_n.data(), 1);
+
+        // UpdateU_Thouless_pade(Z_p.data(), Z_n.data());
+        UpdateU_Thouless_1st(Z_p.data(), Z_n.data());
+        UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
+
+        cblas_daxpby(dim_p * dim_p, 1., rho_last_p, 1, (1.0 - density_mixing_factor), rho_p, 1);
+        cblas_daxpby(dim_n * dim_n, 1., rho_last_n, 1, (1.0 - density_mixing_factor), rho_n, 1);
+
+        cblas_daxpby(dim_p * dim_p, field_mixing_factor, FockTerm_p, 1, 0.0, rho_last_p, 1);
+        cblas_daxpby(dim_n * dim_n, field_mixing_factor, FockTerm_n, 1, 0.0, rho_last_n, 1);
+        UpdateF(); // Update the Fock matrix
+        cblas_daxpby(dim_p * dim_p, 1., rho_last_p, 1, (1.0 - field_mixing_factor), FockTerm_p, 1);
+        cblas_daxpby(dim_n * dim_n, 1., rho_last_n, 1, (1.0 - field_mixing_factor), FockTerm_n, 1);
+
+        Diagonalize();
+        // if (fabs(E_previous - EHF) < this->tolerance)
+        //     break;
+        //---------------------------------------------------------------
+
+        // CalcEHF();
+        // std::cout << "   " << std::setw(5) << iterations << "   " << std::setw(10) << std::setfill(' ') << std::fixed << std::setprecision(4) << EHF << std::endl;
+        if (CheckConvergence())
+            break;
+    }
+    UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
+    UpdateF();             // Update the Fock matrix
+    CalcEHF();
+    mkl_free(rho_last_p);
+    mkl_free(rho_last_n);
+    CalOnebodyOperator(Q0_p.data(), Q0_n.data(), tempQp, tempQn);
+    deltaQ0 = tempQn + tempQp;
+    CalOnebodyOperator(Q2_p.data(), Q2_n.data(), tempQp, tempQn);
+    deltaQ2 = tempQn + tempQp;
+    std::cout << "  Q0  " << Q0_expect << "   " << deltaQ0 << "    Q2 " << Q2_expect << "   " << deltaQ2 << std::endl;
+
+    std::cout << std::setw(15) << std::setprecision(10);
+    if (iterations < maxiter)
+    {
+        std::cout << "  HF converged after " << iterations << " iterations. " << std::endl;
+    }
+    else
+    {
+        std::cout << "\033[31m!!!! Warning: Restricted Hartree-Fock calculation didn't converge after " << iterations << " iterations.\033[0m" << std::endl;
+        std::cout << std::endl;
+    }
+    PrintEHF();
+}
+
+
+*/
 //*********************************************************************
 /// Diagonalize and update the Fock matrix until convergence.
 void HartreeFock::Solve_diag()
@@ -632,7 +1062,7 @@ void HartreeFock::Solve_diag()
         cblas_daxpby(dim_p * dim_p, 1., rho_last_p, 1, (1.0 - field_mixing_factor), FockTerm_p, 1);
         cblas_daxpby(dim_n * dim_n, 1., rho_last_n, 1, (1.0 - field_mixing_factor), FockTerm_n, 1);
 
-        // CalcEHF();
+        CalcEHF();
         // save hole parameters
         // string filename = "Output/HF_para_" + std::to_string(iterations) + ".dat";
         // this->SaveHoleParameters(filename);
@@ -742,8 +1172,9 @@ void HartreeFock::Solve_noCore()
 }
 
 //*********************************************************************
-// gradient method
-void HartreeFock::Solve_graient()
+// Gradient method
+// First order gradient are considered
+void HartreeFock::Solve_gradient()
 {
     double E_previous = 1.e10;
     iterations = 0; // count number of iterations
@@ -760,16 +1191,18 @@ void HartreeFock::Solve_graient()
         std::vector<double> Z_n(dim_n * dim_n, 0);
 
         // Cal_Gradient(Z_p.data(), Z_n.data());
-        Cal_Gradient_preconditioned(Z_p.data(), Z_n.data());
-        // Cal_Gradient_preconditioned_SRG(Z_p.data(), Z_n.data());
-        UpdateU_Thouless(Z_p.data(), Z_n.data());
+        // Cal_Gradient_preconditioned(Z_p.data(), Z_n.data());
+        Cal_Gradient_preconditioned_SRG(Z_p.data(), Z_n.data());
+
+        // UpdateU_Thouless_pade(Z_p.data(), Z_n.data());
+        UpdateU_Thouless_1st(Z_p.data(), Z_n.data());
 
         UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
         UpdateF();             // Update the Fock matrix
         // Diagonalize();
         CalcEHF();
         // std::cout << "   " << std::setw(5) << iterations << "   " << std::setw(10) << std::setfill(' ') << std::fixed << std::setprecision(4) << EHF << std::endl;
-        // if (CheckConvergence())
+        //  if (CheckConvergence())
         if (fabs(E_previous - EHF) < this->tolerance)
             break;
     }
@@ -791,59 +1224,7 @@ void HartreeFock::Solve_graient()
     return;
 }
 
-/*
-void HartreeFock::Solve_graient()
-{
-    double E_previous = 1.e10;
-    iterations = 0; // count number of iterations
-    UpdateDensityMatrix();
-    UpdateF();
-    CalcEHF();
-    // std::cout << "HF start  iterations. " << std::endl;
-    for (iterations = 0; iterations < maxiter; ++iterations)
-    {
-        E_previous = this->EHF;
-        TransferOperatorToHFbasis(FockTerm_p, FockTerm_n);
-        std::vector<double> Z_p(dim_p * dim_p, 0); // gradient matrix
-        std::vector<double> Z_n(dim_n * dim_n, 0);
-
-        // Cal_Gradient(Z_p.data(), Z_n.data());
-        //Cal_Gradient_preconditioned(Z_p.data(), Z_n.data());
-        Cal_Gradient_preconditioned_SRG(Z_p.data(), Z_n.data());
-        UpdateU_Thouless(Z_p.data(), Z_n.data());
-
-
-
-        // UpdateU_hybrid();
-        UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
-        UpdateF();             // Update the Fock matrix
-        //CalcEHF();
-        Diagonalize();
-        // CalcEHF();
-        // std::cout << "   " << std::setw(5) << iterations << "   " << std::setw(10) << std::setfill(' ') << std::fixed << std::setprecision(4) << EHF << std::endl;
-        // if (CheckConvergence())
-        if (fabs(E_previous - EHF) < this->tolerance)
-            break;
-    }
-    UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
-    UpdateF();             // Update the Fock matrix
-    CalcEHF();
-
-    std::cout << std::setw(15) << std::setprecision(10);
-    if (iterations < maxiter)
-    {
-        std::cout << "  HF converged after " << iterations << " iterations. " << std::endl;
-    }
-    else
-    {
-        std::cout << "\033[31m!!!! Warning: Hartree-Fock calculation didn't converge after " << iterations << " iterations.\033[0m" << std::endl;
-        std::cout << std::endl;
-    }
-    PrintEHF();
-    return;
-}*/
-
-void HartreeFock::Solve_graient_constrainted()
+void HartreeFock::Solve_gradient_Constraint()
 {
     /// inital Q operator
     double *Q2_p, *Q0_p, *Q_2_p, *Q2_n, *Q0_n, *Q_2_n;
@@ -857,7 +1238,7 @@ void HartreeFock::Solve_graient_constrainted()
     double Q0_expect = modelspace->GetShapeQ0();
     double Q2_expect = modelspace->GetShapeQ2();
     double deltaQ0, deltaQ2, deltaQ_2;
-    double tempQp, tempQn;
+    double tempQp, tempQn, constrainedQ;
 
     memset(Q0_p, 0, (dim_p * dim_p) * sizeof(double));
     for (size_t i = 0; i < Ham->Q2MEs_p.Q0_list.size(); i++)
@@ -881,7 +1262,7 @@ void HartreeFock::Solve_graient_constrainted()
         int index = Ham->Q2MEs_p.Q_2_list[i];         // index of M scheme One body operator
         int ia = Ham->MSMEs.OB_p[index].GetIndex_a(); // index of a in M scheme
         int ib = Ham->MSMEs.OB_p[index].GetIndex_b();
-        Q_2_p[ia * dim_p + ib] = Ham->Q2MEs_p.Q_2_MSMEs[i];
+        Q2_p[ia * dim_p + ib] += Ham->Q2MEs_p.Q_2_MSMEs[i];
     }
 
     memset(Q0_n, 0, (dim_n * dim_n) * sizeof(double));
@@ -906,84 +1287,185 @@ void HartreeFock::Solve_graient_constrainted()
         int index = Ham->Q2MEs_n.Q_2_list[i];         // index of M scheme One body operator
         int ia = Ham->MSMEs.OB_n[index].GetIndex_a(); // index of a in M scheme
         int ib = Ham->MSMEs.OB_n[index].GetIndex_b();
-        Q_2_n[ia * dim_n + ib] = Ham->Q2MEs_n.Q_2_MSMEs[i];
+        Q2_n[ia * dim_n + ib] += Ham->Q2MEs_n.Q_2_MSMEs[i];
     }
 
     ////////////////////////////////////////////////////////////
-    iterations = 0; // count number of iterations
+    double E_previous = 1.e10;
+    int number_of_Q = 2;
+    iterations = 0;        // count number of iterations
+    UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
+    double ConstarinedLargeNum = 1000.;
+    UpdateF();
+    CalOnebodyOperator(Q0_p, Q0_n, tempQp, tempQn);
+    deltaQ0 = Q0_expect - tempQp - tempQn;
+    constrainedQ = ConstarinedLargeNum * deltaQ0 * deltaQ0;
+    // std::cout << deltaQ0 << "  " << Q0_expect << "   " << tempQn + tempQp << "   " << tempQp << "   " << tempQn << std::endl;
+    CalOnebodyOperator(Q2_p, Q2_n, tempQp, tempQn);
+    deltaQ2 = Q2_expect - tempQp - tempQn;
+    constrainedQ += ConstarinedLargeNum * deltaQ2 * deltaQ2;
+    // std::cout << deltaQ2 << "  " << Q2_expect << "   " << tempQn + tempQp << "   " << tempQp << "   " << tempQn << std::endl;
+    CalcEHF(constrainedQ);
+    // CalcEHF();
     tolerance = 1.e-4;
+    gradient_eta = 0.05;
     for (iterations = 0; iterations < maxiter; ++iterations)
     {
-        UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
-        UpdateF();
-
-        CalOnebodyOperator(Q0_p, Q0_n, tempQp, tempQn);
-        deltaQ0 = Q0_expect - tempQp - tempQn;
-        // std::cout << deltaQ0 << "  " << Q0_expect << "   " << tempQn + tempQp << "   " << tempQp << "   " << tempQn << std::endl;
-        CalOnebodyOperator(Q2_p, Q2_n, tempQp, tempQn);
-        deltaQ2 = Q2_expect - tempQp - tempQn;
-        // std::cout << deltaQ2 << "  " << Q2_expect << "   " << tempQn + tempQp << "   " << tempQp << "   " << tempQn << std::endl;
-        TransferOperatorToHFbasis(FockTerm_p, FockTerm_n);
+        E_previous = this->EHF;
 
         std::vector<double> Qorb0_p(dim_p * dim_p, 0);
         std::vector<double> Qorb0_n(dim_n * dim_n, 0);
         std::vector<double> Qorb2_p(dim_p * dim_p, 0);
         std::vector<double> Qorb2_n(dim_n * dim_n, 0);
+        std::vector<double> Z_p(dim_p * dim_p, 0); // gradient matrix
+        std::vector<double> Z_n(dim_n * dim_n, 0);
+
+        TransferOperatorToHFbasis(FockTerm_p, FockTerm_n);
+        cblas_dcopy(dim_p * dim_p, FockTerm_p, 1, Z_p.data(), 1);
+        cblas_dcopy(dim_n * dim_n, FockTerm_n, 1, Z_n.data(), 1);
+        Operator_ph(Z_p.data(), Z_n.data());
+
         cblas_dcopy(dim_p * dim_p, Q0_p, 1, Qorb0_p.data(), 1);
         cblas_dcopy(dim_n * dim_n, Q0_n, 1, Qorb0_n.data(), 1);
         cblas_dcopy(dim_p * dim_p, Q2_p, 1, Qorb2_p.data(), 1);
         cblas_dcopy(dim_n * dim_n, Q2_n, 1, Qorb2_n.data(), 1);
+
         TransferOperatorToHFbasis(Qorb0_p.data(), Qorb0_n.data());
         TransferOperatorToHFbasis(Qorb2_p.data(), Qorb2_n.data());
+        Operator_ph(Qorb0_p.data(), Qorb0_n.data());
+        Operator_ph(Qorb2_p.data(), Qorb2_n.data());
 
-        std::vector<double> Z_p(dim_p * dim_p, 0); // gradient matrix
-        std::vector<double> Z_n(dim_n * dim_n, 0);
-        // Cal_Gradient(Z_p.data(), Z_n.data());
-        // Cal_Gradient_preconditioned(Z_p.data(), Z_n.data());
-        Cal_Gradient_preconditioned_SRG(Z_p.data(), Z_n.data());
+        //---------------------------------------------
+        std::vector<double> Fph_p(dim_p * dim_p, 0);
+        std::vector<double> Fph_n(dim_n * dim_n, 0);
+        cblas_dcopy(dim_p * dim_p, FockTerm_p, 1, Fph_p.data(), 1);
+        cblas_dcopy(dim_n * dim_n, FockTerm_n, 1, Fph_n.data(), 1);
+        Operator_ph(Fph_p.data(), Fph_n.data());
 
-        UpdateU_Thouless(Z_p.data(), Z_n.data());
+        double dotProduct_p, QdotHProduct_p, dotProduct_n, QdotHProduct_n;
+        QdotHProduct_p = -cblas_ddot(dim_p * dim_p, Fph_p.data(), 1, Qorb0_p.data(), 1);
+        dotProduct_p = -cblas_ddot(dim_p * dim_p, Qorb0_p.data(), 1, Qorb0_p.data(), 1);
+        QdotHProduct_n = -cblas_ddot(dim_n * dim_n, Fph_n.data(), 1, Qorb0_n.data(), 1);
+        dotProduct_n = -cblas_ddot(dim_n * dim_n, Qorb0_n.data(), 1, Qorb0_n.data(), 1);
 
-        // UpdateU_hybrid();
+        double Q2dotProduct_p, Q2dotHProduct_p, Q2dotProduct_n, Q2dotHProduct_n;
+        Q2dotHProduct_p = -cblas_ddot(dim_p * dim_p, Fph_p.data(), 1, Qorb2_p.data(), 1);
+        Q2dotProduct_p = -cblas_ddot(dim_p * dim_p, Qorb2_p.data(), 1, Qorb2_p.data(), 1);
+        Q2dotHProduct_n = -cblas_ddot(dim_n * dim_n, Fph_n.data(), 1, Qorb2_n.data(), 1);
+        Q2dotProduct_n = -cblas_ddot(dim_n * dim_n, Qorb2_n.data(), 1, Qorb2_n.data(), 1);
+
+        double Q1Q2dotProduct_p, Q1Q2dotProduct_n;
+        Q1Q2dotProduct_p = -cblas_ddot(dim_p * dim_p, Qorb0_p.data(), 1, Qorb2_p.data(), 1);
+        Q1Q2dotProduct_n = -cblas_ddot(dim_n * dim_n, Qorb0_n.data(), 1, Qorb2_n.data(), 1);
+
+        //----------------------------------------
+        std::vector<double> A_p(number_of_Q * number_of_Q, 0);
+        std::vector<double> b_p(number_of_Q, 0);
+        std::vector<int> ipiv_p(number_of_Q, 0);
+
+        A_p[0] = dotProduct_p;
+        A_p[1] = Q1Q2dotProduct_p;
+        A_p[2] = Q1Q2dotProduct_p;
+        A_p[3] = Q2dotProduct_p;
+
+        b_p[0] = QdotHProduct_p + deltaQ0 / (gradient_eta);
+        b_p[1] = Q2dotHProduct_p + deltaQ2 / (gradient_eta);
+        b_p[0] = QdotHProduct_p;
+        b_p[1] = Q2dotHProduct_p;
+
+        if (LAPACKE_dgesv(LAPACK_ROW_MAJOR, number_of_Q, 1, A_p.data(), number_of_Q, ipiv_p.data(), b_p.data(), 1) != 0)
+        {
+            std::cout << "  Linear equation error!" << std::endl;
+            exit(0);
+        }
+
+        std::vector<double> A_n(number_of_Q * number_of_Q, 0);
+        std::vector<double> b_n(number_of_Q, 0);
+        std::vector<int> ipiv_n(number_of_Q, 0);
+
+        A_n[0] = dotProduct_n;
+        A_n[1] = Q1Q2dotProduct_n;
+        A_n[2] = Q1Q2dotProduct_n;
+        A_n[3] = Q2dotProduct_n;
+
+        b_n[0] = QdotHProduct_n + deltaQ0 / (gradient_eta);
+        b_n[1] = Q2dotHProduct_n + deltaQ2 / (gradient_eta);
+        b_n[0] = QdotHProduct_n;
+        b_n[1] = Q2dotHProduct_n;
+
+        if (LAPACKE_dgesv(LAPACK_ROW_MAJOR, number_of_Q, 1, A_n.data(), number_of_Q, ipiv_n.data(), b_n.data(), 1) != 0)
+        {
+            std::cout << "  Linear equation error!" << std::endl;
+            exit(0);
+        }
+
+        cblas_daxpy(dim_p * dim_p, -b_p[0], Qorb0_p.data(), 1, Z_p.data(), 1);
+        cblas_daxpy(dim_p * dim_p, -b_p[1], Qorb2_p.data(), 1, Z_p.data(), 1);
+        cblas_daxpy(dim_n * dim_n, -b_n[0], Qorb0_n.data(), 1, Z_n.data(), 1);
+        cblas_daxpy(dim_n * dim_n, -b_n[1], Qorb2_n.data(), 1, Z_n.data(), 1);
+        Cal_Gradient_preconditioned_given_gradient(Z_p.data(), Z_n.data());
+        // Cal_Gradient_given_gradient(Z_p.data(), Z_n.data());
+        //--------------------------------
+        //  cblas_daxpy(dim_p * dim_p, -1. * QdotHProduct_p / (dotProduct_p), Qorb0_p.data(), 1, Z_p.data(), 1);
+        //  cblas_daxpy(dim_n * dim_n, -1. * QdotHProduct_n / (dotProduct_n), Qorb0_n.data(), 1, Z_n.data(), 1);
+        //  Cal_Gradient_preconditioned_given_gradient(Z_p.data(), Z_n.data());
+        //  cblas_daxpy(dim_p * dim_p, -1. * deltaQ0 / (dotProduct_p), Qorb0_p.data(), 1, Z_p.data(), 1);
+        //  cblas_daxpy(dim_n * dim_n, -1. * deltaQ0 / (dotProduct_n), Qorb0_n.data(), 1, Z_n.data(), 1);
+
+        A_p[0] = dotProduct_p;
+        A_p[1] = Q1Q2dotProduct_p;
+        A_p[2] = Q1Q2dotProduct_p;
+        A_p[3] = Q2dotProduct_p;
+
+        b_p[0] = deltaQ0;
+        b_p[1] = deltaQ2;
+
+        if (LAPACKE_dgesv(LAPACK_ROW_MAJOR, number_of_Q, 1, A_p.data(), number_of_Q, ipiv_p.data(), b_p.data(), 1) != 0)
+        {
+            std::cout << "  Linear equation error!" << std::endl;
+            exit(0);
+        }
+
+        A_n[0] = dotProduct_n;
+        A_n[1] = Q1Q2dotProduct_n;
+        A_n[2] = Q1Q2dotProduct_n;
+        A_n[3] = Q2dotProduct_n;
+
+        b_n[0] = deltaQ0;
+        b_n[1] = deltaQ2;
+
+        if (LAPACKE_dgesv(LAPACK_ROW_MAJOR, number_of_Q, 1, A_n.data(), number_of_Q, ipiv_n.data(), b_n.data(), 1) != 0)
+        {
+            std::cout << "  Linear equation error!" << std::endl;
+            exit(0);
+        }
+
+        cblas_daxpy(dim_p * dim_p, 1. * -b_p[0], Qorb0_p.data(), 1, Z_p.data(), 1);
+        cblas_daxpy(dim_p * dim_p, 1. * -b_p[1], Qorb2_p.data(), 1, Z_p.data(), 1);
+        cblas_daxpy(dim_n * dim_n, 1. * -b_n[0], Qorb0_n.data(), 1, Z_n.data(), 1);
+        cblas_daxpy(dim_n * dim_n, 1. * -b_n[1], Qorb2_n.data(), 1, Z_n.data(), 1);
+
+        UpdateU_Thouless_pade(Z_p.data(), Z_n.data());
+        // UpdateU_Thouless_1st(Z_p.data(), Z_n.data());
         UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
-        UpdateF();             // Update the Fock matrix
-        Diagonalize();
-        /*******************/
 
-        // UpdateU_Qconstraint(deltaQ0, Q0_p, Q0_n);
-        // UpdateU_Qconstraint(deltaQ2, Q2_p, Q2_n);
+        UpdateF(); // Update the Fock matrix
 
-        // UpdateU_Qconstraint(deltaQ0, Qorb0_p.data(), Qorb0_n.data());
-        // UpdateU_Qconstraint(deltaQ2, Qorb2_p.data(), Qorb2_n.data());
+        CalOnebodyOperator(Q0_p, Q0_n, tempQp, tempQn);
+        deltaQ0 = tempQp + tempQn - Q0_expect;
+        // std::cout << deltaQ0 << "  " << Q0_expect << "   " << tempQn + tempQp << "   " << tempQp << "   " << tempQn << std::endl;
+        CalOnebodyOperator(Q2_p, Q2_n, tempQp, tempQn);
+        deltaQ2 = tempQp + tempQn - Q2_expect;
+        // std::cout << deltaQ2 << "  " << Q2_expect << "   " << tempQn + tempQp << "   " << tempQp << "   " << tempQn << std::endl;
 
-        UpdateU_Qconstraint_generatZ(deltaQ0, Qorb0_p.data(), Qorb0_n.data());
-        UpdateU_Qconstraint_generatZ(deltaQ2, Qorb2_p.data(), Qorb2_n.data());
-
-        cblas_daxpy(dim_p * dim_p, 1., Qorb0_p.data(), 1, Qorb2_p.data(), 1);
-        cblas_daxpy(dim_n * dim_n, 1., Qorb0_n.data(), 1, Qorb2_n.data(), 1);
-
-        UpdateU_Qconstraint_updateU(Qorb2_p.data(), Qorb2_n.data());
-
-        UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
-        UpdateF();
-
-        TransferOperatorToHFbasis(FockTerm_p, FockTerm_n);
-
-        memset(Vij_p, 0, dim_p * dim_p * sizeof(double));
-        memset(Vij_n, 0, dim_n * dim_n * sizeof(double));
-
-        UpdateF_FromQ(Q0_p, Q0_n);
-        UpdateF_FromQ(Q2_p, Q2_n);
-
-        cblas_daxpy(dim_p * dim_p, 1., Vij_p, 1, FockTerm_p, 1);
-        cblas_daxpy(dim_n * dim_n, 1., Vij_n, 1, FockTerm_n, 1);
-
-        UpdateU_hybrid();
-        //---------------------------------------------------------------
-
+        constrainedQ = ConstarinedLargeNum * deltaQ0 * deltaQ0;
+        constrainedQ += ConstarinedLargeNum * deltaQ2 * deltaQ2;
+        CalcEHF(constrainedQ);
         // CalcEHF();
-        // std::cout << "   " << std::setw(5) << iterations << "   " << std::setw(10) << std::setfill(' ') << std::fixed << std::setprecision(4) << EHF << std::endl;
-        if (CheckConvergence())
+        //   std::cout << "   " << std::setw(5) << iterations << "   " << std::setw(10) << std::setfill(' ') << std::fixed << std::setprecision(4) << EHF << std::endl;
+        //   if (CheckConvergence())
+
+        if (fabs(E_previous - EHF) < this->tolerance)
             break;
     }
     UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
@@ -994,7 +1476,7 @@ void HartreeFock::Solve_graient_constrainted()
     deltaQ0 = tempQn + tempQp;
     CalOnebodyOperator(Q2_p, Q2_n, tempQp, tempQn);
     deltaQ2 = tempQn + tempQp;
-    std::cout << "   Q0  " << Q0_expect << "   " << deltaQ0 << "    Q2 " << Q2_expect << "   " << deltaQ2 << std::endl;
+    std::cout << "  Q0  " << Q0_expect << "   " << deltaQ0 << "    Q2 " << Q2_expect << "   " << deltaQ2 << std::endl;
 
     std::cout << std::setw(15) << std::setprecision(10);
     if (iterations < maxiter)
@@ -1013,35 +1495,176 @@ void HartreeFock::Solve_graient_constrainted()
     mkl_free(Q2_n);
     mkl_free(Q0_n);
     mkl_free(Q_2_n);
+}
 
-    //*************************************************
-    iterations = 0; // count number of iterations
-    UpdateDensityMatrix();
+/*
+void HartreeFock::Solve_gradient_Constraint()
+{
+    /// inital Q operator
+    double *Q2_p, *Q0_p, *Q_2_p, *Q2_n, *Q0_n, *Q_2_n;
+    Q2_p = (double *)mkl_malloc((dim_p * dim_p) * sizeof(double), 64);
+    Q0_p = (double *)mkl_malloc((dim_p * dim_p) * sizeof(double), 64);
+    Q_2_p = (double *)mkl_malloc((dim_p * dim_p) * sizeof(double), 64);
+    Q2_n = (double *)mkl_malloc((dim_n * dim_n) * sizeof(double), 64);
+    Q0_n = (double *)mkl_malloc((dim_n * dim_n) * sizeof(double), 64);
+    Q_2_n = (double *)mkl_malloc((dim_n * dim_n) * sizeof(double), 64);
+
+    double Q0_expect = modelspace->GetShapeQ0();
+    double Q2_expect = modelspace->GetShapeQ2();
+    double deltaQ0, deltaQ2, deltaQ_2;
+    double tempQp, tempQn, constrainedQ;
+
+    memset(Q0_p, 0, (dim_p * dim_p) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_p.Q0_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_p.Q0_list[i];          // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_p[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_p[index].GetIndex_b();
+        Q0_p[ia * dim_p + ib] = Ham->Q2MEs_p.Q0_MSMEs[i];
+    }
+    memset(Q2_p, 0, (dim_p * dim_p) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_p.Q2_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_p.Q2_list[i];          // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_p[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_p[index].GetIndex_b();
+        Q2_p[ia * dim_p + ib] = Ham->Q2MEs_p.Q2_MSMEs[i];
+    }
+    memset(Q_2_p, 0, (dim_p * dim_p) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_p.Q_2_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_p.Q_2_list[i];         // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_p[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_p[index].GetIndex_b();
+        Q2_p[ia * dim_p + ib] += Ham->Q2MEs_p.Q_2_MSMEs[i];
+    }
+
+    memset(Q0_n, 0, (dim_n * dim_n) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_n.Q0_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_n.Q0_list[i];          // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_n[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_n[index].GetIndex_b();
+        Q0_n[ia * dim_n + ib] = Ham->Q2MEs_n.Q0_MSMEs[i];
+    }
+    memset(Q2_n, 0, (dim_n * dim_n) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_n.Q2_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_n.Q2_list[i];          // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_n[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_n[index].GetIndex_b();
+        Q2_n[ia * dim_n + ib] = Ham->Q2MEs_n.Q2_MSMEs[i];
+    }
+    memset(Q_2_n, 0, (dim_n * dim_n) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_n.Q_2_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_n.Q_2_list[i];         // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_n[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_n[index].GetIndex_b();
+        Q2_n[ia * dim_n + ib] += Ham->Q2MEs_n.Q_2_MSMEs[i];
+    }
+
+    ////////////////////////////////////////////////////////////
+    double E_previous = 1.e10;
+    double last_shift = 1000.;
+    iterations = 0;        // count number of iterations
+    UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
     UpdateF();
-    // std::cout << "HF start  iterations. " << std::endl;
+    CalOnebodyOperator(Q0_p, Q0_n, tempQp, tempQn);
+    deltaQ0 = Q0_expect - tempQp - tempQn;
+    // std::cout << deltaQ0 << "  " << Q0_expect << "   " << tempQn + tempQp << "   " << tempQp << "   " << tempQn << std::endl;
+    CalOnebodyOperator(Q2_p, Q2_n, tempQp, tempQn);
+    deltaQ2 = Q2_expect - tempQp - tempQn;
+    // constrainedQ += ConstarinedLargeNum * deltaQ2 * deltaQ2;
+    // std::cout << deltaQ2 << "  " << Q2_expect << "   " << tempQn + tempQp << "   " << tempQp << "   " << tempQn << std::endl;
+    constrainedQ = 0;
+    // CalcEHF(constrainedQ);
+    CalcEHF();
+    tolerance = 1.e-5;
+    gradient_eta = 0.0001;
     for (iterations = 0; iterations < maxiter; ++iterations)
     {
-        TransferOperatorToHFbasis(FockTerm_p, FockTerm_n);
+        E_previous = this->EHF;
+        std::vector<double> Qorb0_p(dim_p * dim_p, 0);
+        std::vector<double> Qorb0_n(dim_n * dim_n, 0);
+        std::vector<double> Qorb2_p(dim_p * dim_p, 0);
+        std::vector<double> Qorb2_n(dim_n * dim_n, 0);
         std::vector<double> Z_p(dim_p * dim_p, 0); // gradient matrix
         std::vector<double> Z_n(dim_n * dim_n, 0);
 
-        // Cal_Gradient(Z_p.data(), Z_n.data());
-        // Cal_Gradient_preconditioned(Z_p.data(), Z_n.data());
-        Cal_Gradient_preconditioned_SRG(Z_p.data(), Z_n.data());
-        UpdateU_Thouless(Z_p.data(), Z_n.data());
+        TransferOperatorToHFbasis(FockTerm_p, FockTerm_n);
 
-        // UpdateU_hybrid();
+        // Cal_Gradient(Z_p.data(), Z_n.data());
+        cblas_dcopy(dim_p * dim_p, FockTerm_p, 1, Z_p.data(), 1);
+        cblas_dcopy(dim_n * dim_n, FockTerm_n, 1, Z_n.data(), 1);
+        Operator_ph(Z_p.data(), Z_n.data());
+
+        cblas_dcopy(dim_p * dim_p, Q0_p, 1, Qorb0_p.data(), 1);
+        cblas_dcopy(dim_n * dim_n, Q0_n, 1, Qorb0_n.data(), 1);
+        // cblas_dcopy(dim_p * dim_p, Q2_p, 1, Qorb2_p.data(), 1);
+        // cblas_dcopy(dim_n * dim_n, Q2_n, 1, Qorb2_n.data(), 1);
+
+        TransferOperatorToHFbasis(Qorb0_p.data(), Qorb0_n.data());
+        Operator_ph(Qorb0_p.data(), Qorb0_n.data());
+
+        //---------------------------------------------
+        std::vector<double> Fph_p(dim_p * dim_p, 0);
+        std::vector<double> Fph_n(dim_n * dim_n, 0);
+        cblas_dcopy(dim_p * dim_p, FockTerm_p, 1, Fph_p.data(), 1);
+        cblas_dcopy(dim_n * dim_n, FockTerm_n, 1, Fph_n.data(), 1);
+        Operator_ph(Fph_p.data(), Fph_n.data());
+
+        double dotProduct_p, QdotHProduct_p, dotProduct_n, QdotHProduct_n, factor_p, factor_n;
+
+        QdotHProduct_p = cblas_ddot(dim_p * dim_p, Fph_p.data(), 1, Qorb0_p.data(), 1);
+        dotProduct_p = cblas_ddot(dim_p * dim_p, Qorb0_p.data(), 1, Qorb0_p.data(), 1);
+        // factor_p = deltaQ0 / dotProduct;
+        // factor_p = -1. * gradient_eta * QdotHProduct / (dotProduct)-deltaQ0 / (dotProduct);
+
+        QdotHProduct_n = cblas_ddot(dim_n * dim_n, Fph_n.data(), 1, Qorb0_n.data(), 1);
+        dotProduct_n = cblas_ddot(dim_n * dim_n, Qorb0_n.data(), 1, Qorb0_n.data(), 1);
+        // factor_n = deltaQ0 / (dotProduct);
+        // factor_n = -1. * gradient_eta * QdotHProduct / (dotProduct)-deltaQ0 / (dotProduct);
+
+        //--------------------------------
+        cblas_daxpy(dim_p * dim_p, -1. * QdotHProduct_p / (dotProduct_p), Qorb0_p.data(), 1, Z_p.data(), 1);
+        cblas_daxpy(dim_n * dim_n, -1. * QdotHProduct_n / (dotProduct_n), Qorb0_n.data(), 1, Z_n.data(), 1);
+        Cal_Gradient_preconditioned_given_gradient(Z_p.data(), Z_n.data());
+
+        cblas_daxpy(dim_p * dim_p, -deltaQ0 / (dotProduct_p), Qorb0_p.data(), 1, Z_p.data(), 1);
+        cblas_daxpy(dim_n * dim_n, -deltaQ0 / (dotProduct_n), Qorb0_n.data(), 1, Z_n.data(), 1);
+
+        UpdateU_Thouless_pade(Z_p.data(), Z_n.data());
+        // UpdateU_Thouless_1st(Z_p.data(), Z_n.data());
+
         UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
-        UpdateF();             // Update the Fock matrix
-        Diagonalize();
+        UpdateF();
+
+        CalOnebodyOperator(Q0_p, Q0_n, tempQp, tempQn);
+        deltaQ0 = Q0_expect - tempQp - tempQn;
+        // std::cout << deltaQ0 << "  " << Q0_expect << "   " << tempQn + tempQp << "   " << tempQp << "   " << tempQn << std::endl;
+        CalOnebodyOperator(Q2_p, Q2_n, tempQp, tempQn);
+        // deltaQ2 = Q2_expect - tempQp - tempQn;
+        //    std::cout << deltaQ2 << "  " << Q2_expect << "   " << tempQn + tempQp << "   " << tempQp << "   " << tempQn << std::endl;
+        // CalcEHF(constrainedQ);
+        CalcEHF();
+
         // CalcEHF();
-        // std::cout << "   " << std::setw(5) << iterations << "   " << std::setw(10) << std::setfill(' ') << std::fixed << std::setprecision(4) << EHF << std::endl;
-        if (CheckConvergence())
+        //   std::cout << "   " << std::setw(5) << iterations << "   " << std::setw(10) << std::setfill(' ') << std::fixed << std::setprecision(4) << EHF << std::endl;
+        //   if (CheckConvergence())
+
+        if (fabs(E_previous - EHF) < this->tolerance)
             break;
     }
     UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
     UpdateF();             // Update the Fock matrix
     CalcEHF();
+
+    CalOnebodyOperator(Q0_p, Q0_n, tempQp, tempQn);
+    deltaQ0 = tempQn + tempQp;
+    CalOnebodyOperator(Q2_p, Q2_n, tempQp, tempQn);
+    deltaQ2 = tempQn + tempQp;
+    std::cout << "  Q0  " << Q0_expect << "   " << deltaQ0 << "    Q2 " << Q2_expect << "   " << deltaQ2 << std::endl;
 
     std::cout << std::setw(15) << std::setprecision(10);
     if (iterations < maxiter)
@@ -1050,14 +1673,22 @@ void HartreeFock::Solve_graient_constrainted()
     }
     else
     {
-        std::cout << "\033[31m!!!! Warning: Hartree-Fock calculation didn't converge after " << iterations << " iterations.\033[0m" << std::endl;
+        std::cout << "\033[31m!!!! Warning: Restricted Hartree-Fock calculation didn't converge after " << iterations << " iterations.\033[0m" << std::endl;
         std::cout << std::endl;
     }
     PrintEHF();
-    return;
+    mkl_free(Q2_p);
+    mkl_free(Q0_p);
+    mkl_free(Q_2_p);
+    mkl_free(Q2_n);
+    mkl_free(Q0_n);
+    mkl_free(Q_2_n);
 }
+*/
 
-void HartreeFock::RandomTransformationU(int RandomSeed) // Random transformation matrix UW
+//*********************************************************************
+// Random transformation matrix U
+void HartreeFock::RandomTransformationU(int RandomSeed)
 {
     // std::cout << RandomSeed << std::endl;
     srand(RandomSeed); // seed the random number generator with current time
@@ -1084,42 +1715,9 @@ void HartreeFock::RandomTransformationU(int RandomSeed) // Random transformation
     UpdateDensityMatrix();
     UpdateF();
     Diagonalize();
-    /*
-    UpdateDensityMatrix();
-    UpdateF();
-    TransferOperatorToHFbasis(FockTerm_p, FockTerm_n);
-
-    std::vector<double> HFSPE_p(dim_p, 0);
-    std::vector<double> HFSPE_n(dim_n, 0);
-    std::vector<std::pair<double, int>> SPEpairs_p(dim_p);
-    std::vector<std::pair<double, int>> SPEpairs_n(dim_n);
-    for (size_t i = 0; i < dim_p; i++)
-    {
-        HFSPE_p[i] = FockTerm_p[i * dim_p + i];
-        SPEpairs_p[i] = std::make_pair(HFSPE_p[i], i);
-    }
-    for (size_t i = 0; i < dim_n; i++)
-    {
-        HFSPE_n[i] = FockTerm_n[i * dim_n + i];
-        SPEpairs_n[i] = std::make_pair(HFSPE_n[i], i);
-    }
-    std::sort(SPEpairs_p.begin(), SPEpairs_p.end());
-    std::sort(SPEpairs_n.begin(), SPEpairs_n.end());
-    for (size_t i = 0; i < N_p; i++)
-    {
-        holeorbs_p[i] = SPEpairs_p[i].second;
-        // std::cout << SPEpairs_p[i].second << std::endl;
-    }
-    for (size_t i = 0; i < N_n; i++)
-    {
-        holeorbs_n[i] = SPEpairs_n[i].second;
-        // std::cout << SPEpairs_p[i].second << std::endl;
-    }
-    */
     return;
 }
 
-//*********************************************************************
 /// one-body density matrix
 /// \f$ <i|\rho|j> = \sum\limits_{\beta} C_{ i beta} C_{ beta j } \f$
 /// where \f$n_{\beta} \f$ ensures that beta runs over HF orbits in
@@ -1138,6 +1736,40 @@ void HartreeFock::UpdateDensityMatrix()
     for (size_t i = 0; i < N_n; i++)
     {
         cblas_dcopy(dim_n, U_n + holeorbs_n[i], dim_n, tmp_n + i, N_n);
+    }
+
+    cblas_dcopy(dim_p * N_p, tmp_p, 1, tmp_p_copy, 1);
+    cblas_dcopy(dim_n * N_n, tmp_n, 1, tmp_n_copy, 1);
+    if (N_p > 0)
+        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, dim_p, dim_p, N_p, 1., tmp_p, N_p, tmp_p_copy, N_p, 0, rho_p, dim_p);
+    if (N_n > 0)
+        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, dim_n, dim_n, N_n, 1., tmp_n, N_n, tmp_n_copy, N_n, 0, rho_n, dim_n);
+
+    mkl_free(tmp_p);
+    mkl_free(tmp_n);
+    mkl_free(tmp_p_copy);
+    mkl_free(tmp_n_copy);
+}
+
+// indicate orbits
+void HartreeFock::UpdateDensityMatrix(const std::vector<int> proton_vec, const std::vector<int> neutron_vec)
+{
+    if (proton_vec.size() != N_p or neutron_vec.size() != N_n)
+    {
+        std::cout << "  Number of particle error!  UpdateDensityMatrix() " << std::endl;
+        exit(0);
+    }
+    double *tmp_p = (double *)mkl_malloc((N_p * dim_p) * sizeof(double), 64);
+    double *tmp_p_copy = (double *)mkl_malloc((N_p * dim_p) * sizeof(double), 64);
+    double *tmp_n = (double *)mkl_malloc((N_n * dim_n) * sizeof(double), 64);
+    double *tmp_n_copy = (double *)mkl_malloc((N_n * dim_n) * sizeof(double), 64);
+    for (size_t i = 0; i < N_p; i++)
+    {
+        cblas_dcopy(dim_p, U_p + proton_vec[i], dim_p, tmp_p + i, N_p);
+    }
+    for (size_t i = 0; i < N_n; i++)
+    {
+        cblas_dcopy(dim_n, U_n + neutron_vec[i], dim_n, tmp_n + i, N_n);
     }
 
     cblas_dcopy(dim_p * N_p, tmp_p, 1, tmp_p_copy, 1);
@@ -1200,8 +1832,10 @@ void HartreeFock::UpdateU_hybrid()
     // update C
     cblas_dcopy(dim_p * dim_p, U_p, 1, tempU_p.data(), 1);
     cblas_dcopy(dim_n * dim_n, U_n, 1, tempU_n.data(), 1);
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_p, dim_p, dim_p, 1., tempU_p.data(), dim_p, Heta_p.data(), dim_p, 0, U_p, dim_p);
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_n, dim_n, dim_n, 1., tempU_n.data(), dim_n, Heta_n.data(), dim_n, 0, U_n, dim_n);
+    if (N_p > 0)
+        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_p, dim_p, dim_p, 1., Heta_p.data(), dim_p, tempU_p.data(), dim_p, 0, U_p, dim_p);
+    if (N_n > 0)
+        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_n, dim_n, dim_n, 1., Heta_n.data(), dim_n, tempU_n.data(), dim_n, 0, U_n, dim_n);
 
     // Update hole orbits
     for (size_t i = 0; i < N_p; i++)
@@ -1345,102 +1979,62 @@ void HartreeFock::UpdateU_Qconstraint_generatZ(double deltaQ, double *O_p, doubl
     cblas_dcopy(dim_n * dim_n, Oorb_n.data(), 1, Oorb_ph_n.data(), 1);
     Operator_ph(Oorb_ph_p.data(), Oorb_ph_n.data());
 
-    double dotProduct;
-    dotProduct = cblas_ddot(dim_p * dim_p, Oorb_ph_p.data(), 1, Oorb_ph_p.data(), 1);
-    factor_p = deltaQ / dotProduct;
-    /// update Horb, the Fock term should be transfor to HF basis first
-    /// double HdotQ = cblas_ddot(dim_p * dim_p, Oorb_ph_p.data(), 1, FockTerm_p, 1);
-    /// cblas_daxpy(dim_p * dim_p, -HdotQ / dotProduct, Oorb_p.data(), 1, FockTerm_p, 1);
-    /// End
-    dotProduct = cblas_ddot(dim_n * dim_n, Oorb_ph_n.data(), 1, Oorb_ph_n.data(), 1);
-    factor_n = deltaQ / dotProduct;
-    /// update Horb, the Fock term should be transfor to HF basis first
-    /// HdotQ = cblas_ddot(dim_n * dim_n, Oorb_ph_n.data(), 1, FockTerm_n, 1);
-    /// cblas_daxpy(dim_n * dim_n, -HdotQ / dotProduct, Oorb_n.data(), 1, FockTerm_n, 1);
-    /// End
+    std::vector<double> Fph_p(dim_n * dim_n, 0);
+    std::vector<double> Fph_n(dim_n * dim_n, 0);
+    cblas_dcopy(dim_p * dim_p, FockTerm_p, 1, Fph_p.data(), 1);
+    cblas_dcopy(dim_n * dim_n, FockTerm_n, 1, Fph_n.data(), 1);
+    Operator_ph(Fph_p.data(), Fph_n.data());
 
-    // std::cout<< factor_p << "  " << factor_n << std::endl;
+    double dotProduct;
+    double QdotHProduct;
+
+    QdotHProduct = cblas_ddot(dim_p * dim_p, Fph_p.data(), 1, Oorb_ph_p.data(), 1);
+    dotProduct = cblas_ddot(dim_p * dim_p, Oorb_ph_p.data(), 1, Oorb_ph_p.data(), 1);
+    // dotProduct = cblas_ddot(dim_p * dim_p, Oorb_p.data(), 1, Oorb_p.data(), 1);
+    factor_p = deltaQ / dotProduct;
+    factor_p = -0.5 * QdotHProduct / (dotProduct)-deltaQ / (dotProduct);
+
+    QdotHProduct = cblas_ddot(dim_n * dim_n, Fph_n.data(), 1, Oorb_ph_n.data(), 1);
+    dotProduct = cblas_ddot(dim_n * dim_n, Oorb_ph_n.data(), 1, Oorb_ph_n.data(), 1);
+    // dotProduct = cblas_ddot(dim_n * dim_n, Oorb_n.data(), 1, Oorb_n.data(), 1);
+    factor_n = deltaQ / (dotProduct);
+    factor_n = -0.5 * QdotHProduct / (dotProduct)-deltaQ / (dotProduct);
 
     cblas_dscal(dim_p * dim_p, factor_p, Oorb_ph_p.data(), 1);
     cblas_dscal(dim_n * dim_n, factor_n, Oorb_ph_n.data(), 1);
 
     cblas_dcopy(dim_p * dim_p, Oorb_ph_p.data(), 1, O_p, 1);
     cblas_dcopy(dim_n * dim_n, Oorb_ph_n.data(), 1, O_n, 1);
-
     return;
 }
 
-void HartreeFock::UpdateU_Qconstraint_updateU(double *O_p, double *O_n)
+void HartreeFock::UpdateU_Qconstraint_generatZ_v2(double deltaQ, double *O_p, double *O_n)
 {
+    double factor_p, factor_n;
     std::vector<double> Oorb_p(dim_p * dim_p, 0);
     std::vector<double> Oorb_n(dim_n * dim_n, 0);
+    std::vector<double> Oorb_ph_p(dim_p * dim_p, 0);
+    std::vector<double> Oorb_ph_n(dim_n * dim_n, 0);
     std::vector<double> Zp_p(dim_p * dim_p, 0);
     std::vector<double> Zn_p(dim_p * dim_p, 0);
     std::vector<double> Zp_n(dim_n * dim_n, 0);
     std::vector<double> Zn_n(dim_n * dim_n, 0);
 
-    cblas_dcopy(dim_p * dim_p, O_p, 1, Zp_p.data(), 1);
-    cblas_dscal(dim_p * dim_p, 0.5, Zp_p.data(), 1);
-    cblas_dcopy(dim_p * dim_p, O_p, 1, Zn_p.data(), 1);
-    cblas_dscal(dim_p * dim_p, -0.5, Zn_p.data(), 1);
-    for (size_t i = 0; i < dim_p; i++)
-    {
-        Zp_p[i * dim_p + i] += 1.;
-        Zn_p[i * dim_p + i] += 1.;
-    }
+    cblas_dcopy(dim_p * dim_p, O_p, 1, Oorb_p.data(), 1);
+    cblas_dcopy(dim_n * dim_n, O_n, 1, Oorb_n.data(), 1);
+    // TransferOperatorToHFbasis(Oorb_p.data(), Oorb_n.data());
+    cblas_dcopy(dim_p * dim_p, Oorb_p.data(), 1, Oorb_ph_p.data(), 1);
+    cblas_dcopy(dim_n * dim_n, Oorb_n.data(), 1, Oorb_ph_n.data(), 1);
+    Operator_ph(Oorb_ph_p.data(), Oorb_ph_n.data());
 
-    cblas_dcopy(dim_n * dim_n, O_n, 1, Zp_n.data(), 1);
-    cblas_dscal(dim_n * dim_n, 0.5, Zp_n.data(), 1);
-    cblas_dcopy(dim_n * dim_n, O_n, 1, Zn_n.data(), 1);
-    cblas_dscal(dim_n * dim_n, -0.5, Zn_n.data(), 1);
-    for (size_t i = 0; i < dim_n; i++)
-    {
-        Zp_n[i * dim_n + i] += 1.;
-        Zn_n[i * dim_n + i] += 1.;
-    }
+    factor_p = deltaQ;
+    factor_n = deltaQ;
 
-    /*******************************************************************/
-    std::vector<int> ipiv_p(dim_p); // Allocate memory for the ipiv array
-    std::vector<int> ipiv_n(dim_n); // Allocate memory for the ipiv array
-    // Perform LU factorization
-    int info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, dim_p, dim_p, Zn_p.data(), dim_p, ipiv_p.data());
-    if (info != 0)
-    {
-        std::cerr << "LU factorization failed with error code: " << info << std::endl;
-        return;
-    }
-    // Compute the inverse
-    info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, dim_p, Zn_p.data(), dim_p, ipiv_p.data());
-    if (info != 0)
-    {
-        std::cerr << "Matrix inverse calculation failed with error code: " << info << std::endl;
-        return;
-    }
-    // Perform LU factorization
-    info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, dim_n, dim_n, Zn_n.data(), dim_n, ipiv_n.data());
-    if (info != 0)
-    {
-        std::cerr << "LU factorization failed with error code: " << info << std::endl;
-        return;
-    }
-    // Compute the inverse
-    info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, dim_n, Zn_n.data(), dim_n, ipiv_n.data());
-    if (info != 0)
-    {
-        std::cerr << "Matrix inverse calculation failed with error code: " << info << std::endl;
-        return;
-    }
+    cblas_dscal(dim_p * dim_p, factor_p, Oorb_ph_p.data(), 1);
+    cblas_dscal(dim_n * dim_n, factor_n, Oorb_ph_n.data(), 1);
 
-    ///  update U
-
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_p, dim_p, dim_p, 1.0, Zp_p.data(), dim_p, Zn_p.data(), dim_p, 0.0, Oorb_p.data(), dim_p);
-    cblas_dcopy(dim_p * dim_p, U_p, 1, Zp_p.data(), 1);
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_p, dim_p, dim_p, 1., Oorb_p.data(), dim_p, Zp_p.data(), dim_p, 0, U_p, dim_p);
-
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_n, dim_n, dim_n, 1.0, Zp_n.data(), dim_n, Zn_n.data(), dim_n, 0.0, Oorb_n.data(), dim_n);
-    cblas_dcopy(dim_n * dim_n, U_n, 1, Zp_n.data(), 1);
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_n, dim_n, dim_n, 1., Oorb_n.data(), dim_n, Zp_n.data(), dim_n, 0, U_n, dim_n);
-
+    cblas_dcopy(dim_p * dim_p, Oorb_ph_p.data(), 1, O_p, 1);
+    cblas_dcopy(dim_n * dim_n, Oorb_ph_n.data(), 1, O_n, 1);
     return;
 }
 
@@ -1463,17 +2057,22 @@ void HartreeFock::UpdateDensityMatrix_DIIS()
     std::vector<double> error_mat_n(dim_n * dim_n);
 
     // Proton
-    // compute matrix product F * rho
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_p, dim_p, dim_p, 1.0, FockTerm_p, dim_p, rho_p, dim_p, 0.0, error_mat_p.data(), dim_p);
-    // compute matrix difference F * rho - rho * F
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_p, dim_p, dim_p, -1.0, rho_p, dim_p, FockTerm_p, dim_p, 1.0, error_mat_p.data(), dim_p);
+    if (N_p > 0)
+    {
+        // compute matrix product F * rho
+        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_p, dim_p, dim_p, 1.0, FockTerm_p, dim_p, rho_p, dim_p, 0.0, error_mat_p.data(), dim_p);
+        // compute matrix difference F * rho - rho * F
+        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_p, dim_p, dim_p, -1.0, rho_p, dim_p, FockTerm_p, dim_p, 1.0, error_mat_p.data(), dim_p);
+    }
 
     // Neutron
-    // compute matrix product F * rho
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_n, dim_n, dim_n, 1.0, FockTerm_n, dim_n, rho_n, dim_n, 0.0, error_mat_n.data(), dim_n);
-    // compute matrix difference F * rho - rho * F
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_n, dim_n, dim_n, -1.0, rho_n, dim_n, FockTerm_n, dim_n, 1.0, error_mat_n.data(), dim_n);
-
+    if (N_n > 0)
+    {
+        // compute matrix product F * rho
+        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_n, dim_n, dim_n, 1.0, FockTerm_n, dim_n, rho_n, dim_n, 0.0, error_mat_n.data(), dim_n);
+        // compute matrix difference F * rho - rho * F
+        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_n, dim_n, dim_n, -1.0, rho_n, dim_n, FockTerm_n, dim_n, 1.0, error_mat_n.data(), dim_n);
+    }
     // Compute the new density matrix rho
     UpdateDensityMatrix();
 
@@ -1512,7 +2111,11 @@ void HartreeFock::UpdateDensityMatrix_DIIS()
     // Proton
     int nsave = nsave_p;
     int n = nsave + 1;
-
+    // Define additional arrays for LAPACK's output
+    int ipiv[n];
+    int info;
+    // Define the arrays to hold the matrix and right-hand side vector
+    std::vector<double> b(n, 0);
     std::vector<double> Bij(n * n);
     for (size_t i = 0; i < nsave; i++)
     {
@@ -1520,46 +2123,45 @@ void HartreeFock::UpdateDensityMatrix_DIIS()
         Bij[nsave * (n) + i] = 1;
     }
     Bij[nsave * (n) + nsave] = 0;
-
+    double sum;
     std::vector<double> Cmatrix_p(dim_p * dim_p);
-    for (size_t i = 0; i < nsave; i++)
+    if (N_p > 0)
     {
-        for (size_t j = 0; j < nsave; j++)
-        {
-            cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, dim_p, dim_p, dim_p, 1.0, DIIS_error_mats_p[i].data(), dim_p, DIIS_error_mats_p[j].data(), dim_p, 0.0, Cmatrix_p.data(), dim_p);
-            Bij[i * (n) + j] = frobenius_norm(Cmatrix_p);
-        }
-    }
-
-    // Define the arrays to hold the matrix and right-hand side vector
-    std::vector<double> b(n, 0);
-    b[nsave] = 1;
-    // Define additional arrays for LAPACK's output
-    int ipiv[n];
-    int info;
-
-    // solve the system of linear equations
-    info = LAPACKE_dgesv(LAPACK_ROW_MAJOR, n, 1, Bij.data(), n, ipiv, b.data(), 1);
-    for (size_t i = 0; i < nsave + 1; i++)
-    {
-        b[i] = std::abs(b[i]);
-    }
-
-    // Calculate the sum of the first nsave elements
-    double sum = std::accumulate(b.begin(), b.begin() + nsave, 0.0);
-
-    // Divide each element by the sum
-    if (fabs(sum) > 1.e-8)
         for (size_t i = 0; i < nsave; i++)
         {
-            // std::cout << i << "  " << b[i] << "  " << sum << std::endl;
-            b[i] /= sum;
+            for (size_t j = 0; j < nsave; j++)
+            {
+                cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, dim_p, dim_p, dim_p, 1.0, DIIS_error_mats_p[i].data(), dim_p, DIIS_error_mats_p[j].data(), dim_p, 0.0, Cmatrix_p.data(), dim_p);
+                Bij[i * (n) + j] = frobenius_norm(Cmatrix_p);
+            }
         }
-    memset(rho_p, 0, sizeof(rho_p));
-    for (size_t i = 0; i < nsave; i++)
-    {
-        cblas_daxpy(dim_p * dim_p, b[i], DIIS_density_mats_p[i].data(), 1, rho_p, 1);
+
+        b[nsave] = 1;
+
+        // solve the system of linear equations
+        info = LAPACKE_dgesv(LAPACK_ROW_MAJOR, n, 1, Bij.data(), n, ipiv, b.data(), 1);
+        for (size_t i = 0; i < nsave + 1; i++)
+        {
+            b[i] = std::abs(b[i]);
+        }
+
+        // Calculate the sum of the first nsave elements
+        sum = std::accumulate(b.begin(), b.begin() + nsave, 0.0);
+
+        // Divide each element by the sum
+        if (fabs(sum) > 1.e-8)
+            for (size_t i = 0; i < nsave; i++)
+            {
+                // std::cout << i << "  " << b[i] << "  " << sum << std::endl;
+                b[i] /= sum;
+            }
+        memset(rho_p, 0, sizeof(rho_p));
+        for (size_t i = 0; i < nsave; i++)
+        {
+            cblas_daxpy(dim_p * dim_p, b[i], DIIS_density_mats_p[i].data(), 1, rho_p, 1);
+        }
     }
+
     // Neutron
     for (size_t i = 0; i < nsave; i++)
     {
@@ -1569,37 +2171,40 @@ void HartreeFock::UpdateDensityMatrix_DIIS()
     Bij[nsave * (nsave + 1) + nsave] = 0;
 
     std::vector<double> Cmatrix_n(dim_n * dim_n);
-    for (size_t i = 0; i < nsave; i++)
+    if (N_n > 0)
     {
-        for (size_t j = 0; j < nsave; j++)
-        {
-            cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, dim_n, dim_n, dim_n, 1.0, DIIS_error_mats_n[i].data(), dim_n, DIIS_error_mats_n[j].data(), dim_n, 0.0, Cmatrix_n.data(), dim_n);
-            Bij[i * (nsave + 1) + j] = frobenius_norm(Cmatrix_n);
-        }
-    }
-    // Define the arrays to hold the matrix and right-hand side vector
-    memset(b.data(), 0, sizeof(b.data()));
-    b[nsave] = 1;
-    // solve the system of linear equations
-    info = LAPACKE_dgesv(LAPACK_ROW_MAJOR, n, 1, Bij.data(), n, ipiv, b.data(), 1);
-
-    for (size_t i = 0; i < nsave + 1; i++)
-    {
-        b[i] = std::abs(b[i]);
-    }
-
-    // Calculate the sum of the first nsave elements
-    sum = std::accumulate(b.begin(), b.begin() + nsave, 0.0);
-
-    // Divide each element by the sum
-    if (fabs(sum) > 1.e-8)
         for (size_t i = 0; i < nsave; i++)
         {
-            b[i] /= sum;
+            for (size_t j = 0; j < nsave; j++)
+            {
+                cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, dim_n, dim_n, dim_n, 1.0, DIIS_error_mats_n[i].data(), dim_n, DIIS_error_mats_n[j].data(), dim_n, 0.0, Cmatrix_n.data(), dim_n);
+                Bij[i * (nsave + 1) + j] = frobenius_norm(Cmatrix_n);
+            }
         }
-    memset(rho_n, 0, sizeof(rho_n));
-    for (size_t i = 0; i < nsave; i++)
-        cblas_daxpy(dim_n * dim_n, b[i], DIIS_density_mats_n[i].data(), 1, rho_n, 1);
+        // Define the arrays to hold the matrix and right-hand side vector
+        memset(b.data(), 0, sizeof(b.data()));
+        b[nsave] = 1;
+        // solve the system of linear equations
+        info = LAPACKE_dgesv(LAPACK_ROW_MAJOR, n, 1, Bij.data(), n, ipiv, b.data(), 1);
+
+        for (size_t i = 0; i < nsave + 1; i++)
+        {
+            b[i] = std::abs(b[i]);
+        }
+
+        // Calculate the sum of the first nsave elements
+        sum = std::accumulate(b.begin(), b.begin() + nsave, 0.0);
+
+        // Divide each element by the sum
+        if (fabs(sum) > 1.e-8)
+            for (size_t i = 0; i < nsave; i++)
+            {
+                b[i] /= sum;
+            }
+        memset(rho_n, 0, sizeof(rho_n));
+        for (size_t i = 0; i < nsave; i++)
+            cblas_daxpy(dim_n * dim_n, b[i], DIIS_density_mats_n[i].data(), 1, rho_n, 1);
+    }
 }
 
 // EDIIS: Energy Direct Inversion in the Iterative Subspace
@@ -1656,14 +2261,12 @@ void HartreeFock::UpdateF()
     cblas_dcopy(dim_n * dim_n, FockTerm_n, 1, Vij_n, 1);
 
     // add SP term
-    for (size_t j2 = 0; j2 < dim_p; j2++)
-    {
-        FockTerm_p[j2 * dim_p + j2] += T_term[j2];
-    }
-    for (size_t j2 = 0; j2 < dim_n; j2++)
-    {
-        FockTerm_n[j2 * dim_n + j2] += T_term[dim_p + j2];
-    }
+    // add SP term
+    if (dim_p != 0)
+        cblas_daxpy(dim_p * dim_p, 1., T_term_p, 1, FockTerm_p, 1);
+
+    if (dim_n != 0)
+        cblas_daxpy(dim_n * dim_n, 1., T_term_n, 1, FockTerm_n, 1);
 }
 
 /// For no core calculation, diag method
@@ -1843,6 +2446,13 @@ void HartreeFock::Cal_Gradient(double *Z_p, double *Z_n)
     return;
 }
 
+void HartreeFock::Cal_Gradient_given_gradient(double *Z_p, double *Z_n)
+{
+    cblas_dscal(dim_p * dim_p, gradient_eta, Z_p, 1);
+    cblas_dscal(dim_n * dim_n, gradient_eta, Z_n, 1);
+    return;
+}
+
 //*********************************************************************
 // zκλ = ηz  1/| H^orb_kk - H^orb_ll |  (∂E)/(∂zκλ)
 // Given the gradient, the simplest algorithm to update U is the steepest descent method
@@ -1884,13 +2494,43 @@ void HartreeFock::Cal_Gradient_preconditioned(double *Z_p, double *Z_n)
             }
         }
     }
-
     cblas_dscal(dim_p * dim_p, gradient_eta, Z_p, 1);
     cblas_dscal(dim_n * dim_n, gradient_eta, Z_n, 1);
     return;
 }
 
-//*********************************************************************
+void HartreeFock::Cal_Gradient_preconditioned_given_gradient(double *Z_p, double *Z_n)
+{
+    double denominator;
+    for (size_t i = 0; i < dim_p; i++)
+    {
+        for (size_t j = i + 1; j < dim_p; j++)
+        {
+            denominator = std::abs(FockTerm_p[i * dim_p + i] - FockTerm_p[j * dim_p + j]);
+            if (fabs(denominator) > 1.e-5)
+            {
+                Z_p[i * dim_p + j] *= 1. / denominator;
+                Z_p[j * dim_p + i] *= 1. / denominator;
+            }
+        }
+    }
+    for (size_t i = 0; i < dim_n; i++)
+    {
+        for (size_t j = i + 1; j < dim_n; j++)
+        {
+            denominator = std::abs(FockTerm_n[i * dim_n + i] - FockTerm_n[j * dim_n + j]);
+            if (fabs(denominator) > 1.e-5)
+            {
+                Z_n[i * dim_n + j] *= 1. / denominator;
+                Z_n[j * dim_n + i] *= 1. / denominator;
+            }
+        }
+    }
+    cblas_dscal(dim_p * dim_p, gradient_eta, Z_p, 1);
+    cblas_dscal(dim_n * dim_n, gradient_eta, Z_n, 1);
+    return;
+}
+
 // zκλ =  H^orb_kj  /| H^orb_kk - H^orb_ll |  (∂E)/(∂zκλ)
 // Given the gradient, the simplest algorithm to update U is the steepest descent method
 // (∂E)/(∂zκλ) = Hκλ_orb (fκ − fλ).
@@ -1906,25 +2546,35 @@ void HartreeFock::Cal_Gradient_preconditioned_SRG(double *Z_p, double *Z_n)
     // TransferOperatorToHFbasis(Oorb_p.data(), Oorb_n.data());
     Operator_ph(Z_p, Z_n);
     double denominator;
-    for (size_t i = 0; i < dim_p; i++)
-    {
-        for (size_t j = i + 1; j < dim_p; j++)
+    if (N_p > 0)
+        for (size_t i = 0; i < dim_p; i++)
         {
-            denominator = FockTerm_p[i * dim_p + j] / (FockTerm_p[i * dim_p + i] - FockTerm_p[j * dim_p + j]);
-            Z_p[i * dim_p + j] *= denominator;
-            Z_p[j * dim_p + i] *= denominator;
+            for (size_t j = i; j < dim_p; j++)
+            {
+                denominator = (FockTerm_p[i * dim_p + i] - FockTerm_p[j * dim_p + j]);
+                if (fabs(denominator) > 1.e-5)
+                {
+                    Z_p[i * dim_p + j] *= FockTerm_p[i * dim_p + j] / denominator;
+                    // Z_p[j * dim_p + i] *= FockTerm_p[j * dim_p + i] / denominator;
+                }
+            }
         }
-    }
 
-    for (size_t i = 0; i < dim_n; i++)
-    {
-        for (size_t j = i + 1; j < dim_n; j++)
+    if (N_n > 0)
+        for (size_t i = 0; i < dim_n; i++)
         {
-            denominator = FockTerm_n[i * dim_n + j] / (FockTerm_n[i * dim_n + i] - FockTerm_n[j * dim_n + j]);
-            Z_n[i * dim_n + j] *= denominator;
-            Z_n[j * dim_n + i] *= denominator;
+            for (size_t j = i; j < dim_n; j++)
+            {
+                denominator = (FockTerm_n[i * dim_n + i] - FockTerm_n[j * dim_n + j]);
+                if (fabs(denominator) > 1.e-5)
+                {
+                    Z_n[i * dim_p + j] *= FockTerm_n[i * dim_n + j] / denominator;
+                    // Z_n[j * dim_p + i] *= FockTerm_n[j * dim_n + i] / denominator;
+                }
+            }
         }
-    }
+    cblas_dscal(dim_p * dim_p, gradient_eta, Z_p, 1);
+    cblas_dscal(dim_n * dim_n, gradient_eta, Z_n, 1);
     return;
 }
 
@@ -1933,8 +2583,8 @@ void HartreeFock::Cal_Gradient_preconditioned_SRG(double *Z_p, double *Z_n)
 // U' = e^Z U
 // e^Z \aprox (1 + Z/2)(1 − Z/2)^-1
 // where -1 stand for the inverse of the matrix
-// Padé approximant https://en.wikipedia.org/wiki/Pad%C3%A9_approximant
-void HartreeFock::UpdateU_Thouless(double *Z_p, double *Z_n)
+// Read more about Padé approximant https://en.wikipedia.org/wiki/Pad%C3%A9_approximant
+void HartreeFock::UpdateU_Thouless_pade(double *Z_p, double *Z_n)
 {
     std::vector<double> Zp_p(dim_p * dim_p, 0);
     std::vector<double> Zn_p(dim_p * dim_p, 0);
@@ -1996,13 +2646,81 @@ void HartreeFock::UpdateU_Thouless(double *Z_p, double *Z_n)
     std::vector<double> TempU_p(dim_p * dim_p, 0);
     std::vector<double> TempU_n(dim_n * dim_n, 0);
     ///  update U
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_p, dim_p, dim_p, 1.0, Zp_p.data(), dim_p, Zn_p.data(), dim_p, 0.0, TempU_p.data(), dim_p);
-    cblas_dcopy(dim_p * dim_p, U_p, 1, Zp_p.data(), 1);
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_p, dim_p, dim_p, 1., TempU_p.data(), dim_p, Zp_p.data(), dim_p, 0, U_p, dim_p);
+    if (N_p > 0)
+    {
+        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_p, dim_p, dim_p, 1., Zp_p.data(), dim_p, Zn_p.data(), dim_p, 0.0, TempU_p.data(), dim_p);
+        cblas_dcopy(dim_p * dim_p, U_p, 1, Zp_p.data(), 1);
+        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_p, dim_p, dim_p, 1., TempU_p.data(), dim_p, Zp_p.data(), dim_p, 0, U_p, dim_p);
+    }
 
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_n, dim_n, dim_n, 1.0, Zp_n.data(), dim_n, Zn_n.data(), dim_n, 0.0, TempU_n.data(), dim_n);
-    cblas_dcopy(dim_n * dim_n, U_n, 1, Zp_n.data(), 1);
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_n, dim_n, dim_n, 1., TempU_n.data(), dim_n, Zp_n.data(), dim_n, 0, U_n, dim_n);
+    if (N_n > 0)
+    {
+        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_n, dim_n, dim_n, 1., Zp_n.data(), dim_n, Zn_n.data(), dim_n, 0.0, TempU_n.data(), dim_n);
+        cblas_dcopy(dim_n * dim_n, U_n, 1, Zp_n.data(), 1);
+        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_n, dim_n, dim_n, 1., TempU_n.data(), dim_n, Zp_n.data(), dim_n, 0, U_n, dim_n);
+    }
+    return;
+}
+
+void HartreeFock::gram_schmidt(double *vectors, int num_vectors, int vector_size)
+{
+    // Orthogonalize the first vector
+    double norm = cblas_dnrm2(vector_size, vectors, 1);
+    cblas_dscal(vector_size, 1.0 / norm, vectors, 1);
+
+    for (int i = 1; i < num_vectors; ++i)
+    {
+        // Compute the orthogonal component of the current vector
+        for (int j = 0; j < i; ++j)
+        {
+            double projection = cblas_ddot(vector_size, vectors + j * vector_size, 1, vectors + i * vector_size, 1);
+            cblas_daxpy(vector_size, -projection, vectors + j * vector_size, 1, vectors + i * vector_size, 1);
+        }
+
+        // Normalize the orthogonalized vector
+        norm = cblas_dnrm2(vector_size, vectors + i * vector_size, 1);
+        cblas_dscal(vector_size, 1.0 / norm, vectors + i * vector_size, 1);
+    }
+}
+
+// only keep the thouless up to the first order
+// e^Z U \aprox  \sum_ik (U_ki + \sum_a Z_ai U_ki)
+// i are hole states, a are particle states
+// k are H.O. states
+void HartreeFock::UpdateU_Thouless_1st(double *Z_p, double *Z_n) // Thouless up to first order
+{
+    std::vector<int> Holes_p, Holes_n, Particles_p, Particles_n;
+    Holes_p = this->GetHoleList(Proton);
+    Holes_n = this->GetHoleList(Neutron);
+    Particles_p = this->GetParticleList(Proton);
+    Particles_n = this->GetParticleList(Neutron);
+    for (size_t i = 0; i < Holes_p.size(); i++)
+    {
+        for (size_t k = 0; k < dim_p; k++)
+        {
+            for (size_t a = 0; a < Particles_p.size(); a++)
+            {
+                U_p[k * dim_p + Holes_p[i]] += Z_p[Particles_p[a] * dim_p + Holes_p[i]] * U_p[k * dim_p + Particles_p[a]];
+                U_p[k * dim_p + Particles_p[a]] += Z_p[Holes_p[i] * dim_p + Particles_p[a]] * U_p[k * dim_p + Holes_p[i]];
+            }
+            // cblas_daxpy(dim_p, Z_p[a * dim_p + i], U_p + Particles_p[a], dim_p, U_p + Holes_p[i], dim_p);
+        }
+    }
+
+    for (size_t i = 0; i < Holes_n.size(); i++)
+    {
+        for (size_t k = 0; k < dim_n; k++)
+        {
+            for (size_t a = 0; a < Particles_n.size(); a++)
+            {
+                U_n[k * dim_n + Holes_n[i]] += Z_n[Particles_n[a] * dim_n + Holes_n[i]] * U_n[k * dim_n + Particles_n[a]];
+                U_n[k * dim_n + Particles_n[a]] += Z_n[Holes_n[i] * dim_n + Particles_n[a]] * U_n[k * dim_n + Holes_n[i]];
+            }
+            // cblas_daxpy(dim_n, Z_n[a * dim_n + i], U_n + Particles_n[a], dim_n, U_n + Holes_n[i], dim_n);
+        }
+    }
+    gram_schmidt(U_p, dim_p, dim_p);
+    gram_schmidt(U_n, dim_n, dim_n);
     return;
 }
 
@@ -2041,21 +2759,34 @@ void HartreeFock::CalcEHF()
     e2hf = 0;
 
     // Proton part
-    for (size_t i = 0; i < dim_p; i++)
-    {
-        e1hf += rho_p[i * dim_p + i] * T_term[i];
-    }
+    e1hf += cblas_ddot(dim_p * dim_p, rho_p, 1, T_term_p, 1);
     e2hf += cblas_ddot(dim_p * dim_p, rho_p, 1, Vij_p, 1);
 
     // Neutron part
-    for (size_t i = 0; i < dim_n; i++)
-    {
-        e1hf += rho_n[i * dim_n + i] * T_term[i + dim_p];
-    }
+    e1hf += cblas_ddot(dim_n * dim_n, rho_n, 1, T_term_n, 1);
     e2hf += cblas_ddot(dim_n * dim_n, rho_n, 1, Vij_n, 1);
 
     // Total HF energy
     EHF = e1hf + 0.5 * e2hf;
+    // std::cout << "      " << e1hf << "  " << 0.5 * e2hf << std::endl;
+}
+
+void HartreeFock::CalcEHF(double constrainedQ)
+{
+    EHF = 0;
+    e1hf = 0;
+    e2hf = 0;
+
+    // Proton part
+    e1hf += cblas_ddot(dim_p * dim_p, rho_p, 1, T_term_p, 1);
+    e2hf += cblas_ddot(dim_p * dim_p, rho_p, 1, Vij_p, 1);
+
+    // Neutron part
+    e1hf += cblas_ddot(dim_n * dim_n, rho_n, 1, T_term_n, 1);
+    e2hf += cblas_ddot(dim_n * dim_n, rho_n, 1, Vij_n, 1);
+
+    // Total HF energy
+    EHF = e1hf + 0.5 * e2hf + constrainedQ;
     // std::cout << "      " << e1hf << "  " << 0.5 * e2hf << std::endl;
 }
 
@@ -2078,6 +2809,58 @@ void HartreeFock::CalcEHF_noCore()
     // std::cout << "      " << e1hf << "  " << 0.5 * e2hf << std::endl;
 }
 
+double HartreeFock::CalcEHF(const std::vector<int> proton_vec, const std::vector<int> neutron_vec)
+{
+    this->UpdateDensityMatrix(proton_vec, neutron_vec);
+    this->UpdateF();
+    EHF = 0;
+    e1hf = 0;
+    e2hf = 0;
+
+    // Proton part
+    e1hf += cblas_ddot(dim_p * dim_p, rho_p, 1, T_term_p, 1);
+    e2hf += cblas_ddot(dim_p * dim_p, rho_p, 1, Vij_p, 1);
+
+    // Neutron part
+    e1hf += cblas_ddot(dim_n * dim_n, rho_n, 1, T_term_n, 1);
+    e2hf += cblas_ddot(dim_n * dim_n, rho_n, 1, Vij_n, 1);
+
+    // Total HF energy
+    EHF = e1hf + 0.5 * e2hf;
+    // std::cout << "      " << e1hf << "  " << 0.5 * e2hf << std::endl;
+    return EHF;
+}
+
+double HartreeFock::CalcEHF_HForbits(const std::vector<int> proton_vec, const std::vector<int> neutron_vec)
+{
+    this->UpdateDensityMatrix(proton_vec, neutron_vec);
+    this->UpdateF();
+    this->TransferOperatorToHFbasis(Vij_p, Vij_n);
+    e1hf = 0;
+    e1hf += cblas_ddot(dim_p * dim_p, rho_p, 1, T_term_p, 1);
+    e1hf += cblas_ddot(dim_n * dim_n, rho_n, 1, T_term_n, 1);
+    e2hf = 0;
+    // Check_matrix(dim_p, FockTerm_p);
+    for (size_t i = 0; i < proton_vec.size(); i++)
+    {
+        // for (size_t j = 0; j < proton_vec.size(); j++)
+        {
+            e2hf += Vij_p[proton_vec[i] * dim_p + proton_vec[i]];
+        }
+    }
+
+    // Check_matrix(dim_n, FockTerm_n);
+    for (size_t i = 0; i < neutron_vec.size(); i++)
+    {
+        // for (size_t j = 0; j < neutron_vec.size(); j++)
+        {
+            e2hf += Vij_n[neutron_vec[i] * dim_n + neutron_vec[i]];
+        }
+    }
+    EHF = e1hf + 0.5 * e2hf;
+    return EHF;
+}
+
 /// operator in the HF orbital basis
 /// O^{orb} = UT * O * U
 /// IN my code U are U_p and U_n
@@ -2087,12 +2870,16 @@ void HartreeFock::TransferOperatorToHFbasis(double *Op_p, double *Op_n)
     O_temp_p = (double *)mkl_malloc((dim_p * dim_p) * sizeof(double), 64);
     O_temp_n = (double *)mkl_malloc((dim_n * dim_n) * sizeof(double), 64);
 
-    cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, dim_p, dim_p, dim_p, 1., U_p, dim_p, Op_p, dim_p, 0, O_temp_p, dim_p);
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_p, dim_p, dim_p, 1., O_temp_p, dim_p, U_p, dim_p, 0, Op_p, dim_p);
-
-    cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, dim_n, dim_n, dim_n, 1., U_n, dim_n, Op_n, dim_n, 0, O_temp_n, dim_n);
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_n, dim_n, dim_n, 1., O_temp_n, dim_n, U_n, dim_n, 0, Op_n, dim_n);
-
+    if (N_p > 0)
+    {
+        cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, dim_p, dim_p, dim_p, 1., U_p, dim_p, Op_p, dim_p, 0, O_temp_p, dim_p);
+        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_p, dim_p, dim_p, 1., O_temp_p, dim_p, U_p, dim_p, 0, Op_p, dim_p);
+    }
+    if (N_n > 0)
+    {
+        cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, dim_n, dim_n, dim_n, 1., U_n, dim_n, Op_n, dim_n, 0, O_temp_n, dim_n);
+        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_n, dim_n, dim_n, 1., O_temp_n, dim_n, U_n, dim_n, 0, Op_n, dim_n);
+    }
     mkl_free(O_temp_p);
     mkl_free(O_temp_n);
     return;
@@ -2104,6 +2891,7 @@ void HartreeFock::CalOnebodyOperator(double *Op_p, double *Op_n, double &Qp, dou
 {
     Qp = cblas_ddot(dim_p * dim_p, rho_p, 1, Op_p, 1);
     Qn = cblas_ddot(dim_n * dim_n, rho_n, 1, Op_n, 1);
+    return;
 }
 
 /// evaluate one body term
@@ -2157,7 +2945,7 @@ void HartreeFock::Reset_U()
     for (int i = 0; i < dim_p; ++i)
     {
         // std::cout << i << "  " << T_term[i] << "  " << modelspace->Get_MSmatrix_2j(Proton, i) << "  " << modelspace->Get_MSmatrix_2m(Proton, i) << std::endl;
-        SPEpairs_p[i] = Triple(T_term[i], i, modelspace->Get_MSmatrix_2m(Proton, i));
+        SPEpairs_p[i] = Triple(T_term_p[i * dim_p + i], i, modelspace->Get_MSmatrix_2m(Proton, i));
     }
     std::sort(SPEpairs_p.begin(), SPEpairs_p.end(), compareTriples);
     for (size_t i = 0; i < N_p; i++)
@@ -2173,7 +2961,7 @@ void HartreeFock::Reset_U()
     for (int i = 0; i < dim_n; ++i)
     {
         // std::cout << i << "  " << T_term[i] << "  " << modelspace->Get_MSmatrix_2j(Proton, i) << "  " << modelspace->Get_MSmatrix_2m(Proton, i) << std::endl;
-        SPEpairs_n[i] = Triple(T_term[dim_p + i], i, modelspace->Get_MSmatrix_2m(Neutron, i));
+        SPEpairs_n[i] = Triple(T_term_n[i * dim_n + i], i, modelspace->Get_MSmatrix_2m(Neutron, i));
     }
     std::sort(SPEpairs_n.begin(), SPEpairs_n.end(), compareTriples);
     for (size_t i = 0; i < N_n; i++)
@@ -2182,6 +2970,7 @@ void HartreeFock::Reset_U()
         // std::cout << SPEpairs_n[i].first << "  " << SPEpairs_n[i].second << std::endl;
     }
 }
+
 /// for debug **********************************************************
 /// check { a^+_i, a_j } = delta_ij
 void HartreeFock::Check_orthogonal_U_p(int i, int j)
@@ -2278,6 +3067,7 @@ void HartreeFock::PrintAllParameters()
 
 void HartreeFock::PrintAllHFEnergies()
 {
+    Diagonalize();
     std::vector<int> tempOcU_p(dim_p, 0);
     std::vector<int> tempOcU_n(dim_n, 0);
     for (size_t i = 0; i < N_p; i++)
@@ -2457,23 +3247,386 @@ void HartreeFock::PrintOccupationHO()
     }
 }
 
+void HartreeFock::PrintQudrapole()
+{
+    /// inital Q operator
+    double *Q2_p, *Q0_p, *Q_2_p, *Q2_n, *Q0_n, *Q_2_n;
+    Q2_p = (double *)mkl_malloc((dim_p * dim_p) * sizeof(double), 64);
+    Q0_p = (double *)mkl_malloc((dim_p * dim_p) * sizeof(double), 64);
+    Q_2_p = (double *)mkl_malloc((dim_p * dim_p) * sizeof(double), 64);
+    Q2_n = (double *)mkl_malloc((dim_n * dim_n) * sizeof(double), 64);
+    Q0_n = (double *)mkl_malloc((dim_n * dim_n) * sizeof(double), 64);
+    Q_2_n = (double *)mkl_malloc((dim_n * dim_n) * sizeof(double), 64);
+
+    double Q0_expect = modelspace->GetShapeQ0();
+    double Q2_expect = modelspace->GetShapeQ2();
+    double deltaQ0, deltaQ2, deltaQ_2;
+    double tempQp, tempQn, constrainedQ;
+
+    memset(Q0_p, 0, (dim_p * dim_p) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_p.Q0_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_p.Q0_list[i];          // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_p[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_p[index].GetIndex_b();
+        Q0_p[ia * dim_p + ib] = Ham->Q2MEs_p.Q0_MSMEs[i];
+    }
+    memset(Q2_p, 0, (dim_p * dim_p) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_p.Q2_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_p.Q2_list[i];          // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_p[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_p[index].GetIndex_b();
+        Q2_p[ia * dim_p + ib] = Ham->Q2MEs_p.Q2_MSMEs[i];
+    }
+    memset(Q_2_p, 0, (dim_p * dim_p) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_p.Q_2_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_p.Q_2_list[i];         // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_p[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_p[index].GetIndex_b();
+        Q2_p[ia * dim_p + ib] += Ham->Q2MEs_p.Q_2_MSMEs[i];
+    }
+
+    memset(Q0_n, 0, (dim_n * dim_n) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_n.Q0_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_n.Q0_list[i];          // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_n[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_n[index].GetIndex_b();
+        Q0_n[ia * dim_n + ib] = Ham->Q2MEs_n.Q0_MSMEs[i];
+    }
+    memset(Q2_n, 0, (dim_n * dim_n) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_n.Q2_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_n.Q2_list[i];          // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_n[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_n[index].GetIndex_b();
+        Q2_n[ia * dim_n + ib] = Ham->Q2MEs_n.Q2_MSMEs[i];
+    }
+    memset(Q_2_n, 0, (dim_n * dim_n) * sizeof(double));
+    for (size_t i = 0; i < Ham->Q2MEs_n.Q_2_list.size(); i++)
+    {
+        int index = Ham->Q2MEs_n.Q_2_list[i];         // index of M scheme One body operator
+        int ia = Ham->MSMEs.OB_n[index].GetIndex_a(); // index of a in M scheme
+        int ib = Ham->MSMEs.OB_n[index].GetIndex_b();
+        Q2_n[ia * dim_n + ib] += Ham->Q2MEs_n.Q_2_MSMEs[i];
+    }
+    //////////////////////////////////////////////////////////
+    UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
+    UpdateF();             // Update the Fock matrix
+    CalcEHF();
+
+    CalOnebodyOperator(Q0_p, Q0_n, tempQp, tempQn);
+    deltaQ0 = tempQn + tempQp;
+    CalOnebodyOperator(Q2_p, Q2_n, tempQp, tempQn);
+    deltaQ2 = tempQn + tempQp;
+    std::cout << "  Q0  " << Q0_expect << "   " << deltaQ0 << "    Q2 " << Q2_expect << "   " << deltaQ2 << std::endl;
+
+    mkl_free(Q2_p);
+    mkl_free(Q0_p);
+    mkl_free(Q_2_p);
+    mkl_free(Q2_n);
+    mkl_free(Q0_n);
+    mkl_free(Q_2_n);
+}
+
+void HartreeFock::Print_Jz()
+{
+    /// inital Q operator
+    double *Jz_p, *Jz_n;
+    Jz_p = (double *)mkl_malloc((dim_p * dim_p) * sizeof(double), 64);
+    Jz_n = (double *)mkl_malloc((dim_n * dim_n) * sizeof(double), 64);
+
+    memset(Jz_p, 0, (dim_p * dim_p) * sizeof(double));
+    for (size_t i = 0; i < dim_p; i++)
+    {
+        for (size_t j = 0; j < dim_p; j++)
+        {
+            if (modelspace->Orbits_p[modelspace->Get_ProtonOrbitIndexInMscheme(i)].l == modelspace->Orbits_p[modelspace->Get_ProtonOrbitIndexInMscheme(j)].l)
+            {
+                if (modelspace->Get_MSmatrix_2j(Proton, i) == modelspace->Get_MSmatrix_2j(Proton, j))
+                {
+                    if (modelspace->Get_MSmatrix_2m(Proton, i) == modelspace->Get_MSmatrix_2m(Proton, j))
+                    {
+                        Jz_p[i * dim_p + j] = modelspace->Get_MSmatrix_2m(Proton, j) * 0.5;
+                    }
+                }
+            }
+        }
+    }
+
+    memset(Jz_n, 0, (dim_n * dim_n) * sizeof(double));
+    for (size_t i = 0; i < dim_n; i++)
+    {
+        for (size_t j = 0; j < dim_n; j++)
+        {
+            if (modelspace->Orbits_n[modelspace->Get_NeutronOrbitIndexInMscheme(i)].l == modelspace->Orbits_n[modelspace->Get_NeutronOrbitIndexInMscheme(j)].l)
+            {
+                if (modelspace->Get_MSmatrix_2j(Neutron, i) == modelspace->Get_MSmatrix_2j(Neutron, j))
+                {
+                    if (modelspace->Get_MSmatrix_2m(Neutron, i) == modelspace->Get_MSmatrix_2m(Neutron, j))
+                    {
+                        Jz_n[i * dim_p + j] = modelspace->Get_MSmatrix_2m(Neutron, j) * 0.5;
+                    }
+                }
+            }
+        }
+    }
+    double Total_Jz_p, Total_Jz_n;
+    //////////////////////////////////////////////////////////
+    UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
+    UpdateF();             // Update the Fock matrix
+    // CalcEHF();
+
+    CalOnebodyOperator(Jz_p, Jz_n, Total_Jz_p, Total_Jz_n);
+    std::cout << "  Expectation value of Jz are  " << Total_Jz_p + Total_Jz_n << "      Jz_p " << Total_Jz_p << "    Jz_n " << Total_Jz_n << std::endl;
+
+    mkl_free(Jz_p);
+    mkl_free(Jz_n);
+}
+
 void HartreeFock::SaveHoleParameters(string filename)
 {
     ReadWriteFiles rw;
     double *prt = (double *)mkl_malloc((N_p * dim_p + N_n * dim_n) * sizeof(double), 64);
     for (size_t i = 0; i < N_p; i++)
-        cblas_dcopy(dim_p, U_p + i, dim_p, prt + i * dim_p, 1);
+        cblas_dcopy(dim_p, U_p + holeorbs_p[i], dim_p, prt + i * dim_p, 1);
     for (size_t i = 0; i < N_n; i++)
-        cblas_dcopy(dim_n, U_n + i, dim_n, prt + i * dim_n + N_p * dim_p, 1);
+        cblas_dcopy(dim_n, U_n + holeorbs_n[i], dim_n, prt + i * dim_n + N_p * dim_p, 1);
     rw.Save_HF_Parameters_TXT(N_p, dim_p, N_n, dim_n, prt, EHF, filename);
     mkl_free(prt);
     return;
 }
 
+bool HartreeFock::compareTriples(const Triple &t1, const Triple &t2)
+{
+
+    if (fabs(t1.first - t2.first) < 1.e-5)
+    {
+        if (abs(t1.third) < abs(t2.third))
+        {
+            return true;
+        }
+        else
+            return false;
+    }
+    else
+    {
+        if (t1.first < t2.first)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+}
+
+// output particle-hole states
+// Recursive helper function to generate combinations
+void HartreeFock::generateCombinationsRecursive(const std::vector<int> &numbers, std::vector<int> &combination,
+                                                int startIndex, int n, std::vector<std::vector<int>> &combinations)
+{
+    // Base case: combination size is n
+    if (combination.size() == n)
+    {
+        combinations.push_back(combination);
+        return;
+    }
+
+    // Generate combinations recursively
+    for (int i = startIndex; i < numbers.size(); ++i)
+    {
+        // Include the current number in the combination
+        combination.push_back(numbers[i]);
+
+        // Generate combinations with the remaining numbers
+        generateCombinationsRecursive(numbers, combination, i + 1, n, combinations);
+
+        // Exclude the current number from the combination
+        combination.pop_back();
+    }
+}
+
+// Function to generate combinations
+// Function to generate combinations, pick n numbers from the array numbers
+std::vector<std::vector<int>> HartreeFock::generateCombinations(const std::vector<int> &numbers, int n)
+{
+    std::vector<std::vector<int>> combinations;
+
+    // Generate combinations recursively
+    std::vector<int> combination;
+    generateCombinationsRecursive(numbers, combination, 0, n, combinations);
+    return combinations;
+}
+
+std::vector<int> HartreeFock::GetHoleList(int Isospin)
+{
+    if (Isospin == Proton)
+    {
+        std::vector<int> Holes_p(N_p, 0);
+        for (size_t i = 0; i < N_p; i++)
+        {
+            Holes_p[i] = holeorbs_p[i];
+        }
+        return Holes_p;
+    }
+    else
+    {
+        std::vector<int> Holes_n(N_n, 0);
+        for (size_t i = 0; i < N_n; i++)
+        {
+            Holes_n[i] = holeorbs_n[i];
+        }
+        return Holes_n;
+    }
+}
+
+std::vector<int> HartreeFock::GetParticleList(int Isospin)
+{
+    if (Isospin == Proton)
+    {
+        std::vector<int> Particles_p(dim_p);
+        std::iota(Particles_p.begin(), Particles_p.end(), 0);
+        for (size_t i = 0; i < N_p; i++)
+        {
+            Particles_p.erase(std::remove(Particles_p.begin(), Particles_p.end(), holeorbs_p[i]), Particles_p.end());
+        }
+        return Particles_p;
+    }
+    else
+    {
+        std::vector<int> Particles_n(dim_n);
+        std::iota(Particles_n.begin(), Particles_n.end(), 0);
+        for (size_t i = 0; i < N_n; i++)
+        {
+            Particles_n.erase(std::remove(Particles_n.begin(), Particles_n.end(), holeorbs_n[i]), Particles_n.end());
+        }
+        return Particles_n;
+    }
+}
+
+std::vector<int> HartreeFock::ConstructParticleHoleState(int isospin, const std::vector<int> &hole_vec, const std::vector<int> &part_vec)
+{
+    if (hole_vec.size() != part_vec.size())
+    {
+        std::cout << "  The particle-hole STATE error! " << std::endl;
+    }
+    std::vector<int> vectorState;
+    if (isospin == Proton)
+    {
+        vectorState.resize(N_p, 0);
+        memcpy(vectorState.data(), holeorbs_p, N_p * sizeof(int));
+
+        // remove hole states
+        for (size_t i = 0; i < hole_vec.size(); i++)
+        {
+            vectorState.erase(std::remove(vectorState.begin(), vectorState.end(), hole_vec[i]), vectorState.end());
+        }
+
+        // add particle states
+        for (size_t i = 0; i < part_vec.size(); i++)
+        {
+            vectorState.push_back(part_vec[i]);
+        }
+    }
+    else
+    {
+        vectorState.resize(N_n, 0);
+        memcpy(vectorState.data(), holeorbs_n, N_n * sizeof(int));
+
+        // remove hole states
+        for (size_t i = 0; i < hole_vec.size(); i++)
+        {
+            vectorState.erase(std::remove(vectorState.begin(), vectorState.end(), hole_vec[i]), vectorState.end());
+        }
+
+        // add particle states
+        for (size_t i = 0; i < part_vec.size(); i++)
+        {
+            vectorState.push_back(part_vec[i]);
+        }
+    }
+    return vectorState;
+}
+
+// save Num particle Num hole states
+void HartreeFock::SaveParticleHoleStates(int Num)
+{
+    string file_path = "Output/";
+    if ((Num > N_p or Num > dim_p - N_p) and (N_p > 0))
+    {
+        std::cout << "  The number of particle-hole excitation is invalid !" << std::endl;
+    }
+
+    if ((Num > N_n or Num > dim_n - N_n) and (N_n > 0))
+    {
+        std::cout << "  The number of particle-hole excitation is invalid !" << std::endl;
+    }
+
+    std::vector<int> Hole_p, Hole_n, Particle_p, Particle_n;
+    Hole_p = GetHoleList(Proton);
+    Hole_n = GetHoleList(Neutron);
+    Particle_p = GetParticleList(Proton);
+    Particle_n = GetParticleList(Neutron);
+
+    std::vector<std::vector<int>> combinations_hole_p, combinations_hole_n, combinations_part_p, combinations_part_n;
+    if (N_p > 0)
+    {
+        combinations_hole_p = this->generateCombinations(Hole_p, Num);
+        combinations_part_p = this->generateCombinations(Particle_p, Num);
+    }
+    if (N_n > 0)
+    {
+        combinations_hole_n = this->generateCombinations(Hole_n, Num);
+        combinations_part_n = this->generateCombinations(Particle_n, Num);
+    }
+
+    // loop all possible combinations
+    if (N_p > 0 and N_n > 0)
+    {
+        int count = 0;
+        for (size_t h_p = 0; h_p < combinations_hole_p.size(); h_p++)
+        {
+            for (size_t h_n = 0; h_n < combinations_hole_n.size(); h_n++)
+            {
+                for (size_t p_p = 0; p_p < combinations_part_p.size(); p_p++)
+                {
+                    for (size_t p_n = 0; p_n < combinations_part_n.size(); p_n++)
+                    {
+                        std::vector<int> proton_vector, neutron_vector;
+                        proton_vector = ConstructParticleHoleState(Proton, combinations_hole_p[h_p], combinations_part_p[p_p]);
+                        neutron_vector = ConstructParticleHoleState(Neutron, combinations_hole_n[h_n], combinations_part_n[p_n]);
+                        double NewE = this->CalcEHF(proton_vector, neutron_vector);
+                        string filename = file_path + "HF_ph_" + std::to_string(count) + ".dat";
+                        ReadWriteFiles rw;
+                        std::vector<double> prt(N_p * dim_p + N_n * dim_n, 0);
+                        for (size_t i = 0; i < N_p; i++)
+                            cblas_dcopy(dim_p, U_p + proton_vector[i], dim_p, prt.data() + i * dim_p, 1);
+                        for (size_t i = 0; i < N_n; i++)
+                            cblas_dcopy(dim_n, U_n + neutron_vector[i], dim_n, prt.data() + i * dim_n + N_p * dim_p, 1);
+                        rw.Save_HF_Parameters_TXT(N_p, dim_p, N_n, dim_n, prt.data(), NewE, filename);
+                        count++;
+                    }
+                }
+            }
+        }
+    }
+    else if (N_p > 0 and N_n == 0)
+    {
+        /* code */
+    }
+    else if (N_p == 0 and N_n > 0)
+    {
+        /* code */
+    }
+}
+
 ///
 int main(int argc, char *argv[])
 {
-    MPI_Init(&argc, &argv);
     ReadWriteFiles rw;
     ModelSpace MS;
     Hamiltonian Hinput(MS);
@@ -2484,27 +3637,35 @@ int main(int argc, char *argv[])
     rw.Read_KShell_HF_input("Input_HF.txt", MS, Hinput);
 
     // print information
+    // std::cout << std::endl << "  -------------------------------- "  << std::endl;
+    // std::cout << "  Dealing nuclei : " << MS.Get_RefString() << std::endl;
     MS.PrintAllParameters_HF();
     Hinput.PrintHamiltonianInfo_pn();
 
     //----------------------------------------------
     HartreeFock hf(Hinput);
-    hf.RandomTransformationU(5);
-    //  hf.Solve_diag();
-    //  hf.Solve_hybrid();
-    //  hf.PrintHoleOrbitsIndex();
-    //  hf.Check_orthogonal_U_p(1, 2);
-    // hf.Solve_diag();
+    std::cout << " --------------------------------   Diag" << std::endl;
+    hf.Solve_diag();
+
+    std::cout << " --------------------------------   Diag_hybrid with random vector" << std::endl;
+    hf.RandomTransformationU(15);
     hf.Solve_hybrid();
-    std::cout<<" --------------------------------" <<std::endl;
-    // hf.Solve_hybrid();
-    // hf.Solve_Qconstraint();
+
+    std::cout << " --------------------------------   Gradient" << std::endl;
     hf.Reset_U();
-    // hf.RandomTransformationU(5);
-    hf.Solve_graient();
-    // hf.Solve_noCore();
-    // hf.PrintAllHFEnergies();
-    // hf.PrintOccupationHO();
+    // hf.RandomTransformationU(15);
+    hf.Solve_gradient();
+    hf.Print_Jz();
+    // hf.PrintQudrapole();
+    hf.SaveHoleParameters("Output/HF_para.dat");
+    // hf.SaveParticleHoleStates(1);
+    // hf.PrintQudrapole();
+
+    std::cout << " --------------------------------   Gradient with constrained" << std::endl;
+    hf.Reset_U();
+    hf.Solve_gradient_Constraint();
+    hf.Print_Jz();
+
     hf.SaveHoleParameters("Output/HF_para.dat");
 
     return 0;

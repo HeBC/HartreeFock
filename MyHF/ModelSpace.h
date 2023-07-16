@@ -175,6 +175,7 @@ public:
     };
     void Set_hw(double hw_input) { hw = hw_input; };
     void Set_MeshType(std::string input) { MeshType = input; };
+    void Set_RefString(std::string input) { Reference_string = input; };
 
     int GetProtonPairNum() { return MS_N_p; };
     int GetNeutronPairNum() { return MS_N_n; };
@@ -221,6 +222,7 @@ public:
     double GetMassReferenceA() { return ReferenceAMassDep; };
     void GetAZfromString(std::string str, double &A, double &Z);
     std::string Get_MeshType() { return MeshType; };
+    std::string Get_RefString() { return Reference_string; };
 
     // print all parameters
     void PrintAllParameters_Iden();
@@ -310,6 +312,7 @@ private:
     bool SavingWalkingHistory = false;
     int DoSelectionForMCMC = 0; // 0 false, 1 without J projection, 2 with J projection
     bool DoGCMprojection = true;
+    string Reference_string;
 
     int walker_amount = 0; // the number of walkers
     MSchemeMatrix MSM_p, MSM_n;

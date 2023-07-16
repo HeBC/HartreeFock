@@ -654,6 +654,7 @@ namespace HFMEs
             a = SPOindex_p[i][0]; /// One body operator index
             b = SPOindex_p[i][1]; /// j orbit index
             H_SP += Ham.ms->GetProtonSPE(b) * OBoperator_p[a] * OvlME_n;
+            // std::cout<< "  "  << i << "  " << Ham.ms->GetProtonSPE(b) << "  " << OBoperator_p[a]   << std::endl;
         }
         for (size_t i = 0; i < SPOindex_n.size(); i++)
         {
@@ -663,7 +664,7 @@ namespace HFMEs
         }
 
         Hamiltonian = (H_SP + HME_p + HME_n + HME_pn) / (OvlME_p * OvlME_n);
-        // std::cout << H_SP << "  " << HME_p << "  " << HME_n << "  " << HME_pn << "  " << OvlME_p <<"  "<< OvlME_n << std::endl;
+        // std::cout<< "  " << "  "<< Hamiltonian << "  " << H_SP << "  " << HME_p << "  " << HME_n << "  " << HME_pn << "  " << OvlME_p <<"  "<< OvlME_n << std::endl;
         // std::cout << H_SP << "  " << HME_p << "  " << HME_n << "  " << HME_pn << "  " << (OvlME_p * OvlME_n) << std::endl;
 
         double Qud0, Qud2, Qud_2;

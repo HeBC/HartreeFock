@@ -201,7 +201,7 @@ public:
   string Vpp_filename, Vnn_filename, Vpn_filename;                  // file name for OSLO format files
   string snt_file;                                                  // snt file for kshell
   vector<HamiltonianElements> Vpp, Vnn, Vpn;                        // normal shell model interaction
-  vector<OneBodyElement> OBEs_p, OBEs_n;                            // store one body operator
+  vector<OneBodyElement> OBEs_p, OBEs_n;                            // store one body operator SPE
   vector<HamiltoaninColllectiveElements> VCol_pp, VCol_nn, VCol_pn; // recasted collective pair interaction
   vector<OneBodyOperatorChannel> OBchannel_p, OBchannel_n;          // record the one body channels
   vector<Vpn_phCoupledElements> Vpn_PHcoupled;                      // Vpn for particle hole channel
