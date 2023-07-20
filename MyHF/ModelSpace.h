@@ -329,7 +329,7 @@ private:
     bool IsReadingSP = false;                // Read starting points for Random walking, false 0, true 1;
     double check_Overlap_dependence = 1.e-4; // the min eigenvalue of overlap matrix
     double E_truncation_GCM = 1000000;       // Energy truncation to pick up configurations
-    bool Shape_constarined = true;
+    bool Shape_constarined = true;           // if constrain Q0 and Q2
     double shape_Q0 = 0.;
     double shape_Q2 = 0.;
     double Sheape_Constant = 1.e+3;

@@ -1226,447 +1226,216 @@ void HartreeFock::Solve_gradient()
 
 void HartreeFock::Solve_gradient_Constraint()
 {
-    /// inital Q operator
-    double *Q2_p, *Q0_p, *Q_2_p, *Q2_n, *Q0_n, *Q_2_n;
-    Q2_p = (double *)mkl_malloc((dim_p * dim_p) * sizeof(double), 64);
-    Q0_p = (double *)mkl_malloc((dim_p * dim_p) * sizeof(double), 64);
-    Q_2_p = (double *)mkl_malloc((dim_p * dim_p) * sizeof(double), 64);
-    Q2_n = (double *)mkl_malloc((dim_n * dim_n) * sizeof(double), 64);
-    Q0_n = (double *)mkl_malloc((dim_n * dim_n) * sizeof(double), 64);
-    Q_2_n = (double *)mkl_malloc((dim_n * dim_n) * sizeof(double), 64);
-
-    double Q0_expect = modelspace->GetShapeQ0();
-    double Q2_expect = modelspace->GetShapeQ2();
-    double deltaQ0, deltaQ2, deltaQ_2;
-    double tempQp, tempQn, constrainedQ;
-
-    memset(Q0_p, 0, (dim_p * dim_p) * sizeof(double));
-    for (size_t i = 0; i < Ham->Q2MEs_p.Q0_list.size(); i++)
+    int number_of_Q = 0;
+    std::vector<std::string> Qtype;
+    // include Constrains
+    if (modelspace->GetIsShapeConstrained() == true)
     {
-        int index = Ham->Q2MEs_p.Q0_list[i];          // index of M scheme One body operator
-        int ia = Ham->MSMEs.OB_p[index].GetIndex_a(); // index of a in M scheme
-        int ib = Ham->MSMEs.OB_p[index].GetIndex_b();
-        Q0_p[ia * dim_p + ib] = Ham->Q2MEs_p.Q0_MSMEs[i];
-    }
-    memset(Q2_p, 0, (dim_p * dim_p) * sizeof(double));
-    for (size_t i = 0; i < Ham->Q2MEs_p.Q2_list.size(); i++)
-    {
-        int index = Ham->Q2MEs_p.Q2_list[i];          // index of M scheme One body operator
-        int ia = Ham->MSMEs.OB_p[index].GetIndex_a(); // index of a in M scheme
-        int ib = Ham->MSMEs.OB_p[index].GetIndex_b();
-        Q2_p[ia * dim_p + ib] = Ham->Q2MEs_p.Q2_MSMEs[i];
-    }
-    memset(Q_2_p, 0, (dim_p * dim_p) * sizeof(double));
-    for (size_t i = 0; i < Ham->Q2MEs_p.Q_2_list.size(); i++)
-    {
-        int index = Ham->Q2MEs_p.Q_2_list[i];         // index of M scheme One body operator
-        int ia = Ham->MSMEs.OB_p[index].GetIndex_a(); // index of a in M scheme
-        int ib = Ham->MSMEs.OB_p[index].GetIndex_b();
-        Q2_p[ia * dim_p + ib] += Ham->Q2MEs_p.Q_2_MSMEs[i];
+        number_of_Q += 2; //  for Q0 and Q2
+        Qtype.push_back("QuadrupoleQ0");
+        Qtype.push_back("QuadrupoleQ2");
     }
 
-    memset(Q0_n, 0, (dim_n * dim_n) * sizeof(double));
-    for (size_t i = 0; i < Ham->Q2MEs_n.Q0_list.size(); i++)
+    // read Operators
+    if (number_of_Q == 0)
     {
-        int index = Ham->Q2MEs_n.Q0_list[i];          // index of M scheme One body operator
-        int ia = Ham->MSMEs.OB_n[index].GetIndex_a(); // index of a in M scheme
-        int ib = Ham->MSMEs.OB_n[index].GetIndex_b();
-        Q0_n[ia * dim_n + ib] = Ham->Q2MEs_n.Q0_MSMEs[i];
+        std::cout << "   No constrain loaded!" << std::endl;
+        exit(0);
     }
-    memset(Q2_n, 0, (dim_n * dim_n) * sizeof(double));
-    for (size_t i = 0; i < Ham->Q2MEs_n.Q2_list.size(); i++)
+    std::vector<std::vector<double>> QOperator_p(number_of_Q, std::vector<double>(dim_p * dim_p, 0));
+    std::vector<std::vector<double>> QOperator_n(number_of_Q, std::vector<double>(dim_n * dim_n, 0));
+    std::vector<double> targets(number_of_Q, 0);
+    std::vector<double> deltaQs(number_of_Q, 0);
+
+    /// Load Quadrupole
+    auto it = std::find(Qtype.begin(), Qtype.end(), "QuadrupoleQ0");
+    if (it != Qtype.end())
     {
-        int index = Ham->Q2MEs_n.Q2_list[i];          // index of M scheme One body operator
-        int ia = Ham->MSMEs.OB_n[index].GetIndex_a(); // index of a in M scheme
-        int ib = Ham->MSMEs.OB_n[index].GetIndex_b();
-        Q2_n[ia * dim_n + ib] = Ham->Q2MEs_n.Q2_MSMEs[i];
-    }
-    memset(Q_2_n, 0, (dim_n * dim_n) * sizeof(double));
-    for (size_t i = 0; i < Ham->Q2MEs_n.Q_2_list.size(); i++)
-    {
-        int index = Ham->Q2MEs_n.Q_2_list[i];         // index of M scheme One body operator
-        int ia = Ham->MSMEs.OB_n[index].GetIndex_a(); // index of a in M scheme
-        int ib = Ham->MSMEs.OB_n[index].GetIndex_b();
-        Q2_n[ia * dim_n + ib] += Ham->Q2MEs_n.Q_2_MSMEs[i];
+        // Element found
+        int index = std::distance(Qtype.begin(), it);
+        // std::cout << "Element " << Qtype[index] << " found at index " << index << std::endl;
+        // Load Proton Quadrupole
+        memset(QOperator_p[index].data(), 0, (dim_p * dim_p) * sizeof(double));
+        for (size_t i = 0; i < Ham->Q2MEs_p.Q0_list.size(); i++)
+        {
+            int Qindex = Ham->Q2MEs_p.Q0_list[i];          // index of M scheme One body operator
+            int ia = Ham->MSMEs.OB_p[Qindex].GetIndex_a(); // index of a in M scheme
+            int ib = Ham->MSMEs.OB_p[Qindex].GetIndex_b();
+            QOperator_p[index][ia * dim_p + ib] = Ham->Q2MEs_p.Q0_MSMEs[i];
+        }
+        memset(QOperator_p[index + 1].data(), 0, (dim_p * dim_p) * sizeof(double));
+        for (size_t i = 0; i < Ham->Q2MEs_p.Q2_list.size(); i++)
+        {
+            int Qindex = Ham->Q2MEs_p.Q2_list[i];          // index of M scheme One body operator
+            int ia = Ham->MSMEs.OB_p[Qindex].GetIndex_a(); // index of a in M scheme
+            int ib = Ham->MSMEs.OB_p[Qindex].GetIndex_b();
+            QOperator_p[index + 1][ia * dim_p + ib] = Ham->Q2MEs_p.Q2_MSMEs[i];
+        }
+        for (size_t i = 0; i < Ham->Q2MEs_p.Q_2_list.size(); i++)
+        {
+            int Qindex = Ham->Q2MEs_p.Q_2_list[i];         // index of M scheme One body operator
+            int ia = Ham->MSMEs.OB_p[Qindex].GetIndex_a(); // index of a in M scheme
+            int ib = Ham->MSMEs.OB_p[Qindex].GetIndex_b();
+            QOperator_p[index + 1][ia * dim_p + ib] += Ham->Q2MEs_p.Q_2_MSMEs[i];
+        }
+        // Load neutron Quadrupole
+        memset(QOperator_n[index].data(), 0, (dim_n * dim_n) * sizeof(double));
+        for (size_t i = 0; i < Ham->Q2MEs_n.Q0_list.size(); i++)
+        {
+            int Qindex = Ham->Q2MEs_n.Q0_list[i];          // index of M scheme One body operator
+            int ia = Ham->MSMEs.OB_n[Qindex].GetIndex_a(); // index of a in M scheme
+            int ib = Ham->MSMEs.OB_n[Qindex].GetIndex_b();
+            QOperator_n[index][ia * dim_n + ib] = Ham->Q2MEs_n.Q0_MSMEs[i];
+        }
+        memset(QOperator_n[index + 1].data(), 0, (dim_n * dim_n) * sizeof(double));
+        for (size_t i = 0; i < Ham->Q2MEs_n.Q2_list.size(); i++)
+        {
+            int Qindex = Ham->Q2MEs_n.Q2_list[i];          // index of M scheme One body operator
+            int ia = Ham->MSMEs.OB_n[Qindex].GetIndex_a(); // index of a in M scheme
+            int ib = Ham->MSMEs.OB_n[Qindex].GetIndex_b();
+            QOperator_n[index + 1][ia * dim_n + ib] = Ham->Q2MEs_n.Q2_MSMEs[i];
+        }
+        for (size_t i = 0; i < Ham->Q2MEs_n.Q_2_list.size(); i++)
+        {
+            int Qindex = Ham->Q2MEs_n.Q_2_list[i];         // index of M scheme One body operator
+            int ia = Ham->MSMEs.OB_n[Qindex].GetIndex_a(); // index of a in M scheme
+            int ib = Ham->MSMEs.OB_n[Qindex].GetIndex_b();
+            QOperator_n[index + 1][ia * dim_n + ib] += Ham->Q2MEs_n.Q_2_MSMEs[i];
+        }
+        // load targets
+        targets[index] = modelspace->GetShapeQ0();
+        targets[index + 1] = modelspace->GetShapeQ2();
     }
 
-    ////////////////////////////////////////////////////////////
+    /// Load operator ...
+    /// ...
+
+    //--------------------------------------------------------------------------
+    // Solve constrained HF
     double E_previous = 1.e10;
-    int number_of_Q = 2;
-    iterations = 0;        // count number of iterations
+    iterations = 0; // count number of iterations
+    UpdateTolerance(1.e-5);
+    UpdateGradientStepSize(0.05);
     UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
-    double ConstarinedLargeNum = 1000.;
     UpdateF();
-    CalOnebodyOperator(Q0_p, Q0_n, tempQp, tempQn);
-    deltaQ0 = Q0_expect - tempQp - tempQn;
-    constrainedQ = ConstarinedLargeNum * deltaQ0 * deltaQ0;
-    // std::cout << deltaQ0 << "  " << Q0_expect << "   " << tempQn + tempQp << "   " << tempQp << "   " << tempQn << std::endl;
-    CalOnebodyOperator(Q2_p, Q2_n, tempQp, tempQn);
-    deltaQ2 = Q2_expect - tempQp - tempQn;
-    constrainedQ += ConstarinedLargeNum * deltaQ2 * deltaQ2;
-    // std::cout << deltaQ2 << "  " << Q2_expect << "   " << tempQn + tempQp << "   " << tempQp << "   " << tempQn << std::endl;
-    CalcEHF(constrainedQ);
-    // CalcEHF();
-    tolerance = 1.e-4;
-    gradient_eta = 0.05;
+    for (size_t i = 0; i < number_of_Q; i++)
+    {
+        double tempQp, tempQn;
+        CalOnebodyOperator(QOperator_p[i].data(), QOperator_n[i].data(), tempQp, tempQn);
+        deltaQs[i] = targets[i] - tempQp - tempQn;
+    }
+    CalcEHF();
     for (iterations = 0; iterations < maxiter; ++iterations)
     {
         E_previous = this->EHF;
-
-        std::vector<double> Qorb0_p(dim_p * dim_p, 0);
-        std::vector<double> Qorb0_n(dim_n * dim_n, 0);
-        std::vector<double> Qorb2_p(dim_p * dim_p, 0);
-        std::vector<double> Qorb2_n(dim_n * dim_n, 0);
         std::vector<double> Z_p(dim_p * dim_p, 0); // gradient matrix
         std::vector<double> Z_n(dim_n * dim_n, 0);
-
         TransferOperatorToHFbasis(FockTerm_p, FockTerm_n);
         cblas_dcopy(dim_p * dim_p, FockTerm_p, 1, Z_p.data(), 1);
         cblas_dcopy(dim_n * dim_n, FockTerm_n, 1, Z_n.data(), 1);
         Operator_ph(Z_p.data(), Z_n.data());
-
-        cblas_dcopy(dim_p * dim_p, Q0_p, 1, Qorb0_p.data(), 1);
-        cblas_dcopy(dim_n * dim_n, Q0_n, 1, Qorb0_n.data(), 1);
-        cblas_dcopy(dim_p * dim_p, Q2_p, 1, Qorb2_p.data(), 1);
-        cblas_dcopy(dim_n * dim_n, Q2_n, 1, Qorb2_n.data(), 1);
-
-        TransferOperatorToHFbasis(Qorb0_p.data(), Qorb0_n.data());
-        TransferOperatorToHFbasis(Qorb2_p.data(), Qorb2_n.data());
-        Operator_ph(Qorb0_p.data(), Qorb0_n.data());
-        Operator_ph(Qorb2_p.data(), Qorb2_n.data());
-
-        //---------------------------------------------
         std::vector<double> Fph_p(dim_p * dim_p, 0);
         std::vector<double> Fph_n(dim_n * dim_n, 0);
         cblas_dcopy(dim_p * dim_p, FockTerm_p, 1, Fph_p.data(), 1);
         cblas_dcopy(dim_n * dim_n, FockTerm_n, 1, Fph_n.data(), 1);
         Operator_ph(Fph_p.data(), Fph_n.data());
 
-        double dotProduct_p, QdotHProduct_p, dotProduct_n, QdotHProduct_n;
-        QdotHProduct_p = -cblas_ddot(dim_p * dim_p, Fph_p.data(), 1, Qorb0_p.data(), 1);
-        dotProduct_p = -cblas_ddot(dim_p * dim_p, Qorb0_p.data(), 1, Qorb0_p.data(), 1);
-        QdotHProduct_n = -cblas_ddot(dim_n * dim_n, Fph_n.data(), 1, Qorb0_n.data(), 1);
-        dotProduct_n = -cblas_ddot(dim_n * dim_n, Qorb0_n.data(), 1, Qorb0_n.data(), 1);
+        // contribution from constrian
+        std::vector<std::vector<double>> Q_HF_orb_p(number_of_Q, std::vector<double>(dim_p * dim_p, 0));
+        std::vector<std::vector<double>> Q_HF_orb_n(number_of_Q, std::vector<double>(dim_n * dim_n, 0));
+        for (size_t i = 0; i < number_of_Q; i++)
+        {
+            cblas_dcopy(dim_p * dim_p, QOperator_p[i].data(), 1, Q_HF_orb_p[i].data(), 1);
+            cblas_dcopy(dim_n * dim_n, QOperator_n[i].data(), 1, Q_HF_orb_n[i].data(), 1);
+            TransferOperatorToHFbasis(Q_HF_orb_p[i].data(), Q_HF_orb_n[i].data());
+            Operator_ph(Q_HF_orb_p[i].data(), Q_HF_orb_n[i].data());
+        }
 
-        double Q2dotProduct_p, Q2dotHProduct_p, Q2dotProduct_n, Q2dotHProduct_n;
-        Q2dotHProduct_p = -cblas_ddot(dim_p * dim_p, Fph_p.data(), 1, Qorb2_p.data(), 1);
-        Q2dotProduct_p = -cblas_ddot(dim_p * dim_p, Qorb2_p.data(), 1, Qorb2_p.data(), 1);
-        Q2dotHProduct_n = -cblas_ddot(dim_n * dim_n, Fph_n.data(), 1, Qorb2_n.data(), 1);
-        Q2dotProduct_n = -cblas_ddot(dim_n * dim_n, Qorb2_n.data(), 1, Qorb2_n.data(), 1);
-
-        double Q1Q2dotProduct_p, Q1Q2dotProduct_n;
-        Q1Q2dotProduct_p = -cblas_ddot(dim_p * dim_p, Qorb0_p.data(), 1, Qorb2_p.data(), 1);
-        Q1Q2dotProduct_n = -cblas_ddot(dim_n * dim_n, Qorb0_n.data(), 1, Qorb2_n.data(), 1);
-
-        //----------------------------------------
+        //---------------------------------------------
         std::vector<double> A_p(number_of_Q * number_of_Q, 0);
-        std::vector<double> b_p(number_of_Q, 0);
-        std::vector<int> ipiv_p(number_of_Q, 0);
-
-        A_p[0] = dotProduct_p;
-        A_p[1] = Q1Q2dotProduct_p;
-        A_p[2] = Q1Q2dotProduct_p;
-        A_p[3] = Q2dotProduct_p;
-
-        b_p[0] = QdotHProduct_p + deltaQ0 / (gradient_eta);
-        b_p[1] = Q2dotHProduct_p + deltaQ2 / (gradient_eta);
-        b_p[0] = QdotHProduct_p;
-        b_p[1] = Q2dotHProduct_p;
-
-        if (LAPACKE_dgesv(LAPACK_ROW_MAJOR, number_of_Q, 1, A_p.data(), number_of_Q, ipiv_p.data(), b_p.data(), 1) != 0)
-        {
-            std::cout << "  Linear equation error!" << std::endl;
-            exit(0);
-        }
-
         std::vector<double> A_n(number_of_Q * number_of_Q, 0);
+        std::vector<double> b_p(number_of_Q, 0);
         std::vector<double> b_n(number_of_Q, 0);
+
+        for (size_t i = 0; i < number_of_Q; i++)
+        {
+            for (size_t j = i; j < number_of_Q; j++)
+            {
+                // QQ
+                A_p[i * number_of_Q + j] = cblas_ddot(dim_p * dim_p, Q_HF_orb_p[i].data(), 1, Q_HF_orb_p[j].data(), 1);
+                A_n[i * number_of_Q + j] = cblas_ddot(dim_n * dim_n, Q_HF_orb_n[i].data(), 1, Q_HF_orb_n[j].data(), 1);
+
+                if (i != j)
+                {
+                    A_p[j * number_of_Q + i] = A_p[i * number_of_Q + j];
+                    A_n[j * number_of_Q + i] = A_n[i * number_of_Q + j];
+                }
+            }
+            // HQ
+            b_p[i] = cblas_ddot(dim_p * dim_p, Fph_p.data(), 1, Q_HF_orb_p[i].data(), 1);
+            b_n[i] = cblas_ddot(dim_n * dim_n, Fph_n.data(), 1, Q_HF_orb_n[i].data(), 1);
+        }
+        std::vector<double> Acopy_p(number_of_Q * number_of_Q, 0);
+        std::vector<double> Acopy_n(number_of_Q * number_of_Q, 0);
+        std::vector<int> ipiv_p(number_of_Q, 0);
         std::vector<int> ipiv_n(number_of_Q, 0);
-
-        A_n[0] = dotProduct_n;
-        A_n[1] = Q1Q2dotProduct_n;
-        A_n[2] = Q1Q2dotProduct_n;
-        A_n[3] = Q2dotProduct_n;
-
-        b_n[0] = QdotHProduct_n + deltaQ0 / (gradient_eta);
-        b_n[1] = Q2dotHProduct_n + deltaQ2 / (gradient_eta);
-        b_n[0] = QdotHProduct_n;
-        b_n[1] = Q2dotHProduct_n;
-
-        if (LAPACKE_dgesv(LAPACK_ROW_MAJOR, number_of_Q, 1, A_n.data(), number_of_Q, ipiv_n.data(), b_n.data(), 1) != 0)
+        Acopy_p = A_p;
+        Acopy_n = A_n;
+        if (LAPACKE_dgesv(LAPACK_ROW_MAJOR, number_of_Q, 1, Acopy_p.data(), number_of_Q, ipiv_p.data(), b_p.data(), 1) != 0)
         {
             std::cout << "  Linear equation error!" << std::endl;
             exit(0);
         }
-
-        cblas_daxpy(dim_p * dim_p, -b_p[0], Qorb0_p.data(), 1, Z_p.data(), 1);
-        cblas_daxpy(dim_p * dim_p, -b_p[1], Qorb2_p.data(), 1, Z_p.data(), 1);
-        cblas_daxpy(dim_n * dim_n, -b_n[0], Qorb0_n.data(), 1, Z_n.data(), 1);
-        cblas_daxpy(dim_n * dim_n, -b_n[1], Qorb2_n.data(), 1, Z_n.data(), 1);
+        if (LAPACKE_dgesv(LAPACK_ROW_MAJOR, number_of_Q, 1, Acopy_n.data(), number_of_Q, ipiv_n.data(), b_n.data(), 1) != 0)
+        {
+            std::cout << "  Linear equation error!" << std::endl;
+            exit(0);
+        }
+        for (size_t i = 0; i < number_of_Q; i++)
+        {
+            cblas_daxpy(dim_p * dim_p, -b_p[i], Q_HF_orb_p[i].data(), 1, Z_p.data(), 1);
+            cblas_daxpy(dim_n * dim_n, -b_n[i], Q_HF_orb_n[i].data(), 1, Z_n.data(), 1);
+        }
         Cal_Gradient_preconditioned_given_gradient(Z_p.data(), Z_n.data());
-        // Cal_Gradient_given_gradient(Z_p.data(), Z_n.data());
         //--------------------------------
-        //  cblas_daxpy(dim_p * dim_p, -1. * QdotHProduct_p / (dotProduct_p), Qorb0_p.data(), 1, Z_p.data(), 1);
-        //  cblas_daxpy(dim_n * dim_n, -1. * QdotHProduct_n / (dotProduct_n), Qorb0_n.data(), 1, Z_n.data(), 1);
-        //  Cal_Gradient_preconditioned_given_gradient(Z_p.data(), Z_n.data());
-        //  cblas_daxpy(dim_p * dim_p, -1. * deltaQ0 / (dotProduct_p), Qorb0_p.data(), 1, Z_p.data(), 1);
-        //  cblas_daxpy(dim_n * dim_n, -1. * deltaQ0 / (dotProduct_n), Qorb0_n.data(), 1, Z_n.data(), 1);
-
-        A_p[0] = dotProduct_p;
-        A_p[1] = Q1Q2dotProduct_p;
-        A_p[2] = Q1Q2dotProduct_p;
-        A_p[3] = Q2dotProduct_p;
-
-        b_p[0] = deltaQ0;
-        b_p[1] = deltaQ2;
-
-        if (LAPACKE_dgesv(LAPACK_ROW_MAJOR, number_of_Q, 1, A_p.data(), number_of_Q, ipiv_p.data(), b_p.data(), 1) != 0)
+        Acopy_p = A_p;
+        Acopy_n = A_n;
+        b_p = deltaQs;
+        b_n = deltaQs;
+        if (LAPACKE_dgesv(LAPACK_ROW_MAJOR, number_of_Q, 1, Acopy_p.data(), number_of_Q, ipiv_p.data(), b_p.data(), 1) != 0)
         {
             std::cout << "  Linear equation error!" << std::endl;
             exit(0);
         }
-
-        A_n[0] = dotProduct_n;
-        A_n[1] = Q1Q2dotProduct_n;
-        A_n[2] = Q1Q2dotProduct_n;
-        A_n[3] = Q2dotProduct_n;
-
-        b_n[0] = deltaQ0;
-        b_n[1] = deltaQ2;
-
-        if (LAPACKE_dgesv(LAPACK_ROW_MAJOR, number_of_Q, 1, A_n.data(), number_of_Q, ipiv_n.data(), b_n.data(), 1) != 0)
+        if (LAPACKE_dgesv(LAPACK_ROW_MAJOR, number_of_Q, 1, Acopy_n.data(), number_of_Q, ipiv_n.data(), b_n.data(), 1) != 0)
         {
             std::cout << "  Linear equation error!" << std::endl;
             exit(0);
         }
-
-        cblas_daxpy(dim_p * dim_p, 1. * -b_p[0], Qorb0_p.data(), 1, Z_p.data(), 1);
-        cblas_daxpy(dim_p * dim_p, 1. * -b_p[1], Qorb2_p.data(), 1, Z_p.data(), 1);
-        cblas_daxpy(dim_n * dim_n, 1. * -b_n[0], Qorb0_n.data(), 1, Z_n.data(), 1);
-        cblas_daxpy(dim_n * dim_n, 1. * -b_n[1], Qorb2_n.data(), 1, Z_n.data(), 1);
-
+        for (size_t i = 0; i < number_of_Q; i++)
+        {
+            cblas_daxpy(dim_p * dim_p, -b_p[i], Q_HF_orb_p[i].data(), 1, Z_p.data(), 1);
+            cblas_daxpy(dim_n * dim_n, -b_n[i], Q_HF_orb_n[i].data(), 1, Z_n.data(), 1);
+        }
         UpdateU_Thouless_pade(Z_p.data(), Z_n.data());
         // UpdateU_Thouless_1st(Z_p.data(), Z_n.data());
         UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
-
-        UpdateF(); // Update the Fock matrix
-
-        CalOnebodyOperator(Q0_p, Q0_n, tempQp, tempQn);
-        deltaQ0 = tempQp + tempQn - Q0_expect;
-        // std::cout << deltaQ0 << "  " << Q0_expect << "   " << tempQn + tempQp << "   " << tempQp << "   " << tempQn << std::endl;
-        CalOnebodyOperator(Q2_p, Q2_n, tempQp, tempQn);
-        deltaQ2 = tempQp + tempQn - Q2_expect;
-        // std::cout << deltaQ2 << "  " << Q2_expect << "   " << tempQn + tempQp << "   " << tempQp << "   " << tempQn << std::endl;
-
-        constrainedQ = ConstarinedLargeNum * deltaQ0 * deltaQ0;
-        constrainedQ += ConstarinedLargeNum * deltaQ2 * deltaQ2;
-        CalcEHF(constrainedQ);
-        // CalcEHF();
-        //   std::cout << "   " << std::setw(5) << iterations << "   " << std::setw(10) << std::setfill(' ') << std::fixed << std::setprecision(4) << EHF << std::endl;
-        //   if (CheckConvergence())
-
-        if (fabs(E_previous - EHF) < this->tolerance)
-            break;
-    }
-    UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
-    UpdateF();             // Update the Fock matrix
-    CalcEHF();
-
-    CalOnebodyOperator(Q0_p, Q0_n, tempQp, tempQn);
-    deltaQ0 = tempQn + tempQp;
-    CalOnebodyOperator(Q2_p, Q2_n, tempQp, tempQn);
-    deltaQ2 = tempQn + tempQp;
-    std::cout << "  Q0  " << Q0_expect << "   " << deltaQ0 << "    Q2 " << Q2_expect << "   " << deltaQ2 << std::endl;
-
-    std::cout << std::setw(15) << std::setprecision(10);
-    if (iterations < maxiter)
-    {
-        std::cout << "  HF converged after " << iterations << " iterations. " << std::endl;
-    }
-    else
-    {
-        std::cout << "\033[31m!!!! Warning: Restricted Hartree-Fock calculation didn't converge after " << iterations << " iterations.\033[0m" << std::endl;
-        std::cout << std::endl;
-    }
-    PrintEHF();
-    mkl_free(Q2_p);
-    mkl_free(Q0_p);
-    mkl_free(Q_2_p);
-    mkl_free(Q2_n);
-    mkl_free(Q0_n);
-    mkl_free(Q_2_n);
-}
-
-/*
-void HartreeFock::Solve_gradient_Constraint()
-{
-    /// inital Q operator
-    double *Q2_p, *Q0_p, *Q_2_p, *Q2_n, *Q0_n, *Q_2_n;
-    Q2_p = (double *)mkl_malloc((dim_p * dim_p) * sizeof(double), 64);
-    Q0_p = (double *)mkl_malloc((dim_p * dim_p) * sizeof(double), 64);
-    Q_2_p = (double *)mkl_malloc((dim_p * dim_p) * sizeof(double), 64);
-    Q2_n = (double *)mkl_malloc((dim_n * dim_n) * sizeof(double), 64);
-    Q0_n = (double *)mkl_malloc((dim_n * dim_n) * sizeof(double), 64);
-    Q_2_n = (double *)mkl_malloc((dim_n * dim_n) * sizeof(double), 64);
-
-    double Q0_expect = modelspace->GetShapeQ0();
-    double Q2_expect = modelspace->GetShapeQ2();
-    double deltaQ0, deltaQ2, deltaQ_2;
-    double tempQp, tempQn, constrainedQ;
-
-    memset(Q0_p, 0, (dim_p * dim_p) * sizeof(double));
-    for (size_t i = 0; i < Ham->Q2MEs_p.Q0_list.size(); i++)
-    {
-        int index = Ham->Q2MEs_p.Q0_list[i];          // index of M scheme One body operator
-        int ia = Ham->MSMEs.OB_p[index].GetIndex_a(); // index of a in M scheme
-        int ib = Ham->MSMEs.OB_p[index].GetIndex_b();
-        Q0_p[ia * dim_p + ib] = Ham->Q2MEs_p.Q0_MSMEs[i];
-    }
-    memset(Q2_p, 0, (dim_p * dim_p) * sizeof(double));
-    for (size_t i = 0; i < Ham->Q2MEs_p.Q2_list.size(); i++)
-    {
-        int index = Ham->Q2MEs_p.Q2_list[i];          // index of M scheme One body operator
-        int ia = Ham->MSMEs.OB_p[index].GetIndex_a(); // index of a in M scheme
-        int ib = Ham->MSMEs.OB_p[index].GetIndex_b();
-        Q2_p[ia * dim_p + ib] = Ham->Q2MEs_p.Q2_MSMEs[i];
-    }
-    memset(Q_2_p, 0, (dim_p * dim_p) * sizeof(double));
-    for (size_t i = 0; i < Ham->Q2MEs_p.Q_2_list.size(); i++)
-    {
-        int index = Ham->Q2MEs_p.Q_2_list[i];         // index of M scheme One body operator
-        int ia = Ham->MSMEs.OB_p[index].GetIndex_a(); // index of a in M scheme
-        int ib = Ham->MSMEs.OB_p[index].GetIndex_b();
-        Q2_p[ia * dim_p + ib] += Ham->Q2MEs_p.Q_2_MSMEs[i];
-    }
-
-    memset(Q0_n, 0, (dim_n * dim_n) * sizeof(double));
-    for (size_t i = 0; i < Ham->Q2MEs_n.Q0_list.size(); i++)
-    {
-        int index = Ham->Q2MEs_n.Q0_list[i];          // index of M scheme One body operator
-        int ia = Ham->MSMEs.OB_n[index].GetIndex_a(); // index of a in M scheme
-        int ib = Ham->MSMEs.OB_n[index].GetIndex_b();
-        Q0_n[ia * dim_n + ib] = Ham->Q2MEs_n.Q0_MSMEs[i];
-    }
-    memset(Q2_n, 0, (dim_n * dim_n) * sizeof(double));
-    for (size_t i = 0; i < Ham->Q2MEs_n.Q2_list.size(); i++)
-    {
-        int index = Ham->Q2MEs_n.Q2_list[i];          // index of M scheme One body operator
-        int ia = Ham->MSMEs.OB_n[index].GetIndex_a(); // index of a in M scheme
-        int ib = Ham->MSMEs.OB_n[index].GetIndex_b();
-        Q2_n[ia * dim_n + ib] = Ham->Q2MEs_n.Q2_MSMEs[i];
-    }
-    memset(Q_2_n, 0, (dim_n * dim_n) * sizeof(double));
-    for (size_t i = 0; i < Ham->Q2MEs_n.Q_2_list.size(); i++)
-    {
-        int index = Ham->Q2MEs_n.Q_2_list[i];         // index of M scheme One body operator
-        int ia = Ham->MSMEs.OB_n[index].GetIndex_a(); // index of a in M scheme
-        int ib = Ham->MSMEs.OB_n[index].GetIndex_b();
-        Q2_n[ia * dim_n + ib] += Ham->Q2MEs_n.Q_2_MSMEs[i];
-    }
-
-    ////////////////////////////////////////////////////////////
-    double E_previous = 1.e10;
-    double last_shift = 1000.;
-    iterations = 0;        // count number of iterations
-    UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
-    UpdateF();
-    CalOnebodyOperator(Q0_p, Q0_n, tempQp, tempQn);
-    deltaQ0 = Q0_expect - tempQp - tempQn;
-    // std::cout << deltaQ0 << "  " << Q0_expect << "   " << tempQn + tempQp << "   " << tempQp << "   " << tempQn << std::endl;
-    CalOnebodyOperator(Q2_p, Q2_n, tempQp, tempQn);
-    deltaQ2 = Q2_expect - tempQp - tempQn;
-    // constrainedQ += ConstarinedLargeNum * deltaQ2 * deltaQ2;
-    // std::cout << deltaQ2 << "  " << Q2_expect << "   " << tempQn + tempQp << "   " << tempQp << "   " << tempQn << std::endl;
-    constrainedQ = 0;
-    // CalcEHF(constrainedQ);
-    CalcEHF();
-    tolerance = 1.e-5;
-    gradient_eta = 0.0001;
-    for (iterations = 0; iterations < maxiter; ++iterations)
-    {
-        E_previous = this->EHF;
-        std::vector<double> Qorb0_p(dim_p * dim_p, 0);
-        std::vector<double> Qorb0_n(dim_n * dim_n, 0);
-        std::vector<double> Qorb2_p(dim_p * dim_p, 0);
-        std::vector<double> Qorb2_n(dim_n * dim_n, 0);
-        std::vector<double> Z_p(dim_p * dim_p, 0); // gradient matrix
-        std::vector<double> Z_n(dim_n * dim_n, 0);
-
-        TransferOperatorToHFbasis(FockTerm_p, FockTerm_n);
-
-        // Cal_Gradient(Z_p.data(), Z_n.data());
-        cblas_dcopy(dim_p * dim_p, FockTerm_p, 1, Z_p.data(), 1);
-        cblas_dcopy(dim_n * dim_n, FockTerm_n, 1, Z_n.data(), 1);
-        Operator_ph(Z_p.data(), Z_n.data());
-
-        cblas_dcopy(dim_p * dim_p, Q0_p, 1, Qorb0_p.data(), 1);
-        cblas_dcopy(dim_n * dim_n, Q0_n, 1, Qorb0_n.data(), 1);
-        // cblas_dcopy(dim_p * dim_p, Q2_p, 1, Qorb2_p.data(), 1);
-        // cblas_dcopy(dim_n * dim_n, Q2_n, 1, Qorb2_n.data(), 1);
-
-        TransferOperatorToHFbasis(Qorb0_p.data(), Qorb0_n.data());
-        Operator_ph(Qorb0_p.data(), Qorb0_n.data());
-
-        //---------------------------------------------
-        std::vector<double> Fph_p(dim_p * dim_p, 0);
-        std::vector<double> Fph_n(dim_n * dim_n, 0);
-        cblas_dcopy(dim_p * dim_p, FockTerm_p, 1, Fph_p.data(), 1);
-        cblas_dcopy(dim_n * dim_n, FockTerm_n, 1, Fph_n.data(), 1);
-        Operator_ph(Fph_p.data(), Fph_n.data());
-
-        double dotProduct_p, QdotHProduct_p, dotProduct_n, QdotHProduct_n, factor_p, factor_n;
-
-        QdotHProduct_p = cblas_ddot(dim_p * dim_p, Fph_p.data(), 1, Qorb0_p.data(), 1);
-        dotProduct_p = cblas_ddot(dim_p * dim_p, Qorb0_p.data(), 1, Qorb0_p.data(), 1);
-        // factor_p = deltaQ0 / dotProduct;
-        // factor_p = -1. * gradient_eta * QdotHProduct / (dotProduct)-deltaQ0 / (dotProduct);
-
-        QdotHProduct_n = cblas_ddot(dim_n * dim_n, Fph_n.data(), 1, Qorb0_n.data(), 1);
-        dotProduct_n = cblas_ddot(dim_n * dim_n, Qorb0_n.data(), 1, Qorb0_n.data(), 1);
-        // factor_n = deltaQ0 / (dotProduct);
-        // factor_n = -1. * gradient_eta * QdotHProduct / (dotProduct)-deltaQ0 / (dotProduct);
-
-        //--------------------------------
-        cblas_daxpy(dim_p * dim_p, -1. * QdotHProduct_p / (dotProduct_p), Qorb0_p.data(), 1, Z_p.data(), 1);
-        cblas_daxpy(dim_n * dim_n, -1. * QdotHProduct_n / (dotProduct_n), Qorb0_n.data(), 1, Z_n.data(), 1);
-        Cal_Gradient_preconditioned_given_gradient(Z_p.data(), Z_n.data());
-
-        cblas_daxpy(dim_p * dim_p, -deltaQ0 / (dotProduct_p), Qorb0_p.data(), 1, Z_p.data(), 1);
-        cblas_daxpy(dim_n * dim_n, -deltaQ0 / (dotProduct_n), Qorb0_n.data(), 1, Z_n.data(), 1);
-
-        UpdateU_Thouless_pade(Z_p.data(), Z_n.data());
-        // UpdateU_Thouless_1st(Z_p.data(), Z_n.data());
-
-        UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
-        UpdateF();
-
-        CalOnebodyOperator(Q0_p, Q0_n, tempQp, tempQn);
-        deltaQ0 = Q0_expect - tempQp - tempQn;
-        // std::cout << deltaQ0 << "  " << Q0_expect << "   " << tempQn + tempQp << "   " << tempQp << "   " << tempQn << std::endl;
-        CalOnebodyOperator(Q2_p, Q2_n, tempQp, tempQn);
-        // deltaQ2 = Q2_expect - tempQp - tempQn;
-        //    std::cout << deltaQ2 << "  " << Q2_expect << "   " << tempQn + tempQp << "   " << tempQp << "   " << tempQn << std::endl;
-        // CalcEHF(constrainedQ);
+        UpdateF();             // Update the Fock matrix
+        for (size_t i = 0; i < number_of_Q; i++)
+        {
+            double tempQp, tempQn;
+            CalOnebodyOperator(QOperator_p[i].data(), QOperator_n[i].data(), tempQp, tempQn);
+            deltaQs[i] = targets[i] - tempQp - tempQn;
+        }
         CalcEHF();
-
-        // CalcEHF();
         //   std::cout << "   " << std::setw(5) << iterations << "   " << std::setw(10) << std::setfill(' ') << std::fixed << std::setprecision(4) << EHF << std::endl;
         //   if (CheckConvergence())
-
         if (fabs(E_previous - EHF) < this->tolerance)
             break;
     }
     UpdateDensityMatrix(); // Update density matrix rho_p and rho_n
     UpdateF();             // Update the Fock matrix
     CalcEHF();
-
-    CalOnebodyOperator(Q0_p, Q0_n, tempQp, tempQn);
-    deltaQ0 = tempQn + tempQp;
-    CalOnebodyOperator(Q2_p, Q2_n, tempQp, tempQn);
-    deltaQ2 = tempQn + tempQp;
-    std::cout << "  Q0  " << Q0_expect << "   " << deltaQ0 << "    Q2 " << Q2_expect << "   " << deltaQ2 << std::endl;
-
-    std::cout << std::setw(15) << std::setprecision(10);
     if (iterations < maxiter)
     {
         std::cout << "  HF converged after " << iterations << " iterations. " << std::endl;
@@ -1677,14 +1446,7 @@ void HartreeFock::Solve_gradient_Constraint()
         std::cout << std::endl;
     }
     PrintEHF();
-    mkl_free(Q2_p);
-    mkl_free(Q0_p);
-    mkl_free(Q_2_p);
-    mkl_free(Q2_n);
-    mkl_free(Q0_n);
-    mkl_free(Q_2_n);
 }
-*/
 
 //*********************************************************************
 // Random transformation matrix U
@@ -1957,84 +1719,6 @@ void HartreeFock::UpdateU_Qconstraint(double deltaQ, double *O_p, double *O_n)
     cblas_dcopy(dim_n * dim_n, U_n, 1, Zp_n.data(), 1);
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim_n, dim_n, dim_n, 1., Oorb_n.data(), dim_n, Zp_n.data(), dim_n, 0, U_n, dim_n);
 
-    return;
-}
-
-void HartreeFock::UpdateU_Qconstraint_generatZ(double deltaQ, double *O_p, double *O_n)
-{
-    double factor_p, factor_n;
-    std::vector<double> Oorb_p(dim_p * dim_p, 0);
-    std::vector<double> Oorb_n(dim_n * dim_n, 0);
-    std::vector<double> Oorb_ph_p(dim_p * dim_p, 0);
-    std::vector<double> Oorb_ph_n(dim_n * dim_n, 0);
-    std::vector<double> Zp_p(dim_p * dim_p, 0);
-    std::vector<double> Zn_p(dim_p * dim_p, 0);
-    std::vector<double> Zp_n(dim_n * dim_n, 0);
-    std::vector<double> Zn_n(dim_n * dim_n, 0);
-
-    cblas_dcopy(dim_p * dim_p, O_p, 1, Oorb_p.data(), 1);
-    cblas_dcopy(dim_n * dim_n, O_n, 1, Oorb_n.data(), 1);
-    // TransferOperatorToHFbasis(Oorb_p.data(), Oorb_n.data());
-    cblas_dcopy(dim_p * dim_p, Oorb_p.data(), 1, Oorb_ph_p.data(), 1);
-    cblas_dcopy(dim_n * dim_n, Oorb_n.data(), 1, Oorb_ph_n.data(), 1);
-    Operator_ph(Oorb_ph_p.data(), Oorb_ph_n.data());
-
-    std::vector<double> Fph_p(dim_n * dim_n, 0);
-    std::vector<double> Fph_n(dim_n * dim_n, 0);
-    cblas_dcopy(dim_p * dim_p, FockTerm_p, 1, Fph_p.data(), 1);
-    cblas_dcopy(dim_n * dim_n, FockTerm_n, 1, Fph_n.data(), 1);
-    Operator_ph(Fph_p.data(), Fph_n.data());
-
-    double dotProduct;
-    double QdotHProduct;
-
-    QdotHProduct = cblas_ddot(dim_p * dim_p, Fph_p.data(), 1, Oorb_ph_p.data(), 1);
-    dotProduct = cblas_ddot(dim_p * dim_p, Oorb_ph_p.data(), 1, Oorb_ph_p.data(), 1);
-    // dotProduct = cblas_ddot(dim_p * dim_p, Oorb_p.data(), 1, Oorb_p.data(), 1);
-    factor_p = deltaQ / dotProduct;
-    factor_p = -0.5 * QdotHProduct / (dotProduct)-deltaQ / (dotProduct);
-
-    QdotHProduct = cblas_ddot(dim_n * dim_n, Fph_n.data(), 1, Oorb_ph_n.data(), 1);
-    dotProduct = cblas_ddot(dim_n * dim_n, Oorb_ph_n.data(), 1, Oorb_ph_n.data(), 1);
-    // dotProduct = cblas_ddot(dim_n * dim_n, Oorb_n.data(), 1, Oorb_n.data(), 1);
-    factor_n = deltaQ / (dotProduct);
-    factor_n = -0.5 * QdotHProduct / (dotProduct)-deltaQ / (dotProduct);
-
-    cblas_dscal(dim_p * dim_p, factor_p, Oorb_ph_p.data(), 1);
-    cblas_dscal(dim_n * dim_n, factor_n, Oorb_ph_n.data(), 1);
-
-    cblas_dcopy(dim_p * dim_p, Oorb_ph_p.data(), 1, O_p, 1);
-    cblas_dcopy(dim_n * dim_n, Oorb_ph_n.data(), 1, O_n, 1);
-    return;
-}
-
-void HartreeFock::UpdateU_Qconstraint_generatZ_v2(double deltaQ, double *O_p, double *O_n)
-{
-    double factor_p, factor_n;
-    std::vector<double> Oorb_p(dim_p * dim_p, 0);
-    std::vector<double> Oorb_n(dim_n * dim_n, 0);
-    std::vector<double> Oorb_ph_p(dim_p * dim_p, 0);
-    std::vector<double> Oorb_ph_n(dim_n * dim_n, 0);
-    std::vector<double> Zp_p(dim_p * dim_p, 0);
-    std::vector<double> Zn_p(dim_p * dim_p, 0);
-    std::vector<double> Zp_n(dim_n * dim_n, 0);
-    std::vector<double> Zn_n(dim_n * dim_n, 0);
-
-    cblas_dcopy(dim_p * dim_p, O_p, 1, Oorb_p.data(), 1);
-    cblas_dcopy(dim_n * dim_n, O_n, 1, Oorb_n.data(), 1);
-    // TransferOperatorToHFbasis(Oorb_p.data(), Oorb_n.data());
-    cblas_dcopy(dim_p * dim_p, Oorb_p.data(), 1, Oorb_ph_p.data(), 1);
-    cblas_dcopy(dim_n * dim_n, Oorb_n.data(), 1, Oorb_ph_n.data(), 1);
-    Operator_ph(Oorb_ph_p.data(), Oorb_ph_n.data());
-
-    factor_p = deltaQ;
-    factor_n = deltaQ;
-
-    cblas_dscal(dim_p * dim_p, factor_p, Oorb_ph_p.data(), 1);
-    cblas_dscal(dim_n * dim_n, factor_n, Oorb_ph_n.data(), 1);
-
-    cblas_dcopy(dim_p * dim_p, Oorb_ph_p.data(), 1, O_p, 1);
-    cblas_dcopy(dim_n * dim_n, Oorb_ph_n.data(), 1, O_n, 1);
     return;
 }
 
@@ -3321,7 +3005,8 @@ void HartreeFock::PrintQudrapole()
     deltaQ0 = tempQn + tempQp;
     CalOnebodyOperator(Q2_p, Q2_n, tempQp, tempQn);
     deltaQ2 = tempQn + tempQp;
-    std::cout << "  Q0  " << Q0_expect << "   " << deltaQ0 << "    Q2 " << Q2_expect << "   " << deltaQ2 << std::endl;
+    std::cout << "  Expectation value of Q_0:     " << deltaQ0 << "   target: " << Q0_expect << std::endl;
+    std::cout << "  Expectation value of 2 * Q_2: " << deltaQ2 << "   target: " << Q2_expect << std::endl;
 
     mkl_free(Q2_p);
     mkl_free(Q0_p);
@@ -3380,7 +3065,7 @@ void HartreeFock::Print_Jz()
     // CalcEHF();
 
     CalOnebodyOperator(Jz_p, Jz_n, Total_Jz_p, Total_Jz_n);
-    std::cout << "  Expectation value of Jz are  " << Total_Jz_p + Total_Jz_n << "      Jz_p " << Total_Jz_p << "    Jz_n " << Total_Jz_n << std::endl;
+    std::cout << "  Expectation value of Jz:      " << Total_Jz_p + Total_Jz_n << "      Jz_p " << Total_Jz_p << "    Jz_n " << Total_Jz_n << std::endl;
 
     mkl_free(Jz_p);
     mkl_free(Jz_n);
@@ -3664,6 +3349,7 @@ int main(int argc, char *argv[])
     std::cout << " --------------------------------   Gradient with constrained" << std::endl;
     hf.Reset_U();
     hf.Solve_gradient_Constraint();
+    hf.PrintQudrapole();
     hf.Print_Jz();
 
     hf.SaveHoleParameters("Output/HF_para.dat");

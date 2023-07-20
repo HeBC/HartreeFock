@@ -30,22 +30,20 @@ class HartreeFock
 public:
     int N_p, N_n, dim_p, dim_n;
     // method
-    HartreeFock(Hamiltonian &H);                 /// Constructor
-    HartreeFock(Hamiltonian &H, int RandomSeed); /// Random starting transformation matrix
+    HartreeFock(Hamiltonian &H); /// Constructor
     ~HartreeFock();
 
     // Solve functions
     void Solve_gradient();
     void Solve_gradient_Constraint();
     void Solve_hybrid();
-    void Solve_hybrid_Constraint();
-    void Solve_diag();   /// Diagonalize and UpdateF until convergence
-    void Solve_noCore(); /// the one body part has been modified for no core!
+    void Solve_hybrid_Constraint(); // not work now!!!
+    void Solve_diag();              /// Diagonalize and UpdateF until convergence
+    void Solve_noCore();            /// the one body part has been modified for no core!
 
     //---------------------
     // Tools
-    void RandomTransformationU(int RandomSeed = 525); // Random transformation matrix U
-    void UpdateU_hybrid();                            /// Update the Unitary transformation matrix, hybrid method
+    void UpdateU_hybrid(); /// Update the Unitary transformation matrix, hybrid method
     void UpdateU_Qconstraint(double deltaQ, double *O_p, double *O_n);
     void UpdateDensityMatrix(); /// Update the density matrix with the new coefficients C
     void UpdateDensityMatrix(const std::vector<int> proton_vec, const std::vector<int> neutron_vec);
@@ -59,34 +57,31 @@ public:
     void CalcEHF(double constrainedQ);                                                              /// Calculate the HF energy with constrained
     double CalcEHF(const std::vector<int> proton_vec, const std::vector<int> neutron_vec);          // inidicate the orbits
     double CalcEHF_HForbits(const std::vector<int> proton_vec, const std::vector<int> neutron_vec); // cal E on HF orbits
-    void PrintEHF();
-    void PrintQudrapole();   /// Print qudrapole moment
-    void Print_Jz();         /// Print <Jz>
-    bool CheckConvergence(); /// check the HF single SP
     void TransferOperatorToHFbasis(double *Op_p, double *Op_n);
     void CalOnebodyOperator(double *Op_p, double *Op_n, double &Qp, double &Qn);
     void Operator_ph(double *Op_p, double *Op_n);
-    void Reset_U();
+    void PrintEHF();
+    void PrintQudrapole();                            /// Print qudrapole moment
+    void Print_Jz();                                  /// Print <Jz>
+    bool CheckConvergence();                          /// check the HF single SP
+    void Reset_U();                                   /// use identical U matrix
+    void RandomTransformationU(int RandomSeed = 525); // Random transformation matrix U
+    void UpdateTolerance(double T) { this->tolerance = T; };
+    void UpdateGradientStepSize(double size) { gradient_eta = size; };
 
     // gradient method
-    double gradient_eta = 0.1; // eta for steepest descent method.
     void Cal_Gradient(double *Z_p, double *Z_n);
     void Cal_Gradient_preconditioned(double *Z_p, double *Z_n);
     void Cal_Gradient_preconditioned_SRG(double *Z_p, double *Z_n);
-    void UpdateU_Thouless_pade(double *Z_p, double *Z_n);
-    void UpdateU_Qconstraint_generatZ(double deltaQ, double *O_p, double *O_n); // return Z from constraint Q
-
-    void UpdateU_Qconstraint_generatZ_v2(double deltaQ, double *O_p, double *O_n);
-    void Cal_Gradient_preconditioned_given_gradient(double *Z_p, double *Z_n);
-    void UpdateU_Thouless_1st(double *Z_p, double *Z_n); // Thouless up to first order
     void Cal_Gradient_given_gradient(double *Z_p, double *Z_n);
+    void Cal_Gradient_preconditioned_given_gradient(double *Z_p, double *Z_n);
+    void UpdateU_Thouless_pade(double *Z_p, double *Z_n); // THouless by using pade approximation
+    void UpdateU_Thouless_1st(double *Z_p, double *Z_n);  // Thouless up to first order
 
     // output states
     void SaveHoleParameters(string filename);
     void SaveParticleHoleStates(int Num);
     std::vector<std::vector<int>> generateCombinations(const std::vector<int> &numbers, int n);
-    void generateCombinationsRecursive(const std::vector<int> &numbers, std::vector<int> &combination,
-                                       int startIndex, int n, std::vector<std::vector<int>> &combinations);
     std::vector<int> GetHoleList(int Isospin);
     std::vector<int> GetParticleList(int Isospin);
     std::vector<int> ConstructParticleHoleState(int isospin, const std::vector<int> &hole_vec, const std::vector<int> &part_vec);
@@ -111,9 +106,8 @@ private:
     double *U_p, *U_n;               /// transformation coefficients, 1st index is ho basis, 2nd = HF basis
     double *rho_p, *rho_n;           /// density matrix rho_ij, the index in order of dim_p * dim_p dim_n * dim_n
     double *FockTerm_p, *FockTerm_n; /// Fock matrix
-    double *Vij_p, *Vij_n;           /// Two body term
-    double *T_term;                  /// SP energies
-    double *T_term_p = nullptr,
+    double *Vij_p, *Vij_n;           /// Two body term              
+    double *T_term_p = nullptr,       /// SP energies
            *T_term_n = nullptr;       /// SP energies for no core
     double tolerance;                 /// tolerance for convergence
     int iterations;                   /// record iterations used in Solve()
@@ -124,6 +118,7 @@ private:
     double e1hf;                      /// One-body contribution to EHF
     double e2hf;                      /// Two-body contribution to EHF
     double eta = 1.0;                 /// 1. will be Diagonalization method, use a small number
+    double gradient_eta = 0.1;        // eta for steepest descent method.
     std::deque<std::vector<double>> DIIS_density_mats_p, DIIS_density_mats_n;
     ///< Save density matrix from past iterations for DIIS
     std::deque<std::vector<double>> DIIS_error_mats_p, DIIS_error_mats_n;
@@ -131,6 +126,8 @@ private:
     double frobenius_norm(const std::vector<double> &A);
     static bool compareTriples(const Triple &t1, const Triple &t2);
     void gram_schmidt(double *vectors, int num_vectors, int vector_size);
+    void generateCombinationsRecursive(const std::vector<int> &numbers, std::vector<int> &combination,
+                                       int startIndex, int n, std::vector<std::vector<int>> &combinations);
 };
 
 #endif
