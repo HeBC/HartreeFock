@@ -1,6 +1,8 @@
-# number of valence protons and neutrons (exp.  4, 4  or 24Mg   Mg24)
-Mg27
+# number of valence protons and neutrons (Eg.  4, 4  ,  24Mg  or  Mg24)
+Al30
 ///////////////////////////////////////////// # Hamiltonian File Kshell format
 Interaction/usdb.snt
 ////////////////////////////////////////////  # variation parameters
-Yes  6.  0.5                                  # Shape constrains for Q0 and Q2  
+Yes  6.  0.5                                  # Shape constrains for Q0 and 2 * Q2  
+No   2.                                      # constained <Jz> double type
+No   0.                                      # constained <Jx> = Sqrt( J(J+1) ), here input J(J+1)

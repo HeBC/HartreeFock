@@ -270,7 +270,7 @@ public:
   void Print_MschemeHnn();          // print particle hole representation
   void Print_MschemeHpn();          // print particle hole representation
 
-  double HarmonicRadialIntegral(int isospin, int lamda, int orbit_a, int orbit_b);
+  double HarmonicRadialIntegral(int isospin, int lamda, int orbit_a, int orbit_b); // < r^lamda >
 
 private: // Private access specifier
   ComplexNum *SPEmatrix_p, *SPEmatrix_n;

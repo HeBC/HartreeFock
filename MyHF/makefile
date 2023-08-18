@@ -1,17 +1,19 @@
 #--------------------------------------------------
 # Hartree Fock
 #--------------------------------------------------
+# The default makefile use MPI for projection code, OpenMP for Hartree-Fock code
 FC = mpicxx
+FGCC = g++
 THEHOST = $(shell if [ `hostname|grep bebop` ]; then echo bebop; elif [ `hostname|grep crc` ]; then echo crc; else echo other; fi)
 
 ifeq ($(THEHOST),other)  # default options. test on my laptop
-  CFLAGS =   -O3 #-std=c++11
-  LIBS = -lmkl_rt -lm -lnlopt -lgsl -lgslcblas    # include lnlopt to test code
+  CFLAGS =-O3 -fopenmp #-Wall #-std=c++11
+  LIBS = -lmkl_rt -lm -lgsl -lgslcblas -lnlopt  # include lnlopt to test code
 endif
 
 ifeq ($(THEHOST),bebop)  # Argonne bebop
-  CFLAGS = -O3 
-  LIBS = -m64  -Wl,--no-as-needed -lm -lgsl -lgslcblas -lmkl_intel_lp64  -lmkl_sequential -lmkl_gf_ilp64 -lmkl_gnu_thread -lmkl_core -lpthread -ldl  #-lgomp
+  CFLAGS = -O3 -fopenmp
+  LIBS = -m64  -Wl,--no-as-needed -lm -lgsl -lgslcblas -lmkl_intel_lp64  -lmkl_sequential -lmkl_gf_ilp64 -lmkl_gnu_thread -lmkl_core -lpthread -ldl
 endif
 
 ifeq ($(THEHOST),crc)   # Notre Dame CRC
@@ -36,7 +38,7 @@ HF_Pfaffian.exe: $(OFILES) HF_Pfaffian.o
 
 # HF
 HartreeFock.exe: $(OFILES) HartreeFock.o 
-	$(FC) -o $@ HartreeFock.o $(CFLAGS) $(OFILES) $(LIBS) 
+	$(FC) -o $@ HartreeFock.o $(CFLAGS) $(OFILES) $(LIBS)
 
 
 # HF Projection
@@ -55,3 +57,9 @@ Testing.exe: $(OFILES) Testing.o
 	$(FC) -o $@ Testing.o $(CFLAGS) $(OFILES) $(LIBS) 
 
 
+HartreeFockBogoliubov.exe: $(OFILES) HartreeFockBogoliubov.o 
+	$(FC) -o $@ HartreeFockBogoliubov.o $(CFLAGS) $(OFILES) $(LIBS)
+ 
+
+HartreeFockBogoliubov_Real.exe: $(OFILES) HartreeFockBogoliubov_Real.o 
+	$(FC) -o $@ HartreeFockBogoliubov_Real.o $(CFLAGS) $(OFILES) $(LIBS) 

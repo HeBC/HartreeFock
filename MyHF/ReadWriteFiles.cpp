@@ -47,6 +47,16 @@ void ReadWriteFiles::Read_OSLO_HF_input(string filename, ModelSpace &ms, Hamilto
   return;
 }
 
+// Kshell format interaction and HFB only
+// read input parameters and Hamiltonian
+void ReadWriteFiles::Read_KShell_HFB_input(string filename, ModelSpace &ms, Hamiltonian &inputH)
+{
+  this->ReadInput_HFB(filename, ms, inputH);
+  ms.InitialModelSpace_HF(); // also work for HFB
+  inputH.Prepare_MschemeH_Unrestricted();
+  return;
+}
+
 // Tools
 void ReadWriteFiles::ReadInputInfo_Identical(string filename, ModelSpace &ms, Hamiltonian &inputH)
 {
@@ -141,31 +151,20 @@ void ReadWriteFiles::ReadInputInfo_pnSystem_GCM(string filename, ModelSpace &ms,
 
 bool ReadWriteFiles::isInteger(const std::string &input)
 {
-  std::string str = input;
-  std::string::size_type EnterPos = str.find('\n');
-  if (EnterPos != std::string::npos)
+  std::regex regexPattern("\\s*(\\d+)\\s*,\\s*(\\d+)\\s*");
+  std::regex regexPattern2("\\s*(\\d+)\\s*(\\d+)\\s*");
+  if (std::regex_match(input, regexPattern))
   {
-    str.erase(EnterPos);
+    return true;
   }
-  std::istringstream iss(str);
-  int num1, num2;
-  char comma;
-  iss >> num1;
-  bool hasComma = (iss >> comma) && (comma == ','); // Check if comma was successfully extracted and its value is ','.
-  if (!hasComma)
+  else if (std::regex_match(input, regexPattern2))
   {
-    iss.clear();
-    iss.seekg(0);
-    iss >> num1 >> num2;
+    return true;
   }
   else
   {
-    iss.clear();
-    iss.seekg(0);
-    iss >> num1 >> comma >> num2;
+    return false;
   }
-  // std::cout << num1 << "  " << num2 << "  " << !iss.fail() << iss.rdbuf()->in_avail() << std::endl;
-  return (!iss.fail()) and (iss.rdbuf()->in_avail() == 1);
 }
 
 void ReadWriteFiles::ReadInput_HF(string filename, ModelSpace &ms, Hamiltonian &inputH)
@@ -197,22 +196,25 @@ void ReadWriteFiles::ReadInput_HF(string filename, ModelSpace &ms, Hamiltonian &
   }
   else
   {
-    // std::cout << "The input contains two integers:" << std::endl;
-    ReadEle = false;
-    std::istringstream iss(comment_string);
-    char comma;
-    iss >> N_p;
-    // Check if comma was successfully extracted and its value is ','.
-    bool hasComma = (iss >> comma) && (comma == ',');
-    if (hasComma)
+    std::regex regexPattern("\\s*(\\d+)\\s*,\\s*(\\d+)\\s*");
+    std::regex regexPattern2("\\s*(\\d+)\\s*(\\d+)\\s*");
+    std::smatch matches;
+    if (std::regex_match(comment_string, matches, regexPattern))
     {
-      iss >> N_n;
+      // matches[1] contains the first number, matches[2] contains the second number
+      N_p = std::stoi(matches[1]);
+      N_n = std::stoi(matches[2]);
+    }
+    else if (std::regex_match(comment_string, matches, regexPattern2))
+    {
+      // matches[1] contains the first number, matches[2] contains the second number
+      N_p = std::stoi(matches[1]);
+      N_n = std::stoi(matches[2]);
     }
     else
     {
-      iss.clear();
-      iss.seekg(0);
-      N_n = N_p;
+      std::cout << " Trouble parsing A and Z " << std::endl;
+      exit(0);
     }
   }
   getline(input_file, comment_string);
@@ -246,11 +248,169 @@ void ReadWriteFiles::ReadInput_HF(string filename, ModelSpace &ms, Hamiltonian &
 
   if (strValue == "No" or strValue == "no")
   {
-    ms.IsShapeConstrained(false);
+    ms.SetShapeConstrained(false);
   }
   else if (strValue == "Yes" or strValue == "yes")
   {
-    ms.IsShapeConstrained(true);
+    ms.SetShapeConstrained(true);
+  }
+  else
+  {
+    std::cout << "   ShapeConstrained parameter should be no or yes!  " << strValue << std::endl;
+    exit(0);
+  }
+  ms.SetShapeQ(doubleData, doubleData2);
+
+  //---------------------- read Jz
+  getline(input_file, comment_string);
+  iss.clear(); // Reset the state of the stream if needed
+  iss.str(comment_string);
+  // Read the string and integer from the line
+  iss >> strValue >> doubleData;
+  if (strValue == "No" or strValue == "no")
+  {
+    ms.Set_Jz_constraint(false);
+  }
+  else if (strValue == "Yes" or strValue == "yes")
+  {
+    ms.Set_Jz_constraint(true);
+  }
+  else
+  {
+    std::cout << "   ShapeConstrained parameter should be no or yes!  " << strValue << std::endl;
+    exit(0);
+  }
+  ms.SetTargetJz(doubleData);
+
+  //---------------------- read Jx
+  getline(input_file, comment_string);
+  iss.clear(); // Reset the state of the stream if needed
+  iss.str(comment_string);
+  // Read the string and integer from the line
+  iss >> strValue >> doubleData;
+  if (strValue == "No" or strValue == "no")
+  {
+    ms.Set_Jx_constraint(false);
+  }
+  else if (strValue == "Yes" or strValue == "yes")
+  {
+    ms.Set_Jx_constraint(true);
+  }
+  else
+  {
+    std::cout << "   ShapeConstrained parameter should be no or yes!  " << strValue << std::endl;
+    exit(0);
+  }
+  ms.SetTargetJx(doubleData);
+
+  input_file.close();
+}
+
+void ReadWriteFiles::ReadInput_HFB(string filename, ModelSpace &ms, Hamiltonian &inputH)
+{
+  ifstream input_file;
+  int N;
+  input_file.open(filename, std::ios_base::in);
+  if (!input_file.is_open())
+  {
+    cerr << "Could not open the pn-case input file - '"
+         << filename << "'" << endl;
+    exit(0);
+  }
+
+  // --------------------------------  # read element
+  string comment_string;
+  getline(input_file, comment_string); // read comment
+  getline(input_file, comment_string); // read comment
+  bool ReadEle = false;
+  double A = 0, Z = 0;
+  double N_p = 0, N_n = 0;
+  if (!isInteger(comment_string))
+  {
+    ms.GetAZfromString(comment_string, A, Z);
+    ms.Set_RefString(comment_string);
+    // std::cout << "The input is a string: " << comment_string << std::endl;
+    //  std::cout << A << "   " << Z << std::endl;
+    ReadEle = true;
+  }
+  else
+  {
+    std::regex regexPattern("\\s*(\\d+)\\s*,\\s*(\\d+)\\s*");
+    std::regex regexPattern2("\\s*(\\d+)\\s*(\\d+)\\s*");
+    std::smatch matches;
+    if (std::regex_match(comment_string, matches, regexPattern))
+    {
+      // matches[1] contains the first number, matches[2] contains the second number
+      N_p = std::stoi(matches[1]);
+      N_n = std::stoi(matches[2]);
+    }
+    else if (std::regex_match(comment_string, matches, regexPattern2))
+    {
+      // matches[1] contains the first number, matches[2] contains the second number
+      N_p = std::stoi(matches[1]);
+      N_n = std::stoi(matches[2]);
+    }
+    else
+    {
+      std::cout << " Trouble parsing A and Z " << std::endl;
+      exit(0);
+    }
+  }
+  getline(input_file, comment_string);
+  // Read interaction file name
+  getline(input_file, inputH.snt_file);
+  inputH.RemoveWhitespaceInFilename();
+
+  //--------------------------------- Read Kshell interaction
+  this->ReadTokyo(inputH.GetKshellSntFile(), ms, inputH);
+  if (ReadEle)
+  {
+    ms.SetProtonNum(Z - ms.GetCoreProtonNum());
+    ms.SetNeutronNum(A - Z - ms.GetCoreNeutronNum());
+  }
+  else
+  {
+    ms.SetProtonNum(N_p);
+    ms.SetNeutronNum(N_n);
+  }
+  //--------------------------------- End Read Kshell interaction
+  // -------------------------------- Read constrains
+  getline(input_file, comment_string);
+  double doubleData, doubleData2;
+  //------------------------------------------- Particle number Constraint
+  getline(input_file, comment_string);
+  std::istringstream iss(comment_string); // Create an input string stream from the line
+  std::string strValue;
+  iss >> strValue;
+  if (strValue == "No" or strValue == "no")
+  {
+    ms.Set_ParticleNumberConstrained(false);
+  }
+  else if (strValue == "Yes" or strValue == "yes")
+  {
+    ms.Set_ParticleNumberConstrained(true);
+  }
+  else
+  {
+    std::cout << "   Particle number constaint option should be no or yes!  " << strValue << std::endl;
+    exit(0);
+  }
+
+  //------------------------------------------- shape constaint
+  getline(input_file, comment_string);
+  iss.clear(); // Reset the state of the stream if needed
+  iss.str(comment_string);
+  int intValue;
+  // Read the string and integer from the line
+  iss >> strValue >> doubleData >> doubleData2;
+
+  if (strValue == "No" or strValue == "no")
+  {
+    ms.SetShapeConstrained(false);
+  }
+  else if (strValue == "Yes" or strValue == "yes")
+  {
+    ms.SetShapeConstrained(true);
   }
   else
   {
@@ -303,22 +463,25 @@ void ReadWriteFiles::ReadInputInfo_HF_GCM(string filename, ModelSpace &ms, Hamil
   }
   else
   {
-    // std::cout << "The input contains two integers:" << std::endl;
-    ReadEle = false;
-    std::istringstream iss(comment_string);
-    char comma;
-    iss >> N_p;
-    // Check if comma was successfully extracted and its value is ','.
-    bool hasComma = (iss >> comma) && (comma == ',');
-    if (hasComma)
+    std::regex regexPattern("\\s*(\\d+)\\s*,\\s*(\\d+)\\s*");
+    std::regex regexPattern2("\\s*(\\d+)\\s*(\\d+)\\s*");
+    std::smatch matches;
+    if (std::regex_match(comment_string, matches, regexPattern))
     {
-      iss >> N_n;
+      // matches[1] contains the first number, matches[2] contains the second number
+      N_p = std::stoi(matches[1]);
+      N_n = std::stoi(matches[2]);
+    }
+    else if (std::regex_match(comment_string, matches, regexPattern2))
+    {
+      // matches[1] contains the first number, matches[2] contains the second number
+      N_p = std::stoi(matches[1]);
+      N_n = std::stoi(matches[2]);
     }
     else
     {
-      iss.clear();
-      iss.seekg(0);
-      N_n = N_p;
+      std::cout << " Trouble parsing A and Z " << std::endl;
+      exit(0);
     }
   }
 
@@ -547,7 +710,7 @@ void ReadWriteFiles::Read_GCM_Parameters(ifstream &input_file, ModelSpace &ms)
 
   getline(input_file, comment_string);
   input_file >> intData >> doubleData >> doubleData2; // Shape constrains Q0 Q2
-  ms.IsShapeConstrained((bool)intData);
+  ms.SetShapeConstrained((bool)intData);
   ms.SetShapeQ(doubleData, doubleData2);
 
   getline(input_file, comment_string); // Dividing line //////////////////////////////////////

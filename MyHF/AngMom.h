@@ -18,7 +18,7 @@ class QuadratureClass // store information about mesh grid
 {
 private:
     int meshNum;             // number of mesh point
-    double *mesh_x, *mesh_w; // Abscissa and weight
+    double *mesh_x = nullptr, *mesh_w = nullptr; // Abscissa and weight
 public:
     QuadratureClass(){};
     ~QuadratureClass();
@@ -63,6 +63,8 @@ public:
     int GetMeshDimensionIn(int type); // type = 0 alpha, 1 beta, 2 gamma
     ComplexNum GuassQuad_weight(int alpha, int beta, int gamma);
     ComplexNum LinearAlgebra_weight(int alpha, int gamma);
+    void Generate_GQ_Mesh(QuadratureClass &QCprt, std::string type); /// generate Gauss quadrature
+    void Generate_LA_Mesh(QuadratureClass &QCprt, std::string type); /// generate linear algebra
     /// Testing Code
     void PrintMatrix_p();
 
@@ -79,8 +81,6 @@ private:
 
     void UpdateFilenames();
     void ReadMesh();
-    void Generate_GQ_Mesh(QuadratureClass &QCprt, std::string type); /// generate Gauss quadrature
-    void Generate_LA_Mesh(QuadratureClass &QCprt, std::string type); /// generate linear algebra
     bool initial_proton = false;
     bool initial_neutron = false;
     void InitializeBetaFuncs();

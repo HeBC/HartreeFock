@@ -1251,6 +1251,15 @@ namespace HFMEs
         return;
     }
 
+    // Qcosγ =⟨Ψ|√16 π/5 r^2 / b^2 Y20|Ψ⟩
+    // Qsinγ =⟨Ψ|√16 π/5 r^2 / b^2 1/√2 (Y22 +Y2−2)|Ψ⟩
+
+    // Q0 = 3 /2π Sqrt( 4π / 5 ) <r^2> β cosγ
+    // Q2 = 3 /2π Sqrt( 4π / 5 ) <r^2> β/√2 sinγ
+    // the r^2 is given by ⟨Ψ| r^2 |Ψ⟩
+    // tanγ = √2 Q2 / Q0
+    // β = Q0 * 2π Sqrt( 4π / 5 ) / 3 / <r^2> / cosγ
+    // see more in PHYSICAL REVIEW C, VOLUME 61, 034303
     // Shape parameters (in unit of b^2) (b = 1.005 A^{1/6} fm)
     void CalHFShape(Hamiltonian &Ham, PNbasis &Bra, PNbasis &Ket)
     {

@@ -167,7 +167,7 @@ public:
     void SetReadingSP_RWMH(bool tf) { IsReadingSP = tf; };
     void SetOverlapMin(double tf) { check_Overlap_dependence = tf; };
     void SetEnergyTruncationGCM(double tf) { E_truncation_GCM = tf; };
-    void IsShapeConstrained(bool tf) { Shape_constarined = tf; };
+    void SetShapeConstrained(bool tf) { Shape_constarined = tf; };
     void SetShapeQ(double q0, double q2)
     {
         shape_Q0 = q0;
@@ -176,6 +176,11 @@ public:
     void Set_hw(double hw_input) { hw = hw_input; };
     void Set_MeshType(std::string input) { MeshType = input; };
     void Set_RefString(std::string input) { Reference_string = input; };
+    void Set_ParticleNumberConstrained(bool tf) { ParticleNum_constarined = tf; };
+    void SetTargetJz(double jz){ Jz_target = jz; };
+    void SetTargetJx(double jx){ Jx_target = jx; };
+    void Set_Jz_constraint(bool tf) { Is_Jz_constarined = tf; };
+    void Set_Jx_constraint(bool tf) { Is_Jx_constarined = tf; };
 
     int GetProtonPairNum() { return MS_N_p; };
     int GetNeutronPairNum() { return MS_N_n; };
@@ -223,12 +228,19 @@ public:
     void GetAZfromString(std::string str, double &A, double &Z);
     std::string Get_MeshType() { return MeshType; };
     std::string Get_RefString() { return Reference_string; };
+    bool Get_ParticleNumberConstrained() { return ParticleNum_constarined; };
+    double GetTargetJz(){ return Jz_target; };
+    double GetTargetJx(){ return Jx_target; };
+    bool Get_Jz_constraint() { return Is_Jz_constarined; };
+    bool Get_Jx_constraint() { return Is_Jx_constarined; };
+
 
     // print all parameters
     void PrintAllParameters_Iden();
     void PrintAllParameters_pn();
     void PrintAllParameters_pn_GCM();
     void PrintAllParameters_HF();
+    void PrintAllParameters_HFB();
 
     // Orbits
     int FindOrbit(int Tz, int j);
@@ -329,12 +341,16 @@ private:
     bool IsReadingSP = false;                // Read starting points for Random walking, false 0, true 1;
     double check_Overlap_dependence = 1.e-4; // the min eigenvalue of overlap matrix
     double E_truncation_GCM = 1000000;       // Energy truncation to pick up configurations
-    bool Shape_constarined = true;           // if constrain Q0 and Q2
+    bool Shape_constarined = false;          // if constrain Q0 and Q2
     double shape_Q0 = 0.;
     double shape_Q2 = 0.;
     double Sheape_Constant = 1.e+3;
+    bool ParticleNum_constarined = false; // constaint the number of particle in HFB
+    bool Is_Jz_constarined = false; // constaint Jz
+    bool Is_Jx_constarined = false; // constaint Jx
+    double Jz_target = 0.;
+    double Jx_target = 0.;
     std::string MeshType = "";
-
     void CheckComplexDefinition();
 };
 

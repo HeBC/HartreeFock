@@ -764,6 +764,8 @@ int ModelSpace::GetNucleiMassA()
     {
         return pcore + ncore + MS_N_p + MS_N_n;
     }
+    std::cout<< "Mass number don't initial!" << std::endl;
+    return 0;
 }
 
 int ModelSpace::GetCoreMass()
@@ -891,6 +893,28 @@ void ModelSpace::PrintAllParameters_HF()
     std::cout << "/-----------------------------------------------------/" << std::endl;
     std::cout << "  Number of valence protons:  " << this->GetParticleNumber(Proton) << std::endl;
     std::cout << "  Number of valence neutrons: " << this->GetParticleNumber(Neutron) << std::endl;
+    if (this->GetIsShapeConstrained())
+    {
+        std::cout << "  Shape is constrained!  Q0: " << this->GetShapeQ0() << "    Q2: "<< this->GetShapeQ2() << std::endl;
+    }
+    std::cout << "/-----------------------------------------------------/" << std::endl;
+}
+
+void ModelSpace::PrintAllParameters_HFB()
+{
+    std::cout << "/-----------------------------------------------------/" << std::endl;
+    std::cout << "/               Hartree-Fock-Bogoliubov               /" << std::endl;
+    std::cout << "/-----------------------------------------------------/" << std::endl;
+    std::cout << "  Number of valence protons:  " << this->GetParticleNumber(Proton) << std::endl;
+    std::cout << "  Number of valence neutrons: " << this->GetParticleNumber(Neutron) << std::endl;
+    if (this->Get_ParticleNumberConstrained())
+    {
+        std::cout << "  Particle number is constrained!" << std::endl;
+    }
+    if (this->GetIsShapeConstrained())
+    {
+        std::cout << "  Shape is constrained!  Q0: " << this->GetShapeQ0() << "    Q2: "<< this->GetShapeQ2() << std::endl;
+    }
     std::cout << "/-----------------------------------------------------/" << std::endl;
 }
 

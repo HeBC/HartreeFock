@@ -12,6 +12,7 @@
 #include <numeric>
 #include <deque>
 #include <mkl.h>
+#include <omp.h>
 using namespace std;
 
 #include "ReadWriteFiles.h"
@@ -39,21 +40,16 @@ public:
     void Solve_hybrid();
     void Solve_hybrid_Constraint(); // not work now!!!
     void Solve_diag();              /// Diagonalize and UpdateF until convergence
-    void Solve_noCore();            /// the one body part has been modified for no core!
 
     //---------------------
     // Tools
-    void UpdateU_hybrid(); /// Update the Unitary transformation matrix, hybrid method
-    void UpdateU_Qconstraint(double deltaQ, double *O_p, double *O_n);
-    void UpdateDensityMatrix(); /// Update the density matrix with the new coefficients C
-    void UpdateDensityMatrix(const std::vector<int> proton_vec, const std::vector<int> neutron_vec);
+    void UpdateDensityMatrix();                                                                      /// Update the density matrix with the new coefficients C
+    void UpdateDensityMatrix(const std::vector<int> proton_vec, const std::vector<int> neutron_vec); /// Update the density matrix with given orbits
     void UpdateDensityMatrix_DIIS();
-    void UpdateF(); /// Update the Fock matrix with the new transformation coefficients C
-    void UpdateF_noCore();
-    void UpdateF_FromQ(double *O_p, double *O_n);
+    void UpdateU_hybrid();                                                                          /// Update the Unitary transformation matrix, hybrid method
+    void UpdateF();                                                                                 /// Update the Fock matrix with the new transformation coefficients C
     void Diagonalize();                                                                             /// Diagonalize Fock term
     void CalcEHF();                                                                                 /// Calculate the HF energy.
-    void CalcEHF_noCore();                                                                          /// Calculate the HF energy.
     void CalcEHF(double constrainedQ);                                                              /// Calculate the HF energy with constrained
     double CalcEHF(const std::vector<int> proton_vec, const std::vector<int> neutron_vec);          // inidicate the orbits
     double CalcEHF_HForbits(const std::vector<int> proton_vec, const std::vector<int> neutron_vec); // cal E on HF orbits
@@ -62,10 +58,12 @@ public:
     void Operator_ph(double *Op_p, double *Op_n);
     void PrintEHF();
     void PrintQudrapole();                            /// Print qudrapole moment
+    void HF_ShapeCoefficients_Lab();                  /// Print beta and gamma of shape
+    void HF_ShapeCoefficients_calr2_Lab();
     void Print_Jz();                                  /// Print <Jz>
     bool CheckConvergence();                          /// check the HF single SP
     void Reset_U();                                   /// use identical U matrix
-    void RandomTransformationU(int RandomSeed = 525); // Random transformation matrix U
+    void RandomTransformationU(int RandomSeed = 525); /// Random transformation matrix U
     void UpdateTolerance(double T) { this->tolerance = T; };
     void UpdateGradientStepSize(double size) { gradient_eta = size; };
 
@@ -101,14 +99,13 @@ public:
     void PrintOccupationHO();
 
 private:
-    ModelSpace *modelspace;          /// Model Space
-    Hamiltonian *Ham;                /// Hamiltonian
-    double *U_p, *U_n;               /// transformation coefficients, 1st index is ho basis, 2nd = HF basis
-    double *rho_p, *rho_n;           /// density matrix rho_ij, the index in order of dim_p * dim_p dim_n * dim_n
-    double *FockTerm_p, *FockTerm_n; /// Fock matrix
-    double *Vij_p, *Vij_n;           /// Two body term              
-    double *T_term_p = nullptr,       /// SP energies
-           *T_term_n = nullptr;       /// SP energies for no core
+    ModelSpace *modelspace;           /// Model Space
+    Hamiltonian *Ham;                 /// Hamiltonian
+    double *U_p, *U_n;                /// transformation coefficients, 1st index is ho basis, 2nd = HF basis
+    double *rho_p, *rho_n;            /// density matrix rho_ij, the index in order of dim_p * dim_p dim_n * dim_n
+    double *FockTerm_p, *FockTerm_n;  /// Fock matrix
+    double *Vij_p, *Vij_n;            /// Two body term
+    double *T_term_p = nullptr, *T_term_n = nullptr;   /// SP energies       
     double tolerance;                 /// tolerance for convergence
     int iterations;                   /// record iterations used in Solve()
     int maxiter = 1000;               /// max number of iteration

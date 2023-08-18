@@ -638,6 +638,7 @@ void Hamiltonian::CalNumberInitial() // count the number of terms need to calcul
     }
 }
 
+// in unit of b^2
 double Hamiltonian::Calculate_Q2(int a, int b, int tz)
 {
     int phase;
@@ -699,6 +700,8 @@ double Hamiltonian::Calculate_Q2(int a, int b, int tz)
     }
 }
 
+// return < r ^ lamda > in unit of b^lamda
+// where b =  (b = 1.005 A^{1/6} fm)
 double Hamiltonian::HarmonicRadialIntegral(int isospin, int lamda, int orbit_a, int orbit_b)
 // return R_ab^lamda / b^lamda
 {
@@ -767,6 +770,7 @@ double Hamiltonian::Calculate_Q3(int a, int b, int tz)
     }
 }
 
+// in unit of b^lamda
 double Hamiltonian::Calculate_Qt(int lamda, int a, int b, int tz)
 {
     int phase;

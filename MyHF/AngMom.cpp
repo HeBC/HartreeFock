@@ -217,8 +217,11 @@ ComplexNum AngMom::Wigner_D(int j, int m1, int m2, double alpha, double beta, do
 
 QuadratureClass::~QuadratureClass()
 {
-  mkl_free(mesh_x);
-  mkl_free(mesh_w);
+  if (mesh_x != nullptr)
+  {
+    mkl_free(mesh_x);
+    mkl_free(mesh_w);
+  }
 }
 
 void QuadratureClass::MallocMemory()
@@ -501,13 +504,13 @@ void AngMomProjection::Generate_LA_Mesh(QuadratureClass &QCprt, std::string type
     {
       Xprt[k] = 0.5 * (k + 1.) / (mu + 1.);
       Wprt[k] = 1. / Nmesh;
-      //std::cout << k << "  " << Xprt[k] << "   " << Wprt[k] << std::endl;
+      // std::cout << k << "  " << Xprt[k] << "   " << Wprt[k] << std::endl;
     }
     for (int k = mu; k < 2 * mu; k++)
     {
-      Xprt[k] = 0.5 + 0.5 * (k - mu + 1. ) / (mu + 1.);
+      Xprt[k] = 0.5 + 0.5 * (k - mu + 1.) / (mu + 1.);
       Wprt[k] = 1. / Nmesh;
-      //std::cout << k << "  " << Xprt[k] << "   " << Wprt[k] << std::endl;
+      // std::cout << k << "  " << Xprt[k] << "   " << Wprt[k] << std::endl;
     }
     ///////////////////////////////////////////////////////
     if ((Jmax2 + 1) % 4 == 1) // J_max = 0, 2, 4, 6 ...
@@ -558,7 +561,7 @@ void AngMomProjection::Generate_LA_Mesh(QuadratureClass &QCprt, std::string type
     {
       Xprt[j - 1] = (j - 0.5) / N;
       Wprt[j - 1] = 1;
-      //std::cout << j-1 << "  " << Xprt[j-1] << "   " << Wprt[j-1] << std::endl;
+      // std::cout << j-1 << "  " << Xprt[j-1] << "   " << Wprt[j-1] << std::endl;
     }
   }
   else
