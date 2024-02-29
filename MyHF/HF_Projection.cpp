@@ -9,9 +9,9 @@ using namespace std;
 #include "ReadWriteFiles.h"
 #include "HFbasis.h"
 #include "AngMom.h"
-#include "CalHF.h"
+#include "Pfaffian_tools.h"
 #include "GCM_Tools.h"
-using namespace HFMEs;
+using namespace HF_Pfaffian_Tools;
 
 int main(int argc, char *argv[])
 {

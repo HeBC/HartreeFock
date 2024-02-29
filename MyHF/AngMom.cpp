@@ -389,6 +389,8 @@ void AngMomProjection::ReadMesh()
   }
 }
 
+// See more in 
+// https://www.gnu.org/software/gsl/doc/html/integration.html#c.gsl_integration_fixed_alloc.gsl_integration_fixed_type.gsl_integration_fixed_chebyshev
 void AngMomProjection::Generate_GQ_Mesh(QuadratureClass &QCprt, std::string type) /// generate Gauss quadrature
 {
   int n = QCprt.GetTotalNumber();
@@ -460,9 +462,25 @@ void AngMomProjection::Generate_GQ_Mesh(QuadratureClass &QCprt, std::string type
   {
     Xprt[i] = x[i];
     Wprt[i] = w[i];
-    // std::cout << i << "  " << Xprt[i] << "   " << Wprt[i] << std::endl;
+    //std::cout << i << "  " << Xprt[i] << "   " << Wprt[i] << std::endl;
   }
   gsl_integration_fixed_free(table);
+}
+
+void AngMomProjection::Generate_equally_Mesh(QuadratureClass &QCprt) /// generate equally quadrature
+{
+  int n = QCprt.GetTotalNumber();
+  // get the abscissae and weights from the table
+  double *Xprt, *Wprt;
+  QCprt.MallocMemory();
+  Xprt = QCprt.GetXpointer();
+  Wprt = QCprt.GetWeightPointer();
+  for (int i = 0; i < n; i++)
+  {
+    Xprt[i] = i * 1. / n;
+    Wprt[i] = 1. / n;
+    //std::cout << i << "  " << Xprt[i] << "   " << Wprt[i] << std::endl;
+  }
 }
 
 void AngMomProjection::Generate_LA_Mesh(QuadratureClass &QCprt, std::string type) /// generate linear algebra

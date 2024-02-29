@@ -23,6 +23,7 @@ class ReadWriteFiles
 public:
     /// wrapped interface for Hartree-Fock
     void Read_KShell_HF_input(string filename, ModelSpace &ms, Hamiltonian &inputH); // read input parameters and Hamiltonian
+    void Read_KShell_HF_input(string filename, ModelSpace &ms, Hamiltonian &inputH, string Ref); // for python pybind11
     void Read_OSLO_HF_input(string filename, ModelSpace &ms, Hamiltonian &inputH);   // read input parameters and Hamiltonian
 
     // for HFB

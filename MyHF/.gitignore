@@ -36,6 +36,7 @@ Interaction/*
 Output/*
 Input/*
 mesh/
+pythonscript/
 
 # Testing files
 Testing*

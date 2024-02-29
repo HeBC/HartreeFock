@@ -5,3 +5,4 @@ Interaction/usdb.snt
 ////////////////////////////////////////////  # variation parameters
 Yes                                           # Particle number constaint
 No  6.  0.5                                   # Shape constrains for Q0 and 2 * Q2  
+No

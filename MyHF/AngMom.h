@@ -65,6 +65,7 @@ public:
     ComplexNum LinearAlgebra_weight(int alpha, int gamma);
     void Generate_GQ_Mesh(QuadratureClass &QCprt, std::string type); /// generate Gauss quadrature
     void Generate_LA_Mesh(QuadratureClass &QCprt, std::string type); /// generate linear algebra
+    void Generate_equally_Mesh(QuadratureClass &QCprt); /// generate equally quadrature
     /// Testing Code
     void PrintMatrix_p();
 

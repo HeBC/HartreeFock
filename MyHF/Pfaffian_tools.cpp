@@ -22,8 +22,8 @@
           with the Buddha protecting
 */
 
-#include "CalHF.h"
-namespace HFMEs
+#include "Pfaffian_tools.h"
+namespace HF_Pfaffian_Tools
 {
     ///////////////////// Matrix elements ///////////////////////
     // Overlap
@@ -1563,4 +1563,108 @@ namespace HFMEs
             cblas_dscal(dim * inner_dim, 1. / sqrt(norm), x + i * dim * inner_dim, 1);
         }
     }
+}
+
+ComplexNum Pfaffian_naive(int dim, const ComplexNum *in)
+{
+    //  calculate the pfaffian of skew-symmetric matrix
+    int n = dim / 2;
+    std::vector<ComplexNum> tmp(dim * dim);
+    cblas_zcopy(dim * dim, in, 1, tmp.data(), 1);
+
+    ComplexNum PF = 1.0;
+    ComplexNum fac;
+
+    for (int i = 0; i < 2 * n; i = i + 2)
+    {
+        for (int j = i + 2; j < 2 * n; j++)
+        {
+            fac = -tmp[i * dim + j] / tmp[i * dim + (i + 1)];
+            for (int k = i + 1; k < 2 * n; k++)
+            {
+                tmp[k * dim + j] = tmp[k * dim + j] + fac * tmp[k * dim + i + 1];
+                tmp[j * dim + k] = tmp[j* dim + k] + fac * tmp[ (i + 1) * dim + k];
+            }
+        }
+        PF = PF * tmp[i * dim + i + 1];
+    }
+    return PF;
+}
+
+void Check_matrix(int dim, ComplexNum *Matrix)
+{
+    std::cout << "   Chcecking matrix:  dim: " << dim << std::endl;
+    for (size_t i = 0; i < dim; i++)
+    {
+        for (size_t j = 0; j < dim; j++)
+        {
+            std::cout << Matrix[i * dim + j] << " ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+ComplexNum Determinant(int dim, ComplexNum *Matrix)
+{
+    MKL_INT n = dim; // Size of the matrix
+    MKL_INT ipiv[n];
+    MKL_INT info;
+
+    std::vector<ComplexNum> MatrixCopy(dim * dim);
+    cblas_zcopy(dim * dim, Matrix, 1, MatrixCopy.data(), 1);
+
+    // Perform LU factorization using LAPACKE_zgetrf
+    info = LAPACKE_zgetrf(LAPACK_ROW_MAJOR, n, n, MatrixCopy.data(), n, ipiv);
+
+    if (info != 0)
+    {
+        std::cerr << "LAPACKE_zgetrf in Determinant function failed with code " << info << std::endl;
+        exit(0);
+    }
+
+    // Calculate the determinant using the LU factors
+    std::complex<double> determinant = 1.0;
+    for (MKL_INT i = 0; i < n; ++i)
+    {
+        determinant *= MatrixCopy[i * n + i];
+    }
+
+    // Output the determinant
+    // std::cout << "Determinant of the complex matrix: " << determinant.real() << "+" << determinant.imag() << "i" << std::endl;
+    return determinant;
+}
+
+namespace HFB_Pfaffian_Tools
+{
+    //------------------------------------------------------------//
+    //                     HFB calculations                       //
+    //------------------------------------------------------------//
+
+    // Overlap
+    // see more in PHYSICAL REVIEW C 84, 014307 (2011) Eq.(4)
+    // <φ0|φ1> = (−1)^N(N+1)/2 pf(M), where M is a 2N X 2N skew-symmetric matrix
+    // M = [ M1   -I   ]
+    //     [  I   -M0* ]
+    // where M1 and M0 come from HFB wave function |φ1> = exp( 1/2 sum_kk' M1_kk' a^+_k a^+_k' ) |0>
+    // M1_kk' = (V U^-1)^*
+    ComplexNum Compute_Overlap(int N, ComplexNum *M0, ComplexNum *M1)
+    {
+        int dim2 = 2 * N;
+        ComplexNum NORM = 0.;
+        std::vector<ComplexNum> MatrixM(dim2 * dim2, 0.);
+        for (size_t i = 0; i < N; i++)
+        {
+            for (size_t j = 0; j < N; j++)
+            {
+                MatrixM[i * dim2 + j] = M1[i * N + j];
+                MatrixM[(i + N) * dim2 + (j + N)] = -std::conj(M0[i * N + j]);
+            }
+            MatrixM[(i + N) * dim2 + i] = 1.;
+            MatrixM[i * dim2 + (i + N)] = -1.;
+        }
+        NORM = HF_Pfaffian_Tools::PFAFFIAN(dim2, MatrixM.data());
+        return sgn(N * (N + 1) / 2) * 1. * NORM;
+    }
+
 }

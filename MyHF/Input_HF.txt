@@ -1,5 +1,5 @@
 # number of valence protons and neutrons (Eg.  4, 4  ,  24Mg  or  Mg24)
-Al30
+Mg24
 ///////////////////////////////////////////// # Hamiltonian File Kshell format
 Interaction/usdb.snt
 ////////////////////////////////////////////  # variation parameters

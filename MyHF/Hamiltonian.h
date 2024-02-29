@@ -93,11 +93,11 @@ public:
 class Vpn_phCoupledElements
 {
 public:
-  double Vpnvalue;
   int QpOBChannelindex;
   int QnOBChannelindex;
   int t; /// angular momentum
-
+  double Vpnvalue;
+  
   // method
   Vpn_phCoupledElements(){};
   ~Vpn_phCoupledElements(){};

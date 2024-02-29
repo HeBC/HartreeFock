@@ -30,6 +30,7 @@
 #include "ModelSpace.h"
 #include "ReadWriteFiles.h"
 #include "AngMom.h"
+#include "Pfaffian_tools.h"
 
 #include <iostream>
 #include <string>
@@ -73,7 +74,7 @@ public:
 
     // VAP  PNP
     void Solve_gradient_PNP();
-    void ParticleNumberProjection();
+    void E_ParticleNumberProjection();
     // Tools
     void UpdateDensityMatrix();
     void UpdatePotential(); // update Gamma and Delta
@@ -85,6 +86,8 @@ public:
     void Diagonalize();
     void HFB_H00();
     void PrintEHFB();
+    void Calculate_particle_number();
+    void Calculate_particle_number_v2();
     void UpdateTolerance(double t) { tolerance = t; };
     void UpdateGradientStepSize(double stepSize) { gradient_eta = stepSize; };
     void Get_Z_matrix(int dim, ComplexNum *U, ComplexNum *V, ComplexNum *Z); //  input dim, U, V; output Z
@@ -93,8 +96,10 @@ public:
     void Rotate_UV_PNP(int dim, ComplexNum *U, double angle);
     void Rotate_Z_PNP(int dim, ComplexNum *U, double angle); // Zϕ = exp( i 4π ϕ ) Z, where ϕ in range from 0 to 1
     ComplexNum Determinant(int dim, ComplexNum *Matrix);
-    ComplexNum HamiltonianME_DifferentStates(ComplexNum *Z_p, ComplexNum *Z1_p, ComplexNum *Z_n, ComplexNum *Z1_n);
+    ComplexNum HamiltonianME_DifferentStates(ComplexNum *Z_p, ComplexNum *Z1_p, ComplexNum *Z_n, ComplexNum *Z1_n, ComplexNum *rho_diff_p, ComplexNum *rho_diff_n, ComplexNum *kappa_diff_p, ComplexNum *kappa_diff_n, ComplexNum *kappa1_diff_p, ComplexNum *kappa1_diff_n);
     ComplexNum NormME_DifferentStates(double angle_p, double angle_n);
+    ComplexNum calculate_module_norm_Onishi(double angle_p, double angle_n); // the module of the overlap using the Onishi formula
+    ComplexNum calculate_norm_Pfaffian(double angle_p, double angle_n);
 
     // gradient method
     void HFB_H11(ComplexNum *H11_p, ComplexNum *H11_n);
@@ -104,7 +109,7 @@ public:
     void UpdateUV_Thouless(ComplexNum *Z_p, ComplexNum *Z_n);
     void Cal_Gradient_SteepestDescent(ComplexNum *Z_p, ComplexNum *Z_n);
     void Cal_Gradient_Preconditioning(ComplexNum *Z_p, ComplexNum *Z_n);
-    void gradient_DifferentStates(ComplexNum *Z_p, ComplexNum *Z_n);
+    void gradient_RotatedState(double angle_p, double angle_n, ComplexNum *Zrotate_p, ComplexNum *Zrotate_n, ComplexNum H0phi, ComplexNum norm, ComplexNum *ZD_p, ComplexNum *ZD_n, ComplexNum *rho_diff_p, ComplexNum *rho_diff_n, ComplexNum *kappa_diff_p, ComplexNum *kappa_diff_n, ComplexNum *kappa1_diff_p, ComplexNum *kappa1_diff_n);
 
     /// debug
     void Check_Unitarity();
@@ -1016,54 +1021,111 @@ void HartreeFockBogoliubov::Solve_gradient_PNP()
     // See more in Nuclear Physics A332 (1979) 69-51
     int meshDim_p = std::max(N_p / 2, dim_p - N_p / 2) + 1;
     int meshDim_n = std::max(N_n / 2, dim_n - N_n / 2) + 1;
+
     PNP_mesh_p.SetNumber(meshDim_p);
     PNP_mesh_n.SetNumber(meshDim_n);
-    angMomProjectionInstance.Generate_GQ_Mesh(PNP_mesh_p, "legendre");
-    angMomProjectionInstance.Generate_GQ_Mesh(PNP_mesh_n, "legendre");
-
-    std::vector<ComplexNum> Z0_p(dim_p * dim_p);
-    std::vector<ComplexNum> Z1_p(dim_p * dim_p);
-    std::vector<ComplexNum> Z0_n(dim_n * dim_n);
-    std::vector<ComplexNum> Z1_n(dim_n * dim_n);
-
-    UpdateDensityMatrix();
-    ComplexNum HFBh00 = 0.;
-    ComplexNum HFBnorm = 0.;
-    // Get unrotated Z matrix
-    Get_Z_matrix(dim_p, U_p, V_p, Z0_p.data());
-    Get_Z_matrix(dim_n, U_n, V_n, Z0_n.data());
-    for (size_t gauge_p = 0; gauge_p < PNP_mesh_p.GetTotalNumber(); gauge_p++)
+    angMomProjectionInstance.Generate_equally_Mesh(PNP_mesh_p);
+    angMomProjectionInstance.Generate_equally_Mesh(PNP_mesh_n);
+    double E_previous = 1.e10;
+    tolerance = 1.e-4;
+    UpdateGradientStepSize(0.02);
+    iterations = 0; // count number of iterations
+    this->E_hfb = 0;
+    for (iterations = 0; iterations < maxiter; ++iterations)
     {
-        for (size_t gauge_n = 0; gauge_n < PNP_mesh_n.GetTotalNumber(); gauge_n++)
+        E_previous = this->E_hfb;
+        UpdateDensityMatrix();
+        UpdatePotential();
+
+        // gradient
+        std::vector<ComplexNum> gradient_Z_p(dim_p * dim_p);
+        std::vector<ComplexNum> gradient_Z_n(dim_n * dim_n);
+        std::vector<ComplexNum> gradient_ZD_p(dim_p * dim_p);
+        std::vector<ComplexNum> gradient_ZD_n(dim_n * dim_n);
+        memset(gradient_Z_p.data(), 0, dim_p * dim_p * sizeof(ComplexNum));
+        memset(gradient_ZD_p.data(), 0, dim_p * dim_p * sizeof(ComplexNum));
+        memset(gradient_Z_n.data(), 0, dim_n * dim_n * sizeof(ComplexNum));
+        memset(gradient_ZD_n.data(), 0, dim_n * dim_n * sizeof(ComplexNum));
+
+        ComplexNum HFBh00 = 0.;
+        ComplexNum HFBnorm = 0.;
+        // Get unrotated Z matrix
+        std::vector<ComplexNum> Z0_p(dim_p * dim_p);
+        std::vector<ComplexNum> Z1_p(dim_p * dim_p);
+        std::vector<ComplexNum> Z0_n(dim_n * dim_n);
+        std::vector<ComplexNum> Z1_n(dim_n * dim_n);
+        Get_Z_matrix(dim_p, U_p, V_p, Z0_p.data());
+        Get_Z_matrix(dim_n, U_n, V_n, Z0_n.data());
+
+        for (size_t gauge_p = 0; gauge_p < PNP_mesh_p.GetTotalNumber(); gauge_p++)
         {
-            double angle_p, angle_n;
-            ComplexNum Weight_p, Weight_n;
-            angle_p = PNP_mesh_p.GetX(gauge_p);
-            angle_n = PNP_mesh_n.GetX(gauge_n);
-            Weight_p = PNP_mesh_p.GetWeight(gauge_p) * std::exp(M_PI * angle_p * N_p * ComplexNum(0, -2));
-            Weight_n = PNP_mesh_n.GetWeight(gauge_n) * std::exp(M_PI * angle_n * N_n * ComplexNum(0, -2));
-            // std::cout << gauge_p << "  " << gauge_n << "  " << angle_p << "    " << angle_n << "   " << Weight_p << Weight_n << std::endl;
+            for (size_t gauge_n = 0; gauge_n < PNP_mesh_n.GetTotalNumber(); gauge_n++)
+            {
+                double angle_p, angle_n;
+                ComplexNum Weight_p, Weight_n;
+                angle_p = PNP_mesh_p.GetX(gauge_p);
+                angle_n = PNP_mesh_n.GetX(gauge_n);
+                Weight_p = PNP_mesh_p.GetWeight(gauge_p) * std::exp(M_PI * angle_p * N_p * ComplexNum(0, -2));
+                Weight_n = PNP_mesh_n.GetWeight(gauge_n) * std::exp(M_PI * angle_n * N_n * ComplexNum(0, -2));
+                // std::cout << gauge_p << "  " << gauge_n << "  " << angle_p << "    " << angle_n << "   " << Weight_p << Weight_n << std::endl;
 
-            // Z and Zg
-            cblas_zcopy(dim_p * dim_p, Z0_p.data(), 1, Z1_p.data(), 1);
-            Rotate_Z_PNP(dim_p, Z1_p.data(), angle_p);
-            cblas_zcopy(dim_n * dim_n, Z0_n.data(), 1, Z1_n.data(), 1);
-            Rotate_Z_PNP(dim_n, Z1_n.data(), angle_n);
+                // array
+                std::vector<ComplexNum> rho_diff_p(dim_p * dim_p);
+                std::vector<ComplexNum> kappa_diff_p(dim_p * dim_p);
+                std::vector<ComplexNum> kappa1_diff_p(dim_p * dim_p);
+                std::vector<ComplexNum> rho_diff_n(dim_n * dim_n);
+                std::vector<ComplexNum> kappa_diff_n(dim_n * dim_n);
+                std::vector<ComplexNum> kappa1_diff_n(dim_n * dim_n);
+                std::vector<ComplexNum> Zrotate_p(dim_p * dim_p);
+                std::vector<ComplexNum> Zrotate_n(dim_n * dim_n);
+                std::vector<ComplexNum> ZD_p(dim_p * dim_p);
+                std::vector<ComplexNum> ZD_n(dim_n * dim_n);
 
-            ComplexNum HFBnormtemp = NormME_DifferentStates(angle_p, angle_n);
-            HFBh00 += Weight_p * Weight_n * HFBnormtemp * HamiltonianME_DifferentStates(Z0_p.data(), Z1_p.data(), Z0_n.data(), Z1_n.data());
-            HFBnorm += Weight_p * Weight_n * HFBnormtemp;
+                // Z and Zg
+                cblas_zcopy(dim_p * dim_p, Z0_p.data(), 1, Z1_p.data(), 1);
+                Rotate_Z_PNP(dim_p, Z1_p.data(), angle_p);
+                cblas_zcopy(dim_n * dim_n, Z0_n.data(), 1, Z1_n.data(), 1);
+                Rotate_Z_PNP(dim_n, Z1_n.data(), angle_n);
 
-            // energy gradient
+                // ComplexNum HFBnormtemp = NormME_DifferentStates(angle_p, angle_n);
+                ComplexNum HFBnormtemp = calculate_norm_Pfaffian(angle_p, angle_n);
+                ComplexNum HFBH0phi = HamiltonianME_DifferentStates(Z0_p.data(), Z1_p.data(), Z0_n.data(), Z1_n.data(), rho_diff_p.data(), rho_diff_n.data(), kappa_diff_p.data(), kappa_diff_n.data(), kappa1_diff_p.data(), kappa1_diff_n.data());
+                HFBh00 += Weight_p * Weight_n * HFBnormtemp * HFBH0phi;
+                HFBnorm += Weight_p * Weight_n * HFBnormtemp;
+                // std::cout << gauge_p << "  " << gauge_n << "  " << angle_p << "    " << angle_n << "   " << Weight_p << Weight_n <<" " <<HFBnormtemp<< std::endl;
+
+                // energy gradient
+                gradient_RotatedState(angle_p, angle_n, Zrotate_p.data(), Zrotate_n.data(), HFBH0phi, HFBnormtemp, ZD_p.data(), ZD_n.data(), rho_diff_p.data(), rho_diff_n.data(), kappa_diff_p.data(), kappa_diff_n.data(), kappa1_diff_p.data(), kappa1_diff_n.data());
+                ComplexNum alpha = Weight_p * Weight_n;
+                cblas_zaxpy(dim_p * dim_p, &alpha, Zrotate_p.data(), 1, gradient_Z_p.data(), 1);
+                cblas_zaxpy(dim_n * dim_n, &alpha, Zrotate_n.data(), 1, gradient_Z_n.data(), 1);
+                cblas_zaxpy(dim_p * dim_p, &alpha, ZD_p.data(), 1, gradient_ZD_p.data(), 1);
+                cblas_zaxpy(dim_n * dim_n, &alpha, ZD_n.data(), 1, gradient_ZD_n.data(), 1);
+            }
         }
-    }
+        // Calculate_particle_number_v2();
+        
+        std::cout << HFBh00 / HFBnorm << "      " << HFBh00 << "     " << HFBnorm << std::endl;
+        E_hfb = (HFBh00 / HFBnorm).real();
 
-    std::cout << HFBh00 / HFBnorm << std::endl;
+        ComplexNum alpha = E_hfb;
+        cblas_zaxpy(dim_p * dim_p, &alpha, gradient_ZD_p.data(), 1, gradient_Z_p.data(), 1);
+        cblas_zaxpy(dim_n * dim_n, &alpha, gradient_ZD_n.data(), 1, gradient_Z_n.data(), 1);
+
+        cblas_zdscal(dim_p * dim_p, 1. / HFBnorm.real(), gradient_Z_p.data(), 1);
+        cblas_zdscal(dim_n * dim_n, 1. / HFBnorm.real(), gradient_Z_n.data(), 1);
+
+        Cal_Gradient_SteepestDescent(gradient_Z_p.data(), gradient_Z_n.data());
+        UpdateUV_Thouless(gradient_Z_p.data(), gradient_Z_n.data());
+
+        if (fabs(E_previous - E_hfb) < this->tolerance)
+            break;
+    }
     return;
 }
 
 // this function will update Gamma and Delta functions!
-void HartreeFockBogoliubov::ParticleNumberProjection()
+void HartreeFockBogoliubov::E_ParticleNumberProjection()
 {
     QuadratureClass PNP_mesh_p, PNP_mesh_n;
     AngMomProjection angMomProjectionInstance;
@@ -1071,10 +1133,11 @@ void HartreeFockBogoliubov::ParticleNumberProjection()
     // See more in Nuclear Physics A332 (1979) 69-51
     int meshDim_p = std::max(N_p / 2, dim_p - N_p / 2) + 1;
     int meshDim_n = std::max(N_n / 2, dim_n - N_n / 2) + 1;
+
     PNP_mesh_p.SetNumber(meshDim_p);
     PNP_mesh_n.SetNumber(meshDim_n);
-    angMomProjectionInstance.Generate_GQ_Mesh(PNP_mesh_p, "legendre");
-    angMomProjectionInstance.Generate_GQ_Mesh(PNP_mesh_n, "legendre");
+    angMomProjectionInstance.Generate_equally_Mesh(PNP_mesh_p);
+    angMomProjectionInstance.Generate_equally_Mesh(PNP_mesh_n);
 
     std::vector<ComplexNum> Z0_p(dim_p * dim_p);
     std::vector<ComplexNum> Z1_p(dim_p * dim_p);
@@ -1095,9 +1158,17 @@ void HartreeFockBogoliubov::ParticleNumberProjection()
             ComplexNum Weight_p, Weight_n;
             angle_p = PNP_mesh_p.GetX(gauge_p);
             angle_n = PNP_mesh_n.GetX(gauge_n);
-            Weight_p = PNP_mesh_p.GetWeight(gauge_p) * std::exp(M_PI * angle_p * N_p * ComplexNum(0, -2));
-            Weight_n = PNP_mesh_n.GetWeight(gauge_n) * std::exp(M_PI * angle_n * N_n * ComplexNum(0, -2));
+            Weight_p = PNP_mesh_p.GetWeight(gauge_p) * std::exp(angle_p * N_p * ComplexNum(0, -M_PI * 2));
+            Weight_n = PNP_mesh_n.GetWeight(gauge_n) * std::exp(angle_n * N_n * ComplexNum(0, -M_PI * 2));
             // std::cout << gauge_p << "  " << gauge_n << "  " << angle_p << "    " << angle_n << "   " << Weight_p << Weight_n << std::endl;
+
+            // array
+            std::vector<ComplexNum> rho_diff_p(dim_p * dim_p);
+            std::vector<ComplexNum> kappa_diff_p(dim_p * dim_p);
+            std::vector<ComplexNum> kappa1_diff_p(dim_p * dim_p);
+            std::vector<ComplexNum> rho_diff_n(dim_n * dim_n);
+            std::vector<ComplexNum> kappa_diff_n(dim_n * dim_n);
+            std::vector<ComplexNum> kappa1_diff_n(dim_n * dim_n);
 
             // Z and Zg
             cblas_zcopy(dim_p * dim_p, Z0_p.data(), 1, Z1_p.data(), 1);
@@ -1105,11 +1176,13 @@ void HartreeFockBogoliubov::ParticleNumberProjection()
             cblas_zcopy(dim_n * dim_n, Z0_n.data(), 1, Z1_n.data(), 1);
             Rotate_Z_PNP(dim_n, Z1_n.data(), angle_n);
 
-            ComplexNum HFBnormtemp = NormME_DifferentStates(angle_p, angle_n);
-            HFBh00 += Weight_p * Weight_n * HFBnormtemp * HamiltonianME_DifferentStates(Z0_p.data(), Z1_p.data(), Z0_n.data(), Z1_n.data());
+            // ComplexNum HFBnormtemp = NormME_DifferentStates(angle_p, angle_n);
+            ComplexNum HFBnormtemp = calculate_norm_Pfaffian(angle_p, angle_n);
+            HFBh00 += Weight_p * Weight_n * HFBnormtemp * HamiltonianME_DifferentStates(Z0_p.data(), Z1_p.data(), Z0_n.data(), Z1_n.data(), rho_diff_p.data(), rho_diff_n.data(), kappa_diff_p.data(), kappa_diff_n.data(), kappa1_diff_p.data(), kappa1_diff_n.data());
             HFBnorm += Weight_p * Weight_n * HFBnormtemp;
         }
     }
+    // std::cout << HFBh00 << "   " << HFBnorm << std::endl;
     std::cout << "  Projected Energy: " << HFBh00 / HFBnorm << std::endl;
     return;
 }
@@ -1939,19 +2012,19 @@ void HartreeFockBogoliubov::Cal_Gradient_Preconditioning(ComplexNum *Z_p, Comple
 }
 
 // the HFB vacuum can be rewritten by the thouless theorem
-// |HFB> = e^Zc+c+ |0>, where c+ is the creation operator on
+// |HFB> = e^ {1/2 Zc+c+} |0>, where c+ is the creation operator on
 // HO basis.
 // Z = (V U^-1)*
 void HartreeFockBogoliubov::Get_Z_matrix(int dim, ComplexNum *U, ComplexNum *V, ComplexNum *Z)
 {
     memset(Z, 0, (dim) * (dim) * sizeof(ComplexNum));
     std::vector<ComplexNum> U1(dim * dim);
-    InverseMatrix(dim_p, U, U1.data());
+    InverseMatrix(dim, U, U1.data());
     /// Z = V U^-1
     ComplexNum alpha(1, 0), beta(0.0, 0.0);
     cblas_zgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, dim, dim, dim, &alpha, V, dim, U1.data(), dim, &beta, Z, dim);
     // Apply complex conjugate in-place
-    mkl_zimatcopy('C', 'N', dim, dim, alpha, Z, dim, dim);
+    mkl_zimatcopy('R', 'C', dim, dim, alpha, Z, dim, dim);
     return;
 }
 
@@ -2025,7 +2098,7 @@ void HartreeFockBogoliubov::InverseMatrix(int dim, ComplexNum *U)
     return;
 }
 
-// Uϕ = D(ϕ) U     V-ϕ = D(ϕ) V
+// Uϕ = D(ϕ) U     V-ϕ = D(-ϕ) V
 // D(ϕ) = exp( i 2π ϕ ) where ϕ in range from 0 to 1
 void HartreeFockBogoliubov::Rotate_UV_PNP(int dim, ComplexNum *U, double angle)
 {
@@ -2036,10 +2109,10 @@ void HartreeFockBogoliubov::Rotate_UV_PNP(int dim, ComplexNum *U, double angle)
 
 // Z = (V U^-1)*
 // Zϕ = exp( i 4π ϕ ) Z, where ϕ in range from 0 to 1
-void HartreeFockBogoliubov::Rotate_Z_PNP(int dim, ComplexNum *U, double angle)
+void HartreeFockBogoliubov::Rotate_Z_PNP(int dim, ComplexNum *Z, double angle)
 {
     ComplexNum alpha = std::exp(ComplexNum(0, 4) * M_PI * angle);
-    cblas_zscal(dim * dim, &alpha, U, 1);
+    cblas_zscal(dim * dim, &alpha, Z, 1);
     return;
 }
 
@@ -2049,8 +2122,10 @@ ComplexNum HartreeFockBogoliubov::Determinant(int dim, ComplexNum *Matrix)
     MKL_INT ipiv[n];
     MKL_INT info;
 
+    std::vector<ComplexNum> MatrixCopy(dim * dim);
+    cblas_zcopy(dim * dim, Matrix, 1, MatrixCopy.data(), 1);
     // Perform LU factorization using LAPACKE_zgetrf
-    info = LAPACKE_zgetrf(LAPACK_ROW_MAJOR, n, n, Matrix, n, ipiv);
+    info = LAPACKE_zgetrf(LAPACK_ROW_MAJOR, n, n, MatrixCopy.data(), n, ipiv);
 
     if (info != 0)
     {
@@ -2062,7 +2137,7 @@ ComplexNum HartreeFockBogoliubov::Determinant(int dim, ComplexNum *Matrix)
     std::complex<double> determinant = 1.0;
     for (MKL_INT i = 0; i < n; ++i)
     {
-        determinant *= Matrix[i * n + i];
+        determinant *= MatrixCopy[i * n + i];
     }
 
     // Output the determinant
@@ -2074,25 +2149,18 @@ ComplexNum HartreeFockBogoliubov::Determinant(int dim, ComplexNum *Matrix)
 // ρ_ij = <φ|c†_j c_i|φ'> / <φ|φ'> = −Z' (1 − Z^∗ Z' )−1 Z^∗
 // k_ij = <φ|c_j c_i|φ'> / <φ|φ'> = Z' (1 − Z^∗ Z' )−1
 // k'_ij = <φ|c†_j c†_i|φ'> / <φ|φ'> = (1 − Z^∗ Z' )−1 Z^∗
-ComplexNum HartreeFockBogoliubov::HamiltonianME_DifferentStates(ComplexNum *Z_p, ComplexNum *Z1_p, ComplexNum *Z_n, ComplexNum *Z1_n)
+ComplexNum HartreeFockBogoliubov::HamiltonianME_DifferentStates(ComplexNum *Z_p, ComplexNum *Z1_p, ComplexNum *Z_n, ComplexNum *Z1_n, ComplexNum *rho_diff_p, ComplexNum *rho_diff_n, ComplexNum *kappa_diff_p, ComplexNum *kappa_diff_n, ComplexNum *kappa1_diff_p, ComplexNum *kappa1_diff_n)
 {
-    std::vector<ComplexNum> rho_diff_p(dim_p * dim_p);
-    std::vector<ComplexNum> kappa_diff_p(dim_p * dim_p);
-    std::vector<ComplexNum> kappa1_diff_p(dim_p * dim_p);
-    std::vector<ComplexNum> rho_diff_n(dim_n * dim_n);
-    std::vector<ComplexNum> kappa_diff_n(dim_n * dim_n);
-    std::vector<ComplexNum> kappa1_diff_n(dim_n * dim_n);
+    // 1 − Z^∗ Z'
     std::vector<ComplexNum> ZZ_p(dim_p * dim_p);
     std::vector<ComplexNum> ZZ_n(dim_n * dim_n);
+    memset(ZZ_p.data(), 0, dim_p * dim_p * sizeof(ComplexNum));
+    memset(ZZ_n.data(), 0, dim_n * dim_n * sizeof(ComplexNum));
     for (size_t i = 0; i < dim_p; i++)
     {
+        ZZ_p[i * dim_p + i] = 1.;
         for (size_t j = 0; j < dim_p; j++)
         {
-            ZZ_p[i * dim_p + j] = 0.;
-            if (i == j)
-            {
-                ZZ_p[i * dim_p + i] = 1.;
-            }
             for (size_t k = 0; k < dim_p; k++)
             {
                 ZZ_p[i * dim_p + j] -= std::conj(Z_p[i * dim_p + k]) * Z1_p[k * dim_p + j];
@@ -2101,28 +2169,27 @@ ComplexNum HartreeFockBogoliubov::HamiltonianME_DifferentStates(ComplexNum *Z_p,
     }
     for (size_t i = 0; i < dim_n; i++)
     {
+        ZZ_n[i * dim_n + i] = 1.;
         for (size_t j = 0; j < dim_n; j++)
         {
-            ZZ_n[i * dim_n + j] = 0.;
-            if (i == j)
-            {
-                ZZ_n[i * dim_n + i] = 1.;
-            }
             for (size_t k = 0; k < dim_n; k++)
             {
                 ZZ_n[i * dim_n + j] -= std::conj(Z_n[i * dim_n + k]) * Z1_n[k * dim_n + j];
             }
         }
     }
+    // ( 1 − Z^∗ Z' )^-1
     InverseMatrix(dim_p, ZZ_p.data());
     InverseMatrix(dim_n, ZZ_n.data());
 
     // rho
+    // ρ_ij = <φ|c†_j c_i|φ'> / <φ|φ'> = −Z' (1 − Z^∗ Z' )−1 Z^∗
+    memset(rho_diff_p, 0, dim_p * dim_p * sizeof(ComplexNum));
+    memset(rho_diff_n, 0, dim_n * dim_n * sizeof(ComplexNum));
     for (size_t i = 0; i < dim_p; i++)
     {
         for (size_t j = 0; j < dim_p; j++)
         {
-            rho_diff_p[i * dim_p + j] = 0.;
             for (size_t k = 0; k < dim_p; k++)
             {
                 for (size_t l = 0; l < dim_p; l++)
@@ -2136,7 +2203,6 @@ ComplexNum HartreeFockBogoliubov::HamiltonianME_DifferentStates(ComplexNum *Z_p,
     {
         for (size_t j = 0; j < dim_n; j++)
         {
-            rho_diff_n[i * dim_n + j] = 0.;
             for (size_t k = 0; k < dim_n; k++)
             {
                 for (size_t l = 0; l < dim_n; l++)
@@ -2146,12 +2212,15 @@ ComplexNum HartreeFockBogoliubov::HamiltonianME_DifferentStates(ComplexNum *Z_p,
             }
         }
     }
+
     // kappa
+    // k_ij = <φ|c_j c_i|φ'> / <φ|φ'> = Z' (1 − Z^∗ Z' )−1
+    memset(kappa_diff_p, 0, dim_p * dim_p * sizeof(ComplexNum));
+    memset(kappa_diff_n, 0, dim_n * dim_n * sizeof(ComplexNum));
     for (size_t i = 0; i < dim_p; i++)
     {
         for (size_t j = 0; j < dim_p; j++)
         {
-            kappa_diff_p[i * dim_p + j] = 0.;
             for (size_t k = 0; k < dim_p; k++)
             {
                 kappa_diff_p[i * dim_p + j] += Z1_p[i * dim_p + k] * ZZ_p[k * dim_p + j];
@@ -2162,19 +2231,21 @@ ComplexNum HartreeFockBogoliubov::HamiltonianME_DifferentStates(ComplexNum *Z_p,
     {
         for (size_t j = 0; j < dim_n; j++)
         {
-            kappa_diff_n[i * dim_n + j] = 0.;
             for (size_t k = 0; k < dim_p; k++)
             {
                 kappa_diff_n[i * dim_n + j] += Z1_n[i * dim_n + k] * ZZ_n[k * dim_n + j];
             }
         }
     }
+
     // kappa1
+    // k'_ij = <φ|c†_j c†_i|φ'> / <φ|φ'> = (1 − Z^∗ Z' )−1 Z^∗
+    memset(kappa1_diff_p, 0, dim_p * dim_p * sizeof(ComplexNum));
+    memset(kappa1_diff_n, 0, dim_n * dim_n * sizeof(ComplexNum));
     for (size_t i = 0; i < dim_p; i++)
     {
         for (size_t j = 0; j < dim_p; j++)
         {
-            kappa1_diff_p[i * dim_p + j] = 0.;
             for (size_t k = 0; k < dim_p; k++)
             {
                 kappa1_diff_p[i * dim_p + j] += ZZ_p[i * dim_p + k] * std::conj(Z_p[k * dim_p + j]);
@@ -2185,7 +2256,6 @@ ComplexNum HartreeFockBogoliubov::HamiltonianME_DifferentStates(ComplexNum *Z_p,
     {
         for (size_t j = 0; j < dim_n; j++)
         {
-            kappa1_diff_n[i * dim_n + j] = 0.;
             for (size_t k = 0; k < dim_n; k++)
             {
                 kappa1_diff_n[i * dim_n + j] += ZZ_n[i * dim_n + k] * std::conj(Z_n[k * dim_n + j]);
@@ -2205,10 +2275,6 @@ ComplexNum HartreeFockBogoliubov::HamiltonianME_DifferentStates(ComplexNum *Z_p,
     Vpp = Ham->MSMEs.GetVppPrt();
     Vnn = Ham->MSMEs.GetVnnPrt();
     Vpn = Ham->MSMEs.GetVpnPrt();
-    std::vector<ComplexNum> Temp_rho_p(dim_p * dim_p, 0);
-    std::vector<ComplexNum> Temp_rho_n(dim_n * dim_n, 0);
-    mkl_zomatcopy('R', 'T', dim_p, dim_p, 1.0, rho_diff_p.data(), dim_p, Temp_rho_p.data(), dim_p);
-    mkl_zomatcopy('R', 'T', dim_n, dim_n, 1.0, rho_diff_n.data(), dim_n, Temp_rho_n.data(), dim_n);
 
     // Proton subspace
     // #pragma omp parallel for
@@ -2221,7 +2287,7 @@ ComplexNum HartreeFockBogoliubov::HamiltonianME_DifferentStates(ComplexNum *Z_p,
                 for (size_t l = 0; l < dim_p; l++)
                 {
                     // add Vpp term
-                    Gamma_p[i * dim_p + j] += Vpp[i * dim_p * dim_p * dim_p + j * dim_p * dim_p + k * dim_p + l] * Temp_rho_p[k * dim_p + l];
+                    Gamma_p[i * dim_p + j] += Vpp[i * dim_p * dim_p * dim_p + j * dim_p * dim_p + k * dim_p + l] * rho_diff_p[l * dim_p + k];
 
                     // pairing
                     Delta_p[i * dim_p + j] += 0.5 * Vpp[i * dim_p * dim_p * dim_p + k * dim_p * dim_p + j * dim_p + l] * kappa_diff_p[k * dim_p + l];
@@ -2232,7 +2298,7 @@ ComplexNum HartreeFockBogoliubov::HamiltonianME_DifferentStates(ComplexNum *Z_p,
                 for (size_t l = 0; l < dim_n; l++)
                 {
                     // add Vpn term
-                    Gamma_p[i * dim_p + j] += Vpn[dim_p * dim_n * dim_n * i + dim_n * dim_n * j + k * dim_n + l] * Temp_rho_n[k * dim_n + l];
+                    Gamma_p[i * dim_p + j] += Vpn[dim_p * dim_n * dim_n * i + dim_n * dim_n * j + k * dim_n + l] * rho_diff_n[l * dim_n + k];
                 }
             }
         }
@@ -2249,7 +2315,7 @@ ComplexNum HartreeFockBogoliubov::HamiltonianME_DifferentStates(ComplexNum *Z_p,
                 for (size_t l = 0; l < dim_n; l++)
                 {
                     // add Vnn term
-                    Gamma_n[i * dim_n + j] += Vnn[dim_n * dim_n * dim_n * i + dim_n * dim_n * j + k * dim_n + l] * Temp_rho_n[k * dim_n + l];
+                    Gamma_n[i * dim_n + j] += Vnn[dim_n * dim_n * dim_n * i + dim_n * dim_n * j + k * dim_n + l] * rho_diff_n[l * dim_n + k];
 
                     Delta_n[i * dim_n + j] += 0.5 * Vnn[i * dim_n * dim_n * dim_n + k * dim_n * dim_n + j * dim_n + l] * kappa_diff_n[k * dim_n + l];
                 }
@@ -2260,7 +2326,7 @@ ComplexNum HartreeFockBogoliubov::HamiltonianME_DifferentStates(ComplexNum *Z_p,
                 for (size_t l = 0; l < dim_p; l++)
                 {
                     // add Vpn term
-                    Gamma_n[i * dim_n + j] += Vpn[dim_p * dim_n * dim_n * k + dim_n * dim_n * l + i * dim_n + j] * Temp_rho_p[k * dim_n + l];
+                    Gamma_n[i * dim_n + j] += Vpn[dim_p * dim_n * dim_n * k + dim_n * dim_n * l + i * dim_n + j] * rho_diff_p[l * dim_n + k];
                 }
             }
         }
@@ -2281,7 +2347,7 @@ ComplexNum HartreeFockBogoliubov::HamiltonianME_DifferentStates(ComplexNum *Z_p,
         {
             tempValue_e1 += T_term_p[i * dim_p + j] * rho_diff_p[j * dim_p + i];
             tempValue_e2 += Gamma_p[i * dim_p + j] * rho_diff_p[j * dim_p + i];
-            tempValue_epairing += kappa1_diff_p[i * dim_p + j] * Delta_p[i * dim_p + j];
+            tempValue_epairing += kappa1_diff_p[i * dim_p + j] * Delta_p[j * dim_p + i];
         }
     }
 
@@ -2295,17 +2361,17 @@ ComplexNum HartreeFockBogoliubov::HamiltonianME_DifferentStates(ComplexNum *Z_p,
         {
             tempValue_e1 += T_term_n[i * dim_n + j] * rho_diff_n[j * dim_n + i];
             tempValue_e2 += Gamma_n[i * dim_n + j] * rho_diff_n[j * dim_n + i];
-            tempValue_epairing += kappa1_diff_n[i * dim_n + j] * Delta_n[i * dim_n + j];
+            tempValue_epairing += kappa1_diff_n[i * dim_n + j] * Delta_n[j * dim_n + i];
         }
     }
     HFBh00 = tempValue_e1 + 0.5 * tempValue_e2 - 0.5 * tempValue_epairing;
-
     // std::cout << tempValue_e1 <<  0.5 * tempValue_e2 <<  - 0.5 * tempValue_epairing << HFBh00 << std::endl;
     return HFBh00;
 }
 
 // overlap intergral between two different configruation
-// <φ | φ'(ϕ)> = ( exp^( -2 i ϕ ) +  rho ( 1 - exp^(-2iϕ) ) )^-1
+// this function need the unrotated rho
+// <φ | φ'(ϕ)> = exp^( i M phi  ) * ( exp^( -2 i ϕ ) +  rho ( 1 - exp^(-2iϕ) ) )^-1
 ComplexNum HartreeFockBogoliubov::NormME_DifferentStates(double angle_p, double angle_n)
 {
     //**************************************************
@@ -2313,7 +2379,7 @@ ComplexNum HartreeFockBogoliubov::NormME_DifferentStates(double angle_p, double 
     std::vector<ComplexNum> Cphi_p(dim_p * dim_p);
     std::vector<ComplexNum> Cphi_n(dim_n * dim_n);
     ComplexNum factor_p, factor_n;
-    // exp^( -2 i ϕ  )
+    // 1 - exp^( -2 i ϕ  )
     factor_p = 1. - std::exp(ComplexNum(0, -4.) * M_PI * angle_p);
     factor_n = 1. - std::exp(ComplexNum(0, -4.) * M_PI * angle_n);
     cblas_zcopy(dim_p * dim_p, rho_p, 1, Cphi_p.data(), 1);
@@ -2333,45 +2399,651 @@ ComplexNum HartreeFockBogoliubov::NormME_DifferentStates(double angle_p, double 
     InverseMatrix(dim_p, Cphi_p.data());
     InverseMatrix(dim_n, Cphi_n.data());
     // exp^( i M phi  )
-    factor_p = std::exp(ComplexNum(0, 2.) * M_PI * angle_p * (double)dim_p);
-    factor_n = std::exp(ComplexNum(0, 2.) * M_PI * angle_n * (double)dim_n);
+    factor_p = std::exp(dim_p * M_PI * angle_p * ComplexNum(0, 2.));
+    factor_n = std::exp(dim_n * M_PI * angle_n * ComplexNum(0, 2.));
 
-    ComplexNum HFBNorm;
+    ComplexNum HFBNorm_p, HFBNorm_n;
     // std::cout << HFBh00 << std::endl;
-    HFBNorm = factor_p / sqrt(Determinant(dim_p, Cphi_p.data())) * factor_n / sqrt(Determinant(dim_n, Cphi_n.data()));
-    return HFBNorm;
+    HFBNorm_p = factor_p / sqrt(Determinant(dim_p, Cphi_p.data()));
+    HFBNorm_n = factor_n / sqrt(Determinant(dim_n, Cphi_n.data()));
+    // std::cout<< HFBNorm_p<< "      onishi     " << HFBNorm_n << std::endl << std::endl;
+    return HFBNorm_p * HFBNorm_n;
 }
 
 // gradient of matrix element between two different states ∂<φ| / ∂Z^∗ ( H − Eb) |φ>
 // ∂<φ| / ∂Z^∗ ( H − Eb) |φ> = <φ|φ'> (U†_D ( e + Gamma ) V^*_D − V†_D ( t + Gamma )^T U^∗_D
 // + U†_D U^∗_D − V^†_D Delta' V^*_D ) − Z_D < φ'| H − Eb |φ >
-void HartreeFockBogoliubov::gradient_DifferentStates(ComplexNum *Z_p, ComplexNum *Z1_p, ComplexNum *Z_n, ComplexNum *Z1_n, ComplexNum *gradientZ_p, ComplexNum *gradientZ_n)
+// Zd = ( Bϕ  (Aϕ)^-1 )^*
+// Aϕ = U^+ U(ϕ) + V^+ V(ϕ)
+// Bϕ = V^T U(ϕ) + U^T V(ϕ)
+void HartreeFockBogoliubov::gradient_RotatedState(double angle_p, double angle_n, ComplexNum *Zrotate_p, ComplexNum *Zrotate_n, ComplexNum H0phi, ComplexNum norm, ComplexNum *ZD_p, ComplexNum *ZD_n, ComplexNum *rho_diff_p, ComplexNum *rho_diff_n, ComplexNum *kappa_diff_p, ComplexNum *kappa_diff_n, ComplexNum *kappa1_diff_p, ComplexNum *kappa1_diff_n)
 {
+    std::vector<ComplexNum> U1_p(dim_p * dim_p);
+    std::vector<ComplexNum> V1_p(dim_p * dim_p);
+    std::vector<ComplexNum> A_p(dim_p * dim_p);
+    std::vector<ComplexNum> B_p(dim_p * dim_p);
     std::vector<ComplexNum> UD_p(dim_p * dim_p);
     std::vector<ComplexNum> VD_p(dim_p * dim_p);
-    std::vector<ComplexNum> ZD_p(dim_p * dim_p);
+
+    std::vector<ComplexNum> U1_n(dim_n * dim_n);
+    std::vector<ComplexNum> V1_n(dim_n * dim_n);
+    std::vector<ComplexNum> A_n(dim_n * dim_n);
+    std::vector<ComplexNum> B_n(dim_n * dim_n);
     std::vector<ComplexNum> UD_n(dim_n * dim_n);
     std::vector<ComplexNum> VD_n(dim_n * dim_n);
-    std::vector<ComplexNum> ZD_n(dim_n * dim_n);
+
     std::vector<ComplexNum> Del1_p(dim_p * dim_p);
     std::vector<ComplexNum> Del1_n(dim_n * dim_n);
+    ComplexNum eiphi_p, eiphi_n;
 
-    // ZD
-    memset(ZD_p.data(), 0, dim_p * dim_p * sizeof(ComplexNum));
+    // Proton matrices
+    cblas_zcopy(dim_p * dim_p, U_p, 1, U1_p.data(), 1);
+    Rotate_UV_PNP(dim_p, U1_p.data(), angle_p);
+    cblas_zcopy(dim_p * dim_p, V_p, 1, V1_p.data(), 1);
+    Rotate_UV_PNP(dim_p, V1_p.data(), -angle_p);
+
+    // Aϕ = U^+ U(ϕ) + V^+ V(ϕ)
+    // Bϕ = V^T U(ϕ) + U^T V(ϕ)
+    // U(ϕ) = D(ϕ) U
+    // V(ϕ) = D^*(ϕ) V
+    memset(A_p.data(), 0, dim_p * dim_p * sizeof(ComplexNum));
+    memset(B_p.data(), 0, dim_p * dim_p * sizeof(ComplexNum));
     for (size_t i = 0; i < dim_p; i++)
     {
         for (size_t j = 0; j < dim_p; j++)
         {
-            /* code */
+            for (size_t k = 0; k < dim_p; k++)
+            {
+                A_p[i * dim_p + j] += std::conj(U_p[k * dim_p + i]) * U1_p[k * dim_p + j] + std::conj(V_p[k * dim_p + i]) * V1_p[k * dim_p + j];
+                B_p[i * dim_p + j] += V_p[k * dim_p + i] * U1_p[k * dim_p + j] + U_p[k * dim_p + i] * V1_p[k * dim_p + j];
+            }
+        }
+    }
+    InverseMatrix(dim_p, A_p.data());
+    // ZD = ( Bϕ  (Aϕ)^-1 )^*
+    memset(ZD_p, 0, dim_p * dim_p * sizeof(ComplexNum));
+    for (size_t i = 0; i < dim_p; i++)
+    {
+        for (size_t j = 0; j < dim_p; j++)
+        {
+            for (size_t k = 0; k < dim_p; k++)
+            {
+                ZD_p[i * dim_p + j] += B_p[i * dim_p + k] * A_p[k * dim_p + j];
+            }
+            ZD_p[i * dim_p + j] = std::conj(ZD_p[i * dim_p + j]);
         }
     }
 
-    // UD
-    memset(UD_p.data(), 0, dim_p * dim_p * sizeof(ComplexNum));
+    cblas_zcopy(dim_p * dim_p, U_p, 1, UD_p.data(), 1);
+    cblas_zcopy(dim_p * dim_p, V_p, 1, VD_p.data(), 1);
+    // UD = U + V^∗ ZD^*
+    // VD = V + U^∗ ZD^*
     for (size_t i = 0; i < dim_p; i++)
     {
-        /* code */
+        for (size_t j = 0; j < dim_p; j++)
+        {
+            for (size_t k = 0; k < dim_p; k++)
+            {
+                UD_p[i * dim_p + j] += std::conj(V_p[i * dim_p + k] * ZD_p[k * dim_p + j]);
+                VD_p[i * dim_p + j] += std::conj(U_p[i * dim_p + k] * ZD_p[k * dim_p + j]);
+            }
+        }
     }
+
+    // use a skewed stored Vpp and Vnn
+    double *Vpp, *Vpn, *Vnn;
+    Vpp = Ham->MSMEs.GetVppPrt();
+    Vnn = Ham->MSMEs.GetVnnPrt();
+    // Vpn = Ham->MSMEs.GetVpnPrt();
+
+    // Δ'_kl = 1/2 \sum_ij k'_ij Vijkl
+    memset(Del1_p.data(), 0, dim_p * dim_p * sizeof(ComplexNum));
+    // Proton subspace
+    // #pragma omp parallel for
+    for (size_t i = 0; i < dim_p; i++)
+    {
+        for (size_t j = 0; j < dim_p; j++)
+        {
+            for (size_t k = 0; k < dim_p; k++)
+            {
+                for (size_t l = 0; l < dim_p; l++)
+                {
+                    // pairing
+                    Del1_p[i * dim_p + j] += 0.5 * kappa1_diff_p[k * dim_p + l] * Vpp[k * dim_p * dim_p * dim_p + i * dim_p * dim_p + l * dim_p + j];
+                }
+            }
+        }
+    }
+
+    // Neutron matrices----------------------------------------
+    cblas_zcopy(dim_n * dim_n, U_n, 1, U1_n.data(), 1);
+    Rotate_UV_PNP(dim_n, U1_n.data(), angle_n);
+    cblas_zcopy(dim_n * dim_n, V_n, 1, V1_n.data(), 1);
+    Rotate_UV_PNP(dim_n, V1_n.data(), -angle_n);
+
+    // Aϕ = U^+ U(ϕ) + V^+ V(ϕ)
+    // Bϕ = V^T U(ϕ) + U^T V(ϕ)
+    // U(ϕ) = D(ϕ) U
+    // V(ϕ) = D^*(ϕ) V
+    memset(A_n.data(), 0, dim_n * dim_n * sizeof(ComplexNum));
+    memset(B_n.data(), 0, dim_n * dim_n * sizeof(ComplexNum));
+    for (size_t i = 0; i < dim_n; i++)
+    {
+        for (size_t j = 0; j < dim_n; j++)
+        {
+            for (size_t k = 0; k < dim_n; k++)
+            {
+                A_n[i * dim_n + j] += std::conj(U_n[k * dim_n + i]) * U1_n[k * dim_n + j] + std::conj(V_n[k * dim_n + i]) * V1_n[k * dim_n + j];
+                B_n[i * dim_n + j] += V_n[k * dim_n + i] * U1_n[k * dim_n + j] + U_n[k * dim_n + i] * V1_n[k * dim_n + j];
+            }
+        }
+    }
+    InverseMatrix(dim_n, A_n.data());
+    memset(ZD_n, 0, dim_n * dim_n * sizeof(ComplexNum));
+    for (size_t i = 0; i < dim_n; i++)
+    {
+        for (size_t j = 0; j < dim_n; j++)
+        {
+            for (size_t k = 0; k < dim_n; k++)
+            {
+                ZD_n[i * dim_n + j] += B_n[i * dim_n + k] * A_n[k * dim_n + j];
+            }
+            ZD_n[i * dim_n + j] = std::conj(ZD_n[i * dim_n + j]);
+        }
+    }
+
+    cblas_zcopy(dim_n * dim_n, U_n, 1, UD_n.data(), 1);
+    cblas_zcopy(dim_n * dim_n, V_n, 1, VD_n.data(), 1);
+    // UD = U + V^∗ ZD^*
+    // VD = V + U^∗ ZD^*
+    for (size_t i = 0; i < dim_n; i++)
+    {
+        for (size_t j = 0; j < dim_n; j++)
+        {
+            for (size_t k = 0; k < dim_n; k++)
+            {
+                UD_n[i * dim_n + j] += std::conj(V_n[i * dim_n + k] * ZD_n[k * dim_n + j]);
+                VD_n[i * dim_n + j] += std::conj(U_n[i * dim_n + k] * ZD_n[k * dim_n + j]);
+            }
+        }
+    }
+
+    // Δ'_kl = 1/2 \sum_ij k'_ij Vijkl
+    memset(Del1_n.data(), 0, dim_n * dim_n * sizeof(ComplexNum));
+    // Neutron subspace
+    // #pragma omp parallel for
+    for (size_t i = 0; i < dim_n; i++)
+    {
+        for (size_t j = 0; j < dim_n; j++)
+        {
+            for (size_t k = 0; k < dim_n; k++)
+            {
+                for (size_t l = 0; l < dim_n; l++)
+                {
+                    Del1_n[i * dim_n + j] += 0.5 * kappa1_diff_n[k * dim_n + l] * Vnn[k * dim_n * dim_n * dim_n + i * dim_n * dim_n + l * dim_n + j];
+                }
+            }
+        }
+    }
+
+    //--------------------------------------------
+    // Proton subspace
+    memset(Zrotate_p, 0, dim_p * dim_p * sizeof(ComplexNum));
+    // #pragma omp parallel for
+    for (size_t i = 0; i < dim_p; i++)
+    {
+        for (size_t j = 0; j < dim_p; j++)
+        {
+            for (size_t k = 0; k < dim_p; k++)
+            {
+                for (size_t l = 0; l < dim_p; l++)
+                {
+                    // UD^† ( t + Gamma ) VD^*  − VD^† ( t + Gamma )^T UD^* + UD^† Delta UD^*  − VD^† Delta' VD^*
+                    Zrotate_p[i * dim_p + j] += std::conj(UD_p[k * dim_p + i]) * (T_term_p[k * dim_p + l] + Gamma_p[k * dim_p + l]) * std::conj(VD_p[l * dim_p + j]);
+                    Zrotate_p[i * dim_p + j] -= std::conj(VD_p[k * dim_p + i]) * (T_term_p[l * dim_p + k] + Gamma_p[l * dim_p + k]) * std::conj(UD_p[l * dim_p + j]);
+                    Zrotate_p[i * dim_p + j] += std::conj(UD_p[k * dim_p + i]) * Delta_p[k * dim_p + l] * std::conj(UD_p[l * dim_p + j]);
+                    Zrotate_p[i * dim_p + j] -= std::conj(VD_p[k * dim_p + i]) * Del1_p[k * dim_p + l] * std::conj(VD_p[l * dim_p + j]);
+                }
+            }
+            Zrotate_p[i * dim_p + j] *= norm;
+            Zrotate_p[i * dim_p + j] -= ZD_p[i * dim_p + j] * H0phi * norm;
+            ZD_p[i * dim_p + j] *= norm;
+        }
+    }
+
+    // Neutron subspace
+    memset(Zrotate_n, 0, dim_n * dim_n * sizeof(ComplexNum));
+    // #pragma omp parallel for
+    for (size_t i = 0; i < dim_n; i++)
+    {
+        for (size_t j = 0; j < dim_n; j++)
+        {
+            for (size_t k = 0; k < dim_n; k++)
+            {
+                for (size_t l = 0; l < dim_n; l++)
+                {
+                    // UD^† ( t + Gamma ) VD^*  − VD^† ( t + Gamma )^T UD^* + UD^† Delta UD^*  − VD^† Delta' VD^*
+                    Zrotate_n[i * dim_n + j] += std::conj(UD_n[k * dim_n + i]) * (T_term_n[k * dim_n + l] + Gamma_n[k * dim_n + l]) * std::conj(VD_n[l * dim_n + j]);
+                    Zrotate_n[i * dim_n + j] -= std::conj(VD_n[k * dim_n + i]) * (T_term_n[l * dim_n + k] + Gamma_n[l * dim_n + k]) * std::conj(UD_n[l * dim_n + j]);
+                    Zrotate_n[i * dim_n + j] += std::conj(UD_n[k * dim_n + i]) * Delta_n[k * dim_n + l] * std::conj(UD_n[l * dim_n + j]);
+                    Zrotate_n[i * dim_n + j] -= std::conj(VD_n[k * dim_n + i]) * Del1_n[k * dim_n + l] * std::conj(VD_n[l * dim_n + j]);
+                }
+            }
+            Zrotate_n[i * dim_n + j] *= norm;
+            Zrotate_n[i * dim_n + j] -= ZD_n[i * dim_n + j] * H0phi * norm;
+            ZD_n[i * dim_n + j] *= norm;
+        }
+    }
+    return;
+}
+
+//**********************************************************************
+//  < Z > = Tr(rhoLR_p)
+//  < N > = Tr(rhoLR_n)
+//  ρ_ij = <φ|c†_j c_i|φ'> / <φ|φ'> = −Z' (1 − Z^∗ Z' )−1 Z^∗
+//  Z = (V U^-1)*
+void HartreeFockBogoliubov::Calculate_particle_number()
+{
+    QuadratureClass PNP_mesh_p, PNP_mesh_n;
+    AngMomProjection angMomProjectionInstance;
+    // M = max (1/2 N, Omega - 1/2 N) + 1
+    // See more in Nuclear Physics A332 (1979) 69-51
+    int meshDim_p = std::max(N_p / 2, dim_p - N_p / 2) + 1;
+    int meshDim_n = std::max(N_n / 2, dim_n - N_n / 2) + 1;
+
+    PNP_mesh_p.SetNumber(meshDim_p);
+    PNP_mesh_n.SetNumber(meshDim_n);
+    angMomProjectionInstance.Generate_equally_Mesh(PNP_mesh_p); // equally legendre  chebyshev
+    angMomProjectionInstance.Generate_equally_Mesh(PNP_mesh_n);
+
+    std::vector<ComplexNum> Z_p(dim_p * dim_p);
+    std::vector<ComplexNum> Z1_p(dim_p * dim_p);
+    std::vector<ComplexNum> Z_n(dim_n * dim_n);
+    std::vector<ComplexNum> Z1_n(dim_n * dim_n);
+
+    UpdateDensityMatrix();
+    ComplexNum Z = 0., N = 0., PNP_norm = 0.;
+    // Get unrotated Z matrix
+    Get_Z_matrix(dim_p, U_p, V_p, Z_p.data());
+    Get_Z_matrix(dim_n, U_n, V_n, Z_n.data());
+
+    for (size_t gauge_p = 0; gauge_p < PNP_mesh_p.GetTotalNumber(); gauge_p++)
+    {
+        for (size_t gauge_n = 0; gauge_n < PNP_mesh_n.GetTotalNumber(); gauge_n++)
+        {
+
+            double angle_p, angle_n;
+            ComplexNum Weight_p, Weight_n;
+            angle_p = PNP_mesh_p.GetX(gauge_p);
+            angle_n = PNP_mesh_n.GetX(gauge_n);
+            Weight_p = PNP_mesh_p.GetWeight(gauge_p) * std::exp(-M_PI * angle_p * N_p * ComplexNum(0, 2));
+            Weight_n = PNP_mesh_n.GetWeight(gauge_n) * std::exp(-M_PI * angle_n * N_n * ComplexNum(0, 2));
+            // std::cout << gauge_p << "  " << gauge_n << "  " << angle_p << "    " << angle_n << "   " << Weight_p << Weight_n << std::endl;
+
+            // array
+            std::vector<ComplexNum> rho_diff_p(dim_p * dim_p);
+            std::vector<ComplexNum> kappa_diff_p(dim_p * dim_p);
+            std::vector<ComplexNum> kappa1_diff_p(dim_p * dim_p);
+            std::vector<ComplexNum> rho_diff_n(dim_n * dim_n);
+            std::vector<ComplexNum> kappa_diff_n(dim_n * dim_n);
+            std::vector<ComplexNum> kappa1_diff_n(dim_n * dim_n);
+
+            // Z and Zg
+            cblas_zcopy(dim_p * dim_p, Z_p.data(), 1, Z1_p.data(), 1);
+            Rotate_Z_PNP(dim_p, Z1_p.data(), angle_p);
+            cblas_zcopy(dim_n * dim_n, Z_n.data(), 1, Z1_n.data(), 1);
+            Rotate_Z_PNP(dim_n, Z1_n.data(), angle_n);
+
+            // 1 − Z^∗ Z'
+            std::vector<ComplexNum> ZZ_p(dim_p * dim_p);
+            std::vector<ComplexNum> ZZ_n(dim_n * dim_n);
+            for (size_t i = 0; i < dim_p; i++)
+            {
+                for (size_t j = 0; j < dim_p; j++)
+                {
+                    ZZ_p[i * dim_p + j] = 0.;
+                    if (i == j)
+                    {
+                        ZZ_p[i * dim_p + i] = 1.;
+                    }
+                    for (size_t k = 0; k < dim_p; k++)
+                    {
+                        ZZ_p[i * dim_p + j] -= std::conj(Z_p[i * dim_p + k]) * Z1_p[k * dim_p + j];
+                    }
+                }
+            }
+            for (size_t i = 0; i < dim_n; i++)
+            {
+                for (size_t j = 0; j < dim_n; j++)
+                {
+                    ZZ_n[i * dim_n + j] = 0.;
+                    if (i == j)
+                    {
+                        ZZ_n[i * dim_n + i] = 1.;
+                    }
+                    for (size_t k = 0; k < dim_n; k++)
+                    {
+                        ZZ_n[i * dim_n + j] -= std::conj(Z_n[i * dim_n + k]) * Z1_n[k * dim_n + j];
+                    }
+                }
+            }
+            InverseMatrix(dim_p, ZZ_p.data());
+            InverseMatrix(dim_n, ZZ_n.data());
+
+            // rho
+            for (size_t i = 0; i < dim_p; i++)
+            {
+                for (size_t j = 0; j < dim_p; j++)
+                {
+                    rho_diff_p[i * dim_p + j] = 0.;
+                    for (size_t k = 0; k < dim_p; k++)
+                    {
+                        for (size_t l = 0; l < dim_p; l++)
+                        {
+                            rho_diff_p[i * dim_p + j] -= Z1_p[i * dim_p + k] * ZZ_p[k * dim_p + l] * std::conj(Z_p[l * dim_p + j]);
+                        }
+                    }
+                }
+            }
+            for (size_t i = 0; i < dim_n; i++)
+            {
+                for (size_t j = 0; j < dim_n; j++)
+                {
+                    rho_diff_n[i * dim_n + j] = 0.;
+                    for (size_t k = 0; k < dim_n; k++)
+                    {
+                        for (size_t l = 0; l < dim_n; l++)
+                        {
+                            rho_diff_n[i * dim_n + j] -= Z1_n[i * dim_n + k] * ZZ_n[k * dim_n + l] * std::conj(Z_n[l * dim_n + j]);
+                        }
+                    }
+                }
+            }
+            /*
+            // kappa
+            for (size_t i = 0; i < dim_p; i++)
+            {
+                for (size_t j = 0; j < dim_p; j++)
+                {
+                    kappa_diff_p[i * dim_p + j] = 0.;
+                    for (size_t k = 0; k < dim_p; k++)
+                    {
+                        kappa_diff_p[i * dim_p + j] += Z1_p[i * dim_p + k] * ZZ_p[k * dim_p + j];
+                    }
+                }
+            }
+            for (size_t i = 0; i < dim_n; i++)
+            {
+                for (size_t j = 0; j < dim_n; j++)
+                {
+                    kappa_diff_n[i * dim_n + j] = 0.;
+                    for (size_t k = 0; k < dim_p; k++)
+                    {
+                        kappa_diff_n[i * dim_n + j] += Z1_n[i * dim_n + k] * ZZ_n[k * dim_n + j];
+                    }
+                }
+            }
+            // kappa1
+            for (size_t i = 0; i < dim_p; i++)
+            {
+                for (size_t j = 0; j < dim_p; j++)
+                {
+                    kappa1_diff_p[i * dim_p + j] = 0.;
+                    for (size_t k = 0; k < dim_p; k++)
+                    {
+                        kappa1_diff_p[i * dim_p + j] += ZZ_p[i * dim_p + k] * std::conj(Z_p[k * dim_p + j]);
+                    }
+                }
+            }
+            for (size_t i = 0; i < dim_n; i++)
+            {
+                for (size_t j = 0; j < dim_n; j++)
+                {
+                    kappa1_diff_n[i * dim_n + j] = 0.;
+                    for (size_t k = 0; k < dim_n; k++)
+                    {
+                        kappa1_diff_n[i * dim_n + j] += ZZ_n[i * dim_n + k] * std::conj(Z_n[k * dim_n + j]);
+                    }
+                }
+            }
+            */
+
+            // ComplexNum norm = NormME_DifferentStates(angle_p, angle_n);
+            ComplexNum norm = calculate_norm_Pfaffian(angle_p, angle_n);
+
+            PNP_norm += Weight_p * Weight_n * norm;
+
+            // Z = Tr(rhoLR_p)
+            for (size_t i = 0; i < dim_p; i++)
+                Z += Weight_p * Weight_n * rho_diff_p[i * dim_p + i] * norm;
+
+            for (size_t i = 0; i < dim_n; i++)
+                N += Weight_p * Weight_n * rho_diff_n[i * dim_p + i] * norm;
+        }
+    }
+    std::cout << "  Projected Z: " << Z / PNP_norm << std::endl;
+    std::cout << "  Projected N: " << N / PNP_norm << std::endl;
+    return;
+}
+
+//  < Z > = Tr(rhoLR_p)
+//  < N > = Tr(rhoLR_n)
+//  A = U†R UL + V†R VL
+//  ρ = ( VR^*  A^T ^-1  VL^T )
+// see arXiv:2010.14169v2 Eq. 11 - 12
+void HartreeFockBogoliubov::Calculate_particle_number_v2()
+{
+    QuadratureClass PNP_mesh_p, PNP_mesh_n;
+    AngMomProjection angMomProjectionInstance;
+    // M = max (1/2 N, Omega - 1/2 N) + 1
+    // See more in Nuclear Physics A332 (1979) 69-51
+    int meshDim_p = std::max(N_p / 2, dim_p - N_p / 2) + 1;
+    int meshDim_n = std::max(N_n / 2, dim_n - N_n / 2) + 1;
+    // meshDim_p = 12;
+    // meshDim_n = 12;
+    PNP_mesh_p.SetNumber(meshDim_p);
+    PNP_mesh_n.SetNumber(meshDim_n);
+    angMomProjectionInstance.Generate_equally_Mesh(PNP_mesh_p); // legendre  chebyshev
+    angMomProjectionInstance.Generate_equally_Mesh(PNP_mesh_n);
+
+    ComplexNum Z = 0., N = 0., PNP_norm = 0.;
+    for (size_t gauge_p = 0; gauge_p < PNP_mesh_p.GetTotalNumber(); gauge_p++)
+    {
+        for (size_t gauge_n = 0; gauge_n < PNP_mesh_n.GetTotalNumber(); gauge_n++)
+        {
+            double angle_p, angle_n;
+            ComplexNum Weight_p, Weight_n;
+            angle_p = PNP_mesh_p.GetX(gauge_p);
+            angle_n = PNP_mesh_n.GetX(gauge_n);
+            Weight_p = PNP_mesh_p.GetWeight(gauge_p) * std::exp(angle_p * N_p * ComplexNum(0, -2. * M_PI));
+            Weight_n = PNP_mesh_n.GetWeight(gauge_n) * std::exp(angle_n * N_n * ComplexNum(0, -2. * M_PI));
+            // std::cout << gauge_p << "  " << gauge_n << "  " << angle_p << "    " << angle_n << "   " << Weight_p << Weight_n << std::endl;
+
+            std::vector<ComplexNum> A_p(dim_p * dim_p);
+            std::vector<ComplexNum> A_n(dim_n * dim_n);
+            memset(A_p.data(), 0, dim_p * dim_p * sizeof(ComplexNum));
+            memset(A_n.data(), 0, dim_n * dim_n * sizeof(ComplexNum));
+            std::vector<ComplexNum> U1_p(dim_p * dim_p);
+            std::vector<ComplexNum> V1_p(dim_p * dim_p);
+            std::vector<ComplexNum> U1_n(dim_n * dim_n);
+            std::vector<ComplexNum> V1_n(dim_n * dim_n);
+            cblas_zcopy(dim_p * dim_p, U_p, 1, U1_p.data(), 1);
+            cblas_zcopy(dim_p * dim_p, V_p, 1, V1_p.data(), 1);
+            cblas_zcopy(dim_n * dim_n, U_n, 1, U1_n.data(), 1);
+            cblas_zcopy(dim_n * dim_n, V_n, 1, V1_n.data(), 1);
+
+            Rotate_UV_PNP(dim_p, U1_p.data(), angle_p);
+            Rotate_UV_PNP(dim_p, V1_p.data(), -angle_p);
+            Rotate_UV_PNP(dim_p, U1_n.data(), angle_n);
+            Rotate_UV_PNP(dim_p, V1_n.data(), -angle_n);
+
+            for (size_t i = 0; i < dim_p; i++)
+            {
+                for (size_t j = 0; j < dim_p; j++)
+                {
+                    for (size_t k = 0; k < dim_p; k++)
+                    {
+                        A_p[i * dim_p + j] += std::conj(U1_p[k * dim_p + i]) * U_p[k * dim_p + j];
+                        A_p[i * dim_p + j] += std::conj(V1_p[k * dim_p + i]) * V_p[k * dim_p + j];
+                    }
+                }
+            }
+            for (size_t i = 0; i < dim_n; i++)
+            {
+                for (size_t j = 0; j < dim_n; j++)
+                {
+                    for (size_t k = 0; k < dim_n; k++)
+                    {
+                        A_n[i * dim_n + j] += std::conj(U1_n[k * dim_n + i]) * U_n[k * dim_n + j];
+                        A_n[i * dim_n + j] += std::conj(V1_n[k * dim_n + i]) * V_n[k * dim_n + j];
+                    }
+                }
+            }
+            InverseMatrix(dim_p, A_p.data());
+            InverseMatrix(dim_n, A_n.data());
+
+            // array
+            std::vector<ComplexNum> rho_diff_p(dim_p * dim_p);
+            std::vector<ComplexNum> kappa_diff_p(dim_p * dim_p);
+            std::vector<ComplexNum> kappa1_diff_p(dim_p * dim_p);
+            std::vector<ComplexNum> rho_diff_n(dim_n * dim_n);
+            std::vector<ComplexNum> kappa_diff_n(dim_n * dim_n);
+            std::vector<ComplexNum> kappa1_diff_n(dim_n * dim_n);
+            memset(rho_diff_p.data(), 0, dim_p * dim_p * sizeof(ComplexNum));
+            memset(rho_diff_n.data(), 0, dim_n * dim_n * sizeof(ComplexNum));
+            for (size_t i = 0; i < dim_p; i++)
+            {
+                for (size_t j = 0; j < dim_p; j++)
+                {
+                    for (size_t k = 0; k < dim_p; k++)
+                    {
+                        for (size_t l = 0; l < dim_p; l++)
+                        {
+                            rho_diff_p[i * dim_p + j] += std::conj(V1_p[i * dim_p + k]) * A_p[l * dim_p + k] * V_p[j * dim_p + l];
+                        }
+                    }
+                }
+            }
+            for (size_t i = 0; i < dim_n; i++)
+            {
+                for (size_t j = 0; j < dim_n; j++)
+                {
+                    for (size_t k = 0; k < dim_n; k++)
+                    {
+                        for (size_t l = 0; l < dim_n; l++)
+                        {
+                            rho_diff_n[i * dim_n + j] += std::conj(V1_n[i * dim_n + k]) * A_n[l * dim_n + k] * V_n[j * dim_n + l];
+                        }
+                    }
+                }
+            }
+
+            // ComplexNum norm2 = NormME_DifferentStates(angle_p, angle_p);
+            ComplexNum norm = calculate_norm_Pfaffian(angle_p, angle_n);
+            // std::cout << norm << "   " << norm2 <<  "       " << angle_p  <<angle_n << std::endl;
+            PNP_norm += Weight_p * Weight_n * norm;
+            // Z = Tr(rhoLR_p)
+            for (size_t i = 0; i < dim_p; i++)
+                Z += Weight_p * Weight_n * rho_diff_p[i * dim_p + i] * norm;
+
+            for (size_t i = 0; i < dim_n; i++)
+                N += Weight_p * Weight_n * rho_diff_n[i * dim_p + i] * norm;
+        }
+    }
+    std::cout << "  Projected Z: " << Z / PNP_norm << std::endl;
+    std::cout << "  Projected N: " << N / PNP_norm << std::endl;
+    return;
+}
+
+// Computes the module of the overlap using the Onishi formula
+// |<L|R>| = sqrt(|det(U)|) = sqrt(|det(UR^\dagger UL + VR^\dagger VL)|)
+ComplexNum HartreeFockBogoliubov::calculate_module_norm_Onishi(double angle_p, double angle_n)
+{
+    std::vector<ComplexNum> norm_p(dim_p * dim_p);
+    std::vector<ComplexNum> norm_n(dim_n * dim_n);
+    memset(norm_p.data(), 0, dim_p * dim_p * sizeof(ComplexNum));
+    memset(norm_n.data(), 0, dim_n * dim_n * sizeof(ComplexNum));
+    std::vector<ComplexNum> U1_p(dim_p * dim_p);
+    std::vector<ComplexNum> V1_p(dim_p * dim_p);
+    std::vector<ComplexNum> U1_n(dim_n * dim_n);
+    std::vector<ComplexNum> V1_n(dim_n * dim_n);
+    cblas_zcopy(dim_p * dim_p, U_p, 1, U1_p.data(), 1);
+    cblas_zcopy(dim_p * dim_p, V_p, 1, V1_p.data(), 1);
+    cblas_zcopy(dim_n * dim_n, U_n, 1, U1_n.data(), 1);
+    cblas_zcopy(dim_n * dim_n, V_n, 1, V1_n.data(), 1);
+    Rotate_UV_PNP(dim_p, U1_p.data(), angle_p);
+    Rotate_UV_PNP(dim_p, V1_p.data(), -angle_p);
+    Rotate_UV_PNP(dim_p, U1_n.data(), angle_p);
+    Rotate_UV_PNP(dim_p, V1_n.data(), -angle_p);
+
+    for (size_t i = 0; i < dim_p; i++)
+    {
+        for (size_t j = 0; j < dim_p; j++)
+        {
+            for (size_t k = 0; k < dim_p; k++)
+            {
+                norm_p[i * dim_p + j] += std::conj(U1_p[k * dim_p + i]) * U_p[k * dim_p + j];
+                norm_p[i * dim_p + j] += std::conj(V1_p[k * dim_p + i]) * V_p[k * dim_p + j];
+            }
+        }
+    }
+    for (size_t i = 0; i < dim_n; i++)
+    {
+        for (size_t j = 0; j < dim_n; j++)
+        {
+            for (size_t k = 0; k < dim_n; k++)
+            {
+                norm_n[i * dim_n + j] += std::conj(U1_n[k * dim_n + i]) * U_n[k * dim_n + j];
+                norm_n[i * dim_n + j] += std::conj(V1_n[k * dim_n + i]) * V_n[k * dim_n + j];
+            }
+        }
+    }
+    return sqrt(std::abs(Determinant(dim_p, norm_p.data()))) * sqrt(std::abs(Determinant(dim_n, norm_n.data())));
+}
+
+// overlap by using Pfaffian
+// <φ0|φ1> = (−1)^N(N+1)/2 pf(M), where M is a 2N X 2N skew-symmetric matrix
+// M = [ M1   -I ]
+//     [  I   M0* ]
+// where M1 and M0 come from HFB wave function |φ1> = exp( 1/2 sum_kk' M1_kk' a^+_k a^+_k' ) |0>
+// M1_kk' = (V U^-1)^*
+ComplexNum HartreeFockBogoliubov::calculate_norm_Pfaffian(double angle_p, double angle_n)
+{
+    std::vector<ComplexNum> norm_M_p(dim_p * dim_p);
+    std::vector<ComplexNum> norm_M_n(dim_n * dim_n);
+    std::vector<ComplexNum> norm_M1_p(dim_p * dim_p);
+    std::vector<ComplexNum> norm_M1_n(dim_n * dim_n);
+    memset(norm_M_p.data(), 0, dim_p * dim_p * sizeof(ComplexNum));
+    memset(norm_M_n.data(), 0, dim_n * dim_n * sizeof(ComplexNum));
+    memset(norm_M1_p.data(), 0, dim_p * dim_p * sizeof(ComplexNum));
+    memset(norm_M1_n.data(), 0, dim_n * dim_n * sizeof(ComplexNum));
+    std::vector<ComplexNum> U1_p(dim_p * dim_p);
+    std::vector<ComplexNum> V1_p(dim_p * dim_p);
+    std::vector<ComplexNum> U1_n(dim_n * dim_n);
+    std::vector<ComplexNum> V1_n(dim_n * dim_n);
+    cblas_zcopy(dim_p * dim_p, U_p, 1, U1_p.data(), 1);
+    cblas_zcopy(dim_p * dim_p, V_p, 1, V1_p.data(), 1);
+    cblas_zcopy(dim_n * dim_n, U_n, 1, U1_n.data(), 1);
+    cblas_zcopy(dim_n * dim_n, V_n, 1, V1_n.data(), 1);
+    Rotate_UV_PNP(dim_p, U1_p.data(), angle_p);
+    Rotate_UV_PNP(dim_p, V1_p.data(), -angle_p);
+    Rotate_UV_PNP(dim_n, U1_n.data(), angle_n);
+    Rotate_UV_PNP(dim_n, V1_n.data(), -angle_n);
+    Get_Z_matrix(dim_p, U_p, V_p, norm_M_p.data());
+    Get_Z_matrix(dim_n, U_n, V_n, norm_M_n.data());
+    Get_Z_matrix(dim_p, U1_p.data(), V1_p.data(), norm_M1_p.data());
+    Get_Z_matrix(dim_n, U1_n.data(), V1_n.data(), norm_M1_n.data());
+
+    ComplexNum norm0_p = HFB_Pfaffian_Tools::Compute_Overlap(dim_p, norm_M_p.data(), norm_M_p.data());
+    ComplexNum norm1_p = HFB_Pfaffian_Tools::Compute_Overlap(dim_p, norm_M1_p.data(), norm_M1_p.data());
+    ComplexNum norm_p = HFB_Pfaffian_Tools::Compute_Overlap(dim_p, norm_M_p.data(), norm_M1_p.data());
+    norm_p /= sqrt(norm0_p * norm1_p);
+
+    ComplexNum norm0_n = HFB_Pfaffian_Tools::Compute_Overlap(dim_n, norm_M_n.data(), norm_M_n.data());
+    ComplexNum norm1_n = HFB_Pfaffian_Tools::Compute_Overlap(dim_n, norm_M1_n.data(), norm_M1_n.data());
+    ComplexNum norm_n = HFB_Pfaffian_Tools::Compute_Overlap(dim_n, norm_M_n.data(), norm_M1_n.data());
+    norm_n /= sqrt(norm0_n * norm1_n);
+    return norm_p * norm_n;
 }
 
 //**********************************************************************
@@ -2725,16 +3397,21 @@ int main(int argc, char *argv[])
 
     //----------------------------------------------
     HartreeFockBogoliubov hfb(Hinput);
-    // hfb.UpdateOccupationConstant(hfb.N_p * 1. / hfb.dim_p, hfb.N_n * 1. / hfb.dim_n);
-    // hfb.SetCanonical_UV();
-    hfb.SetCanonical_UV_Random(20);
-    // hfb.UpdateDensityMatrix();
-    // hfb.PrintDensityMatrix();
-    // hfb.Solve_gradient();
+    hfb.UpdateOccupationConstant(hfb.N_p * 1. / hfb.dim_p, hfb.N_n * 1. / hfb.dim_n);
+    hfb.SetCanonical_UV();
+    // hfb.SetCanonical_UV_Random(20);
+    //  hfb.UpdateDensityMatrix();
+    //  hfb.PrintDensityMatrix();
+    //  hfb.Solve_gradient();
 
-    hfb.Solve_gradient_Constraint();
+    // hfb.Solve_gradient_Constraint();
 
-    hfb.ParticleNumberProjection();
+    std::cout << std::endl;
+
+    hfb.Solve_gradient_PNP();
+    hfb.E_ParticleNumberProjection();
+    // hfb.Calculate_particle_number();
+    hfb.Calculate_particle_number_v2();
 
     // hfb.Solve_diag();
     // hfb.PrintDensityMatrix();

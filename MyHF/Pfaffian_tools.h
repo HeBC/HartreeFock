@@ -16,7 +16,7 @@
 #include "AngMom.h"
 #include "HFbasis.h"
 
-namespace HFMEs
+namespace HF_Pfaffian_Tools
 {
     // calculate the s matrix for overlap   [ 0    M ]
     //                                      [ -M^T 0 ]
@@ -77,6 +77,16 @@ namespace HFMEs
 
     // deprecated
     double CalHFKernels_Advanced(Hamiltonian &Ham, PNbasis &Bra, PNbasis &Ket);
+
+};
+
+namespace HFB_Pfaffian_Tools
+{
+    // <φ0|φ1> = (−1)^N(N+1)/2 pf(M), where M is a 2N X 2N skew-symmetric matrix
+    // M = [ M1   -I ]
+    //     [  I   M0* ]
+    // where M1 and M0 come from HFB wave function |φ1> = exp( 1/2 sum_kk' M1_kk' a^+_k a^+_k' ) |0>
+    ComplexNum Compute_Overlap(int N, ComplexNum *M0, ComplexNum *M1);
 
 };
 
