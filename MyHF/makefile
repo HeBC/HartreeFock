@@ -12,8 +12,6 @@ THEHOST = $(shell if [ `hostname|grep bebop` ]; then echo bebop; elif [ `hostnam
 # pybind 11
 #----------------------------------------------------
 
-# Output Python module
-OUT_MODULE = pyHFAndHFB$(shell python3-config --extension-suffix)
 # python version
 PYTHON_MAJOR_VERSION = $(shell python -c "import sys; sys.stdout.write('{}'.format(sys.version_info.major))")
 ifneq (,$(shell which python3)) # If it's there, default to python3
@@ -43,15 +41,23 @@ endif
 ifeq ($(THEHOST),bebop)  # Argonne bebop
   CFLAGS = -O3 -fopenmp 
   LIBS = -m64  -Wl,--no-as-needed -lm -lgsl -lgslcblas -lmkl_intel_lp64  -lmkl_sequential -lmkl_gf_ilp64 -lmkl_gnu_thread -lmkl_core -lpthread -ldl
+  PYTHON_LDFLAGS += -undefined dynamic_lookup # This avoids trouble with missing symbols (see pybind11.readthedocs.io/en/stable/compiling.html )
+  PYTHONFLAGS +=  $(shell $(PYTHON_CONFIG) --cflags | sed -e 's/-arch i386//')
+  PYTHONFLAGS += -Wno-unused-value # suppress annoying warnings about stuff in the pybind11 library
+  PYTHONFLAGS += -Wno-deprecated-declarations
 endif
 
 ifeq ($(THEHOST),crc)   # Notre Dame CRC
   CFLAGS = -O3 -I/opt/crc/i/intel/19.0/mkl/include/ -fopenmp
   LIBS = -m64  -Wl,--no-as-needed -lm -lgsl -lgslcblas -lmkl_intel_lp64  -lmkl_sequential -lmkl_gf_ilp64 -lmkl_gnu_thread -lmkl_core -lpthread -ldl -lgomp
+  PYTHON_LDFLAGS += -undefined dynamic_lookup # This avoids trouble with missing symbols (see pybind11.readthedocs.io/en/stable/compiling.html )
+  PYTHONFLAGS +=  $(shell $(PYTHON_CONFIG) --cflags | sed -e 's/-arch i386//')
+  PYTHONFLAGS += -Wno-unused-value # suppress annoying warnings about stuff in the pybind11 library
+  PYTHONFLAGS += -Wno-deprecated-declarations
 endif
 
 #----------------------------------------------------
-all: HartreeFock.exe HF_Projection.exe pyHFAndHFB.so #$(OUT_MODULE)
+all: HartreeFock.exe HF_Projection.exe pyHFAndHFB.so 
 
 clean:
 	/bin/rm -f *.o *.exe *.so
