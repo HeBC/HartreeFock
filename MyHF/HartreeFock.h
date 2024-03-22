@@ -66,6 +66,9 @@ public:
     void RandomTransformationU(int RandomSeed = 525); /// Random transformation matrix U
     void UpdateTolerance(double T) { this->tolerance = T; };
     void UpdateGradientStepSize(double size) { gradient_eta = size; };
+    Hamiltonian Residual_H();                   /// get residual interaction
+    Hamiltonian TransformToHFBasis(const Hamiltonian& HamIn);
+    void SetMaxIteration(int num){maxiter = num;};
 
     // gradient method
     void Cal_Gradient(double *Z_p, double *Z_n);
@@ -95,6 +98,7 @@ public:
     void PrintVtb();
     void PrintAllHFEnergies();
     void PrintHoleOrbitsIndex();
+    void PrintOccupationHO_jorbit();
     void CheckDensity();
     void PrintOccupationHO();
 

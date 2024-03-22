@@ -164,6 +164,7 @@ public:
 
   MschemeHamiltonian(){};
   ~MschemeHamiltonian();
+  MschemeHamiltonian& operator=(const MschemeHamiltonian& other); 
 
   void Initial(ModelSpace &ms);
   double Vpp(int a, int b, int c, int d);
@@ -212,6 +213,12 @@ public:
   Hamiltonian(){};
   ~Hamiltonian();
   Hamiltonian(ModelSpace &ms);
+
+  // copy Hamiltonian
+  Hamiltonian(const Hamiltonian& other);
+  Hamiltonian& operator=(const Hamiltonian& other);
+
+  //----------------------
   int GetVppNum() { return Vpp.size(); }; // return the non collective Vpp number
   int GetVpnNum() { return Vpn.size(); };
   int GetVnnNum() { return Vnn.size(); };
@@ -273,8 +280,8 @@ public:
   double HarmonicRadialIntegral(int isospin, int lamda, int orbit_a, int orbit_b); // < r^lamda >
 
 private: // Private access specifier
-  ComplexNum *SPEmatrix_p, *SPEmatrix_n;
-  bool H_has_been_Normlized = false;
+  ComplexNum *SPEmatrix_p, *SPEmatrix_n;  // depercated; for OSLO interaction
+  bool H_has_been_Normlized = false;      // depercated; for OSLO interaction
   bool SPE_malloc_p = false; // record for the matrix of s.p. energies
   bool SPE_malloc_n = false;
   bool H_has_included_Hermitation = false;

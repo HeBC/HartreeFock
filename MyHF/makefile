@@ -32,7 +32,7 @@ PYTHON_COMMAND = python$(PYTHON_MAJOR_VERSION)
 
 #-----------------------------------------------------------------
 ifeq ($(THEHOST),other)  # default options. test on my laptop
-  CFLAGS =-O3 -fPIC -fopenmp  #-Wall #-std=c++11  
+  CFLAGS =-O3 -fPIC -fopenmp -I/usr/include/mkl  #-Wall #-std=c++11  
   LIBS = -lmkl_rt -lm -lgsl -lgslcblas -lnlopt  # include lnlopt to test code
   PYTHON_LDFLAGS += -undefined dynamic_lookup # This avoids trouble with missing symbols (see pybind11.readthedocs.io/en/stable/compiling.html )
   PYTHONFLAGS +=  $(shell $(PYTHON_CONFIG) --cflags | sed -e 's/-arch i386//')

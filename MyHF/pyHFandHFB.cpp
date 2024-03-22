@@ -50,6 +50,7 @@ PYBIND11_MODULE(pyHFAndHFB, m)
     py::class_<Hamiltonian>(m, "Hamiltonian")
         .def(py::init<>())
         .def(py::init<ModelSpace &>())
+        .def(py::init<const Hamiltonian&>()) // Copy constructor
         .def("Prepare_MschemeH_Unrestricted", &Hamiltonian::Prepare_MschemeH_Unrestricted)
         .def("PrintHamiltonianInfo_pn", &Hamiltonian::PrintHamiltonianInfo_pn);
 
@@ -58,10 +59,16 @@ PYBIND11_MODULE(pyHFAndHFB, m)
         .def("Solve_diag", &HartreeFock::Solve_diag)
         .def("Solve_hybrid", &HartreeFock::Solve_hybrid)
         .def("Solve_gradient", &HartreeFock::Solve_gradient)
-        .def("HF_ShapeCoefficients_Lab", &HartreeFock::HF_ShapeCoefficients_Lab)
+        .def("Solve_gradient_Constraint", &HartreeFock::Solve_gradient_Constraint)
         .def("Solve_hybrid_Constraint", &HartreeFock::Solve_hybrid_Constraint)
+        .def("HF_ShapeCoefficients_Lab", &HartreeFock::HF_ShapeCoefficients_Lab)
         .def("Print_Jz", &HartreeFock::Print_Jz)
         .def("SaveHoleParameters", &HartreeFock::SaveHoleParameters)
         .def("RandomTransformationU", &HartreeFock::RandomTransformationU)
-        .def("Reset_U", &HartreeFock::Reset_U);
+        .def("PrintFockMatrix", &HartreeFock::PrintFockMatrix)
+        .def("PrintOccupationHO", &HartreeFock::PrintOccupationHO)
+        .def("PrintOccupationHO_jorbit", &HartreeFock::PrintOccupationHO_jorbit)
+        .def("PrintParameters_Hole", &HartreeFock::PrintParameters_Hole)
+        .def("SetMaxIteration", &HartreeFock::SetMaxIteration)
+        .def("Reset_U", &HartreeFock::Reset_U);       
 }

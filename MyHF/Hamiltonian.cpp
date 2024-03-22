@@ -42,6 +42,148 @@ OneBodyOperatorChannel::OneBodyOperatorChannel(int orbit_a, int orbit_b, int t, 
 {
 }
 
+MschemeHamiltonian& MschemeHamiltonian::operator=(const MschemeHamiltonian& other) {
+    if (this != &other) {
+        // Free existing resources
+        mkl_free(ME_pp);
+        mkl_free(ME_nn);
+        mkl_free(ME_pn);
+
+        // Copy simple and std::vector members
+        // Copy ModelSpace pointer/reference and dimensions
+        ms = other.ms;
+        dim_p = other.dim_p;
+        dim_n = other.dim_n;
+        Hpp_index = other.Hpp_index;
+        Hnn_index = other.Hnn_index;
+        Hpn_index = other.Hpn_index;
+        Hpn_OBindex = other.Hpn_OBindex;
+        OB_p = other.OB_p;
+        OB_n = other.OB_n;
+        SPOindex_p = other.SPOindex_p;
+        SPOindex_n = other.SPOindex_n;
+        NumOB_p = other.NumOB_p;
+        NumOB_n = other.NumOB_n;
+
+        // Allocate and copy new resources
+        int n = dim_p * dim_p * dim_p * dim_p;
+        ME_pp = (double *)mkl_malloc(n * sizeof(double), 64);
+        memcpy(ME_pp, other.ME_pp, sizeof(double) * n);
+
+        n = dim_n * dim_n * dim_n * dim_n;
+        ME_nn = (double *)mkl_malloc(n * sizeof(double), 64);
+        memcpy(ME_nn, other.ME_nn, sizeof(double) * n);
+
+        n = dim_p * dim_p * dim_n * dim_n;
+        ME_pn = (double *)mkl_malloc(n * sizeof(double), 64);
+        memcpy(ME_pn, other.ME_pn, sizeof(double) * n);
+    }
+    return *this;
+}
+
+void MschemeHamiltonian::Initial(ModelSpace &ms)
+{
+    this->ms = &ms;
+    dim_p = ms.Get_MScheme_dim(Proton);
+    dim_n = ms.Get_MScheme_dim(Neutron);
+    double alpha = 0.0;
+    int n = dim_p * dim_p * dim_p * dim_p;
+    ME_pp = (double *)mkl_malloc((n) * sizeof(double), 64);
+    memset(ME_pp, 0, sizeof(double) * n);
+
+    n = dim_n * dim_n * dim_n * dim_n;
+    ME_nn = (double *)mkl_malloc((n) * sizeof(double), 64);
+    memset(ME_nn, 0, sizeof(double) * n);
+
+    n = dim_p * dim_p * dim_n * dim_n;
+    ME_pn = (double *)mkl_malloc((n) * sizeof(double), 64);
+    memset(ME_pn, 0, sizeof(double) * n);
+}
+
+MschemeHamiltonian::~MschemeHamiltonian()
+{
+    mkl_free(ME_pp);
+    mkl_free(ME_nn);
+    mkl_free(ME_pn);
+}
+
+double MschemeHamiltonian::Vpp(int a, int b, int c, int d)
+{
+    return ME_pp[dim_p * dim_p * dim_p * a + dim_p * dim_p * b + dim_p * c + d];
+}
+
+double MschemeHamiltonian::Vnn(int a, int b, int c, int d)
+{
+    return ME_nn[dim_n * dim_n * dim_n * a + dim_n * dim_n * b + dim_n * c + d];
+}
+
+double MschemeHamiltonian::Vpn(int a, int b, int c, int d) // in format of ppnn
+{
+    return ME_pn[dim_p * dim_n * dim_n * a + dim_n * dim_n * b + dim_n * c + d];
+}
+
+void MschemeHamiltonian::add_Vpp(int a, int b, int c, int d, double V)
+{
+    ME_pp[dim_p * dim_p * dim_p * a + dim_p * dim_p * b + dim_p * c + d] += V;
+}
+
+void MschemeHamiltonian::add_Vnn(int a, int b, int c, int d, double V)
+{
+    ME_nn[dim_n * dim_n * dim_n * a + dim_n * dim_n * b + dim_n * c + d] += V;
+}
+
+void MschemeHamiltonian::add_Vpn(int a, int b, int c, int d, double V)
+{
+    ME_pn[dim_p * dim_n * dim_n * a + dim_n * dim_n * b + dim_n * c + d] += V;
+}
+
+void MschemeHamiltonian::Set_Vpp(int a, int b, int c, int d, double V)
+{
+    ME_pp[dim_p * dim_p * dim_p * a + dim_p * dim_p * b + dim_p * c + d] = V;
+}
+
+void MschemeHamiltonian::Set_Vnn(int a, int b, int c, int d, double V)
+{
+    ME_nn[dim_n * dim_n * dim_n * a + dim_n * dim_n * b + dim_n * c + d] = V;
+}
+
+void MschemeHamiltonian::Set_Vpn(int a, int b, int c, int d, double V)
+{
+    ME_pn[dim_p * dim_n * dim_n * a + dim_n * dim_n * b + dim_n * c + d] = V;
+}
+
+void MschemeHamiltonian::InitialMSOB() // Initial Mscheme one-body operator
+{
+    int dim_p = ms->Get_MScheme_dim(Proton);
+    int dim_n = ms->Get_MScheme_dim(Neutron);
+    NumOB_p = 0;
+    for (int a = 0; a < dim_p; a++)
+    {
+        for (int b = 0; b < dim_p; b++)
+        {
+            if (a == b)
+                SPOindex_p.push_back({NumOB_p, ms->Get_ProtonOrbitIndexInMscheme(a)});
+            OB_p.push_back(MSOneBodyOperator(a, b, Proton));
+            NumOB_p++;
+        }
+    }
+    ////////////////
+    NumOB_n = 0;
+    for (int a = 0; a < dim_n; a++)
+    {
+        for (int b = 0; b < dim_n; b++)
+        {
+            if (a == b)
+                SPOindex_n.push_back({NumOB_n, ms->Get_NeutronOrbitIndexInMscheme(a)});
+            OB_n.push_back(MSOneBodyOperator(a, b, Neutron));
+            NumOB_n++;
+        }
+    }
+}
+
+//---------------------------------------------------
+//              class Hamiltonian
+//---------------------------------------------------
 Hamiltonian::Hamiltonian(ModelSpace &ms)
     : ms(&ms)
 {
@@ -57,6 +199,82 @@ Hamiltonian::~Hamiltonian()
     {
         mkl_free(SPEmatrix_n);
     }
+}
+
+// copy constructor
+Hamiltonian::Hamiltonian(const Hamiltonian& other)
+    : ms(other.ms), 
+      Vpp_filename(other.Vpp_filename), 
+      Vnn_filename(other.Vnn_filename), 
+      Vpn_filename(other.Vpn_filename), 
+      snt_file(other.snt_file), 
+      Vpp(other.Vpp), 
+      Vnn(other.Vnn), 
+      Vpn(other.Vpn), 
+      OBEs_p(other.OBEs_p), 
+      OBEs_n(other.OBEs_n), 
+      VCol_pp(other.VCol_pp), 
+      VCol_nn(other.VCol_nn), 
+      VCol_pn(other.VCol_pn), 
+      OBchannel_p(other.OBchannel_p), 
+      OBchannel_n(other.OBchannel_n), 
+      Vpn_PHcoupled(other.Vpn_PHcoupled),
+      // Moments are not copied by design, adjust if necessary
+      MSMEs(other.MSMEs), 
+      // Skipping deprecated and not copied members
+      H_has_been_Normlized(other.H_has_been_Normlized), 
+      H_has_included_Hermitation(other.H_has_included_Hermitation), 
+      H_CollectiveForm(other.H_CollectiveForm), 
+      VpnISphcoupled(other.VpnISphcoupled), 
+      TotalCalterm_pp(other.TotalCalterm_pp), 
+      TotalCalterm_nn(other.TotalCalterm_nn), 
+      TotalCalterm_pn(other.TotalCalterm_pn), 
+      TotalCalOneBodyOperaotr_p(other.TotalCalOneBodyOperaotr_p), 
+      TotalCalOneBodyOperaotr_n(other.TotalCalOneBodyOperaotr_n), 
+      OB_max_t(other.OB_max_t), 
+      t_p_max(other.t_p_max), 
+      t_n_max(other.t_n_max), 
+      IsMassDep(other.IsMassDep) 
+{
+}
+
+// Assignment Operator (implementation)
+Hamiltonian& Hamiltonian::operator=(const Hamiltonian& other) {
+    if (this != &other) {
+        this->ms = other.ms;
+        this->Vpp_filename = other.Vpp_filename;
+        this->Vnn_filename = other.Vnn_filename;
+        this->Vpn_filename = other.Vpn_filename;
+        this->snt_file = other.snt_file;
+        this->Vpp = other.Vpp;  
+        this->Vnn = other.Vnn;
+        this->Vpn = other.Vpn;
+        this->OBEs_p = other.OBEs_p;
+        this->OBEs_n = other.OBEs_n;
+        this->VCol_pp = other.VCol_pp;
+        this->VCol_nn = other.VCol_nn;
+        this->VCol_pn = other.VCol_pn;
+        this->OBchannel_p = other.OBchannel_p;
+        this->OBchannel_n = other.OBchannel_n;
+        this->Vpn_PHcoupled = other.Vpn_PHcoupled;
+        // currently, don't copy moments
+        this->MSMEs = other.MSMEs;
+        // deprecated ComplexNum *SPEmatrix_p, *SPEmatrix_n; bool SPE_malloc_p, SPE_malloc_n;
+        this->H_has_been_Normlized = other.H_has_been_Normlized;
+        this->H_has_included_Hermitation = other.H_has_included_Hermitation;
+        this->H_CollectiveForm = other.H_CollectiveForm;
+        this->VpnISphcoupled = other.VpnISphcoupled;
+        this->TotalCalterm_pp = other.TotalCalterm_pp;
+        this->TotalCalterm_nn = other.TotalCalterm_nn;
+        this->TotalCalterm_pn = other.TotalCalterm_pn;
+        this->TotalCalOneBodyOperaotr_p = other.TotalCalOneBodyOperaotr_p;
+        this->TotalCalOneBodyOperaotr_n = other.TotalCalOneBodyOperaotr_n;
+        this->OB_max_t = other.OB_max_t;
+        this->t_p_max = other.t_p_max;
+        this->t_n_max = other.t_n_max;
+        this->IsMassDep = other.IsMassDep;
+    }
+    return *this;
 }
 
 void Hamiltonian::NormalHamiltonian() // add 1/4 and sqrt(2) for unrestricted
@@ -858,106 +1076,6 @@ OneBodyOperatorChannel Hamiltonian::GetOneBodyOperator(int isospin, int index)
     {
         std::cout << "isospin should be Proton or Neutron!" << std::endl;
         exit(0);
-    }
-}
-
-void MschemeHamiltonian::Initial(ModelSpace &ms)
-{
-    this->ms = &ms;
-    dim_p = ms.Get_MScheme_dim(Proton);
-    dim_n = ms.Get_MScheme_dim(Neutron);
-    double alpha = 0.0;
-    int n = dim_p * dim_p * dim_p * dim_p;
-    ME_pp = (double *)mkl_malloc((n) * sizeof(double), 64);
-    memset(ME_pp, 0, sizeof(double) * n);
-
-    n = dim_n * dim_n * dim_n * dim_n;
-    ME_nn = (double *)mkl_malloc((n) * sizeof(double), 64);
-    memset(ME_nn, 0, sizeof(double) * n);
-
-    n = dim_p * dim_p * dim_n * dim_n;
-    ME_pn = (double *)mkl_malloc((n) * sizeof(double), 64);
-    memset(ME_pn, 0, sizeof(double) * n);
-}
-
-MschemeHamiltonian::~MschemeHamiltonian()
-{
-    mkl_free(ME_pp);
-    mkl_free(ME_nn);
-    mkl_free(ME_pn);
-}
-
-double MschemeHamiltonian::Vpp(int a, int b, int c, int d)
-{
-    return ME_pp[dim_p * dim_p * dim_p * a + dim_p * dim_p * b + dim_p * c + d];
-}
-
-double MschemeHamiltonian::Vnn(int a, int b, int c, int d)
-{
-    return ME_nn[dim_n * dim_n * dim_n * a + dim_n * dim_n * b + dim_n * c + d];
-}
-
-double MschemeHamiltonian::Vpn(int a, int b, int c, int d) // in format of ppnn
-{
-    return ME_pn[dim_p * dim_n * dim_n * a + dim_n * dim_n * b + dim_n * c + d];
-}
-
-void MschemeHamiltonian::add_Vpp(int a, int b, int c, int d, double V)
-{
-    ME_pp[dim_p * dim_p * dim_p * a + dim_p * dim_p * b + dim_p * c + d] += V;
-}
-
-void MschemeHamiltonian::add_Vnn(int a, int b, int c, int d, double V)
-{
-    ME_nn[dim_n * dim_n * dim_n * a + dim_n * dim_n * b + dim_n * c + d] += V;
-}
-
-void MschemeHamiltonian::add_Vpn(int a, int b, int c, int d, double V)
-{
-    ME_pn[dim_p * dim_n * dim_n * a + dim_n * dim_n * b + dim_n * c + d] += V;
-}
-
-void MschemeHamiltonian::Set_Vpp(int a, int b, int c, int d, double V)
-{
-    ME_pp[dim_p * dim_p * dim_p * a + dim_p * dim_p * b + dim_p * c + d] = V;
-}
-
-void MschemeHamiltonian::Set_Vnn(int a, int b, int c, int d, double V)
-{
-    ME_nn[dim_n * dim_n * dim_n * a + dim_n * dim_n * b + dim_n * c + d] = V;
-}
-
-void MschemeHamiltonian::Set_Vpn(int a, int b, int c, int d, double V)
-{
-    ME_pn[dim_p * dim_n * dim_n * a + dim_n * dim_n * b + dim_n * c + d] = V;
-}
-
-void MschemeHamiltonian::InitialMSOB() // Initial Mscheme one-body operator
-{
-    int dim_p = ms->Get_MScheme_dim(Proton);
-    int dim_n = ms->Get_MScheme_dim(Neutron);
-    NumOB_p = 0;
-    for (int a = 0; a < dim_p; a++)
-    {
-        for (int b = 0; b < dim_p; b++)
-        {
-            if (a == b)
-                SPOindex_p.push_back({NumOB_p, ms->Get_ProtonOrbitIndexInMscheme(a)});
-            OB_p.push_back(MSOneBodyOperator(a, b, Proton));
-            NumOB_p++;
-        }
-    }
-    ////////////////
-    NumOB_n = 0;
-    for (int a = 0; a < dim_n; a++)
-    {
-        for (int b = 0; b < dim_n; b++)
-        {
-            if (a == b)
-                SPOindex_n.push_back({NumOB_n, ms->Get_NeutronOrbitIndexInMscheme(a)});
-            OB_n.push_back(MSOneBodyOperator(a, b, Neutron));
-            NumOB_n++;
-        }
     }
 }
 

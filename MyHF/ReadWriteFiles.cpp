@@ -260,7 +260,6 @@ void ReadWriteFiles::ReadInput_HF(string filename, ModelSpace &ms, Hamiltonian &
   getline(input_file, comment_string);
   std::istringstream iss(comment_string); // Create an input string stream from the line
   std::string strValue;
-  int intValue;
   // Read the string and integer from the line
   iss >> strValue >> doubleData >> doubleData2;
 
@@ -418,7 +417,6 @@ void ReadWriteFiles::ReadInput_HFB(string filename, ModelSpace &ms, Hamiltonian 
   getline(input_file, comment_string);
   iss.clear(); // Reset the state of the stream if needed
   iss.str(comment_string);
-  int intValue;
   // Read the string and integer from the line
   iss >> strValue >> doubleData >> doubleData2;
 

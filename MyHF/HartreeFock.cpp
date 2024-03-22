@@ -431,6 +431,7 @@ void HartreeFock::Solve_hybrid_Constraint()
         }
         // Check_matrix(dim_p, QOperator_p[index].data());
         // Check_matrix(dim_n, QOperator_n[index].data());
+        // std::cout<< modelspace->GetTargetJx() << std::endl;
 
         // load targets
         targets[index] = sqrt(modelspace->GetTargetJx());
@@ -1453,6 +1454,105 @@ void HartreeFock::UpdateF()
         cblas_daxpy(dim_n * dim_n, 1., T_term_n, 1, FockTerm_n, 1);
 }
 
+
+//*********************************************************************
+///  [See Suhonen eq 4.72] page 80
+///  the residual interaction
+///   H_{residual} = 1/4 \sum_{abcd} \bar{V}_{abcd} - 1/2 \sum_{ab} \bar{V}_{abab}
+///   where a,b,c and indicate the HF basis and e_a and e_b < E_f
+//*********************************************************************
+Hamiltonian HartreeFock::Residual_H()
+{
+    Hamiltonian Hcopy = *Ham;
+
+    double *Vpp, *Vpn, *Vnn;
+    Vpp = Ham->MSMEs.GetVppPrt();
+    Vnn = Ham->MSMEs.GetVnnPrt();
+    Vpn = Ham->MSMEs.GetVpnPrt();
+
+    memset(FockTerm_p, 0, dim_p * dim_p * sizeof(double));
+    memset(FockTerm_n, 0, dim_n * dim_n * sizeof(double));
+
+// Proton subspace
+#pragma omp parallel for
+    for (size_t i = 0; i < dim_p; i++)
+    {
+        for (size_t j = i; j < dim_p; j++)
+        {
+            // add Vpp term
+            FockTerm_p[i * dim_p + j] += cblas_ddot(dim_p * dim_p, rho_p, 1, Vpp + (dim_p * dim_p * dim_p * i + dim_p * dim_p * j), 1);
+
+            // add Vpn term
+            FockTerm_p[i * dim_p + j] += cblas_ddot(dim_n * dim_n, rho_n, 1, Vpn + (dim_p * dim_n * dim_n * i + dim_n * dim_n * j), 1);
+            if (i != j)
+                FockTerm_p[j * dim_p + i] = FockTerm_p[i * dim_p + j];
+        }
+    }
+
+// Neutron subspace
+#pragma omp parallel for
+    for (size_t i = 0; i < dim_n; i++)
+    {
+        for (size_t j = i; j < dim_n; j++)
+        {
+            // add Vnn term
+            FockTerm_n[i * dim_n + j] += cblas_ddot(dim_n * dim_n, rho_n, 1, Vnn + dim_n * dim_n * dim_n * i + dim_n * dim_n * j, 1);
+
+            // add Vpn term
+            FockTerm_n[i * dim_n + j] += cblas_ddot(dim_p * dim_p, rho_p, 1, Vpn + dim_n * i + j, dim_n * dim_n);
+
+            if (i != j)
+                FockTerm_n[j * dim_n + i] = FockTerm_n[i * dim_n + j];
+        }
+    }
+    cblas_dcopy(dim_p * dim_p, FockTerm_p, 1, Vij_p, 1);
+    cblas_dcopy(dim_n * dim_n, FockTerm_n, 1, Vij_n, 1);
+
+    // add SP term
+    // add SP term
+    if (dim_p != 0)
+        cblas_daxpy(dim_p * dim_p, 1., T_term_p, 1, FockTerm_p, 1);
+
+    if (dim_n != 0)
+        cblas_daxpy(dim_n * dim_n, 1., T_term_n, 1, FockTerm_n, 1);
+
+    return Hcopy;
+}
+
+//
+Hamiltonian HartreeFock::TransformToHFBasis(const Hamiltonian& HamIn)
+{
+    Hamiltonian Hcopy = HamIn;
+
+    double *Vpp, *Vpn, *Vnn;
+    Vpp = Ham->MSMEs.GetVppPrt();
+    Vnn = Ham->MSMEs.GetVnnPrt();
+    Vpn = Ham->MSMEs.GetVpnPrt();
+
+// Proton subspace
+// #pragma omp parallel for
+    for (size_t i = 0; i < dim_p; i++)
+    {
+        for (size_t j = i; j < dim_p; j++)
+        {
+            // add Vpp term
+            FockTerm_p[i * dim_p + j] += cblas_ddot(dim_p * dim_p, rho_p, 1, Vpp + (dim_p * dim_p * dim_p * i + dim_p * dim_p * j), 1);
+
+            // add Vpn term
+            FockTerm_p[i * dim_p + j] += cblas_ddot(dim_n * dim_n, rho_n, 1, Vpn + (dim_p * dim_n * dim_n * i + dim_n * dim_n * j), 1);
+            if (i != j)
+                FockTerm_p[j * dim_p + i] = FockTerm_p[i * dim_p + j];
+        }
+    }
+
+
+    return Hcopy;
+}
+
+
+
+
+
 //*********************************************************************
 /// [See Suhonen eq. 4.85]
 /// Diagonalize the fock matrix \f$ <i|F|j> \f$ and put the
@@ -2265,24 +2365,99 @@ void HartreeFock::PrintEHF()
 }
 
 /// Print out the single particle orbits with their energies.
-void HartreeFock::PrintOccupationHO()
+void HartreeFock::PrintOccupationHO_jorbit()
 {
     std::vector<double> tempOcU_p(dim_p, 0);
     std::vector<double> tempOcU_n(dim_n, 0);
+    double cal_Np = 0;
+    double cal_Nn = 0;
+    std::vector<double> Occ_j_p(modelspace->Orbits_p.size(), 0);
+    std::vector<double> Occ_j_n(modelspace->Orbits_n.size(), 0);
+
     for (size_t i = 0; i < N_p; i++)
     {
         for (size_t j = 0; j < dim_p; j++)
         {
-            tempOcU_p[j] += rho_p[j * dim_p + holeorbs_p[i]];
+            // tempOcU_p[j] += rho_p[j * dim_p + holeorbs_p[i]];
+            tempOcU_p[j] += U_p[j * dim_p + i]  * U_p[j * dim_p + i] ;
+            cal_Np += U_p[j * dim_p + i]  * U_p[j * dim_p + i] ;
+            Occ_j_p[modelspace->Get_ProtonOrbitIndexInMscheme(j)] += U_p[j * dim_p + i]  * U_p[j * dim_p + i];
         }
     }
     for (size_t i = 0; i < N_n; i++)
     {
         for (size_t j = 0; j < dim_n; j++)
         {
-            tempOcU_n[j] += rho_n[j * dim_n + holeorbs_n[i]];
+            // tempOcU_n[j] += rho_n[j * dim_n + holeorbs_n[i]];
+            tempOcU_n[j] += U_n[j * dim_n + i] *  U_n[j * dim_n + i];  
+            cal_Nn += U_n[j * dim_n + i] *  U_n[j * dim_n + i];  
+            Occ_j_n[modelspace->Get_NeutronOrbitIndexInMscheme(j)] += U_n[j * dim_n + i] *  U_n[j * dim_n + i];  
         }
     }
+
+
+    std::cout << "  Proton:" << std::endl;
+    std::cout << std::fixed << std::setw(3) << "\n i"
+              << ": " << std::setw(3) << "n"
+              << " " << std::setw(3) << "l"
+              << " "
+              << std::setw(3) << "2j"
+              << " " << std::setw(3) << "2tz"
+              << " " << std::setw(12) << "occ." << std::endl;
+
+    for (size_t i = 0; i < modelspace->Orbits_p.size(); i++)
+    {
+        Orbit &oi = modelspace->GetOrbit(Proton, i);
+        std::cout << std::fixed << std::setw(3) << i << " " << std::setw(3) << oi.n << " " << std::setw(3) << oi.l << " " << std::setw(3) << oi.j2 << " " << std::setw(3) << oi.tz2 << "   " << std::setw(14) << Occ_j_p[i] << std::endl;
+    }
+    std::cout<< "   <Np>  = " << cal_Np << std::endl; 
+    std::cout<< std::endl; 
+    std::cout << "  Neutron:" << std::endl;
+    std::cout << std::fixed << std::setw(3) << "\n i"
+              << ": " << std::setw(3) << "n"
+              << " " << std::setw(3) << "l"
+              << " "
+              << std::setw(3) << "2j"
+              << " " << std::setw(3) << "2tz"
+              << " " << std::setw(12) << "occ." << std::endl;
+    for (size_t i = 0; i <  modelspace->Orbits_n.size(); i++)
+    {
+        Orbit &oi = modelspace->GetOrbit(Neutron, i);
+        std::cout << std::fixed << std::setw(3) << i << " " << std::setw(3) << oi.n << " " << std::setw(3) << oi.l << " " << std::setw(3) << oi.j2 << " " << std::setw(3) << oi.tz2 << "   " << std::setw(14) << Occ_j_n[i] << std::endl;
+    }
+    std::cout<< "   <Nn>  = " << cal_Nn << std::endl; 
+    std::cout<< std::endl; 
+}
+
+/// Print out the single particle orbits with their energies.
+void HartreeFock::PrintOccupationHO()
+{
+    std::vector<double> tempOcU_p(dim_p, 0);
+    std::vector<double> tempOcU_n(dim_n, 0);
+    double cal_Np = 0;
+    double cal_Nn = 0;
+
+    for (size_t i = 0; i < N_p; i++)
+    {
+        for (size_t j = 0; j < dim_p; j++)
+        {
+            // tempOcU_p[j] += rho_p[j * dim_p + holeorbs_p[i]];
+            tempOcU_p[j] += U_p[j * dim_p + i]  * U_p[j * dim_p + i] ;
+            cal_Np += U_p[j * dim_p + i]  * U_p[j * dim_p + i] ;
+        }
+
+    }
+    for (size_t i = 0; i < N_n; i++)
+    {
+        for (size_t j = 0; j < dim_n; j++)
+        {
+            // tempOcU_n[j] += rho_n[j * dim_n + holeorbs_n[i]];
+            tempOcU_n[j] += U_n[j * dim_n + i] *  U_n[j * dim_n + i];  
+            cal_Nn += U_n[j * dim_n + i] *  U_n[j * dim_n + i];  
+        }
+    }
+
+
     std::cout << "  Proton:" << std::endl;
     std::cout << std::fixed << std::setw(3) << "\n i"
               << ": " << std::setw(3) << "n"
@@ -2298,6 +2473,8 @@ void HartreeFock::PrintOccupationHO()
         Orbit &oi = modelspace->GetOrbit(Proton, modelspace->Get_OrbitIndex_Mscheme(i, Proton));
         std::cout << std::fixed << std::setw(3) << i << " " << std::setw(3) << oi.n << " " << std::setw(3) << oi.l << " " << std::setw(3) << oi.j2 << " " << std::setw(3) << modelspace->Get_MSmatrix_2m(Proton, i) << " " << std::setw(3) << oi.tz2 << "   " << std::setw(14) << tempOcU_p[i] << std::endl;
     }
+    std::cout<< "   <Np>  = " << cal_Np << std::endl; 
+    std::cout<< std::endl; 
     std::cout << "  Neutron:" << std::endl;
     std::cout << std::fixed << std::setw(3) << "\n i"
               << ": " << std::setw(3) << "n"
@@ -2312,6 +2489,8 @@ void HartreeFock::PrintOccupationHO()
         Orbit &oi = modelspace->GetOrbit(Neutron, modelspace->Get_OrbitIndex_Mscheme(i, Neutron));
         std::cout << std::fixed << std::setw(3) << i << " " << std::setw(3) << oi.n << " " << std::setw(3) << oi.l << " " << std::setw(3) << oi.j2 << " " << std::setw(3) << modelspace->Get_MSmatrix_2m(Neutron, i) << " " << std::setw(3) << oi.tz2 << "   " << std::setw(14) << tempOcU_n[i] << std::endl;
     }
+    std::cout<< "   <Nn>  = " << cal_Nn << std::endl; 
+    std::cout<< std::endl; 
 }
 
 void HartreeFock::PrintQudrapole()
@@ -2926,21 +3105,21 @@ int main(int argc, char *argv[])
     HartreeFock hf(Hinput);
 
     std::cout << " --------------------------------   Diag" << std::endl;
-    hf.Solve_diag();
+    //hf.Solve_diag();
     //hf.HF_ShapeCoefficients_calr2_Lab();
     //hf.HF_ShapeCoefficients_Lab();
 
     std::cout << " --------------------------------   Diag_hybrid with random vector" << std::endl;
-    hf.RandomTransformationU(187);
-    hf.Solve_hybrid();
+    //hf.RandomTransformationU(187);
+    //hf.Solve_hybrid();
     //hf.HF_ShapeCoefficients_Lab();
 
     std::cout << " --------------------------------   Gradient" << std::endl;
-    hf.Reset_U();
-    hf.RandomTransformationU(153);
-    hf.Solve_gradient();
+    //hf.Reset_U();
+    //hf.RandomTransformationU(153);
+    //hf.Solve_gradient();
     //hf.HF_ShapeCoefficients_calr2_Lab();
-    hf.HF_ShapeCoefficients_Lab();
+    //hf.HF_ShapeCoefficients_Lab();
     // hf.Print_Jz();
     // hf.PrintQudrapole();
     // hf.SaveHoleParameters("Output/HF_para.dat");
@@ -2954,7 +3133,7 @@ int main(int argc, char *argv[])
     hf.HF_ShapeCoefficients_Lab();
     hf.Print_Jz();
 
-    hf.SaveHoleParameters("Output/HF_para.dat");
+    // hf.SaveHoleParameters("Output/HF_para.dat");
 
     return 0;
 }
