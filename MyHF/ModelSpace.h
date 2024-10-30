@@ -149,6 +149,7 @@ public:
     void SetAMProjected_J(int input) { MSTotal_J = input; };
     void SetAMProjected_K(int input) { MSTotal_K = input; };
     void SetAMProjected_M(int input) { MSTotal_M = input; };
+    void SetAMProjected_JMK(int inputJ, int inputM, int inputK) { MSTotal_J = inputJ; MSTotal_M = inputM; MSTotal_K = inputK;};
     void SetProjected_parity(int input) { MSTotal_Parity = input; };
     void SetEnergyConstantShift(double input) { MSEnergyShift = input; };
     void SetMaxNumberOfIteration(int n) { MaxNumberOfIteration = n; };

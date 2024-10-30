@@ -25,6 +25,9 @@ public:
     void Read_KShell_HF_input(string filename, ModelSpace &ms, Hamiltonian &inputH); // read input parameters and Hamiltonian
     void Read_KShell_HF_input(string filename, ModelSpace &ms, Hamiltonian &inputH, string Ref); // for python pybind11
     void Read_OSLO_HF_input(string filename, ModelSpace &ms, Hamiltonian &inputH);   // read input parameters and Hamiltonian
+    
+    // GCM for pybind11
+    void Read_KShell_PHF_input(string filename, ModelSpace &ms, Hamiltonian &inputH, string Ref); // for python pybind11
 
     // for HFB
     void Read_KShell_HFB_input(string filename, ModelSpace &ms, Hamiltonian &inputH); // read input parameters and Hamiltonian

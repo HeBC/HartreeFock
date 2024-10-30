@@ -829,3 +829,52 @@ void GCM_Projection::PrintResults()
   }
   return;
 }
+
+void GCM_Projection::PrintInfo()
+{
+  int myid; // MPI parameters
+  /// MPI inint
+  MPI_Comm_rank(MPI_COMM_WORLD, &myid);
+  if (myid == 0)
+  {
+    ms->PrintAllParameters_HF();
+    Ham->PrintHamiltonianInfo_pn();
+    AngMomProj->PrintInfo();
+  }
+  return;
+}
+
+void GCM_Projection::Do_Projection()
+{
+    if (ms->Get_MeshType() == "LAmethod")
+    {
+      DoCalculation_LAmethod();
+    }
+    else
+    {
+      DoCalculation();
+    }
+}
+
+
+
+// GCM-MPI function for pybind
+// Initialize MPI
+void mpi_initialize() {
+    int is_initialized;
+    MPI_Initialized(&is_initialized);
+    if (!is_initialized) {
+        MPI_Init(nullptr, nullptr);
+    }
+}
+
+// Finalize MPI
+void mpi_finalize() {
+    int is_finalized;
+    MPI_Finalized(&is_finalized);
+    if (!is_finalized) {
+        MPI_Finalize();
+    }
+}
+
+

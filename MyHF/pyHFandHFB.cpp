@@ -1,6 +1,8 @@
 #include <Python.h>
 
 #include "HartreeFock.h"
+#include "AngMom.h"
+#include "GCM_Tools.h"
 #include <string>
 #include <sstream>
 #include <vector>
@@ -28,8 +30,13 @@ PYBIND11_MODULE(pyHFAndHFB, m)
         .def("SetTargetJz", &ModelSpace::SetTargetJz)
         .def("Set_Jx_constraint", &ModelSpace::Set_Jx_constraint)
         .def("SetTargetJx", &ModelSpace::SetTargetJx)
-        .def("PrintAllParameters_HF", &ModelSpace::PrintAllParameters_HF);
+        .def("PrintAllParameters_HF", &ModelSpace::PrintAllParameters_HF)
+        .def("Set_MeshType", &ModelSpace::Set_MeshType)
+        .def("SetAMProjected_JMK", &ModelSpace::SetAMProjected_JMK)
+        .def("SetProjected_parity", &ModelSpace::SetProjected_parity)
+        .def("SetGuassQuadMesh", &ModelSpace::SetGuassQuadMesh);
 
+        
     py::class_<ReadWriteFiles>(m, "ReadWriteFiles")
         .def(py::init<>())
         .def("ReadInput_HF", &ReadWriteFiles::ReadInput_HF)
@@ -44,6 +51,12 @@ PYBIND11_MODULE(pyHFAndHFB, m)
              // Binding for the version with the Ref parameter
              [](ReadWriteFiles &self, const std::string &filename, ModelSpace &ms, Hamiltonian &inputH, const std::string &Ref) {
                  self.Read_KShell_HF_input(filename, ms, inputH, Ref);
+             }, py::arg("filename"), py::arg("ms"), py::arg("inputH"), py::arg("Ref") = "")
+
+        .def("Read_KShell_PHF_input",
+             // Binding for the version with the Ref parameter
+             [](ReadWriteFiles &self, const std::string &filename, ModelSpace &ms, Hamiltonian &inputH, const std::string &Ref) {
+                 self.Read_KShell_PHF_input(filename, ms, inputH, Ref);
              }, py::arg("filename"), py::arg("ms"), py::arg("inputH"), py::arg("Ref") = "");
 
 
@@ -53,6 +66,7 @@ PYBIND11_MODULE(pyHFAndHFB, m)
         .def(py::init<const Hamiltonian&>()) // Copy constructor
         .def("Prepare_MschemeH_Unrestricted", &Hamiltonian::Prepare_MschemeH_Unrestricted)
         .def("PrintHamiltonianInfo_pn", &Hamiltonian::PrintHamiltonianInfo_pn);
+
 
     py::class_<HartreeFock>(m, "HartreeFock")
         .def(py::init<Hamiltonian &>())
@@ -70,5 +84,30 @@ PYBIND11_MODULE(pyHFAndHFB, m)
         .def("PrintOccupationHO_jorbit", &HartreeFock::PrintOccupationHO_jorbit)
         .def("PrintParameters_Hole", &HartreeFock::PrintParameters_Hole)
         .def("SetMaxIteration", &HartreeFock::SetMaxIteration)
+        .def("UpdateGradientStepSize", &HartreeFock::UpdateGradientStepSize)
         .def("Reset_U", &HartreeFock::Reset_U);       
+
+
+    py::class_<AngMomProjection>(m, "AngMomProjection")
+        .def(py::init<>())
+        .def(py::init<ModelSpace &>())
+        .def("PrintInfo", &AngMomProjection::PrintInfo)
+        .def("InitInt_HF_Projection", &AngMomProjection::InitInt_HF_Projection);
+
+
+
+    py::class_<GCM_Projection>(m, "GCM_Projection")
+        .def(py::init<>())
+        .def(py::init<ModelSpace&, Hamiltonian&, AngMomProjection&>())
+        .def("ReadBasis", &GCM_Projection::ReadBasis)
+        .def("PrintResults", &GCM_Projection::PrintResults)
+        .def("Do_Projection", &GCM_Projection::Do_Projection)
+        .def("PrintInfo", &GCM_Projection::PrintInfo);
+
+
+    // mpi functions
+    m.def("mpi_initialize", &mpi_initialize, "Initialize MPI environment");
+    m.def("mpi_finalize", &mpi_finalize, "Finalize MPI environment");
+
+
 }

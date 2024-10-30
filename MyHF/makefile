@@ -27,33 +27,25 @@ PYTHON_CFLAGS = $(shell $(PYTHON_CONFIG) --cflags )
 PYTHON_LDFLAGS = $(shell $(PYTHON_CONFIG) --ldflags )
 PYTHONFLAGS =  $(PYTHON_CFLAGS) -Wl,--no-as-needed
 PYTHON_COMMAND = python$(PYTHON_MAJOR_VERSION)
+PYTHON_LDFLAGS += -undefined dynamic_lookup # This avoids trouble with missing symbols (see pybind11.readthedocs.io/en/stable/compiling.html )
+PYTHONFLAGS +=  $(shell $(PYTHON_CONFIG) --cflags | sed -e 's/-arch i386//')
+PYTHONFLAGS += -Wno-unused-value # suppress annoying warnings about stuff in the pybind11 library
+PYTHONFLAGS += -Wno-deprecated-declarations
 
 #-----------------------------------------------------------------
-ifeq ($(THEHOST),other)  # default options. test on my laptop
+ifeq ($(THEHOST),other)  # default options. test on my laptop   
   CFLAGS =-O3 -fPIC -fopenmp -I/usr/include/mkl  #-Wall #-std=c++11  
-  LIBS = -lmkl_rt -lm -lgsl -lgslcblas -lnlopt  # include lnlopt to test code
-  PYTHON_LDFLAGS += -undefined dynamic_lookup # This avoids trouble with missing symbols (see pybind11.readthedocs.io/en/stable/compiling.html )
-  PYTHONFLAGS +=  $(shell $(PYTHON_CONFIG) --cflags | sed -e 's/-arch i386//')
-  PYTHONFLAGS += -Wno-unused-value # suppress annoying warnings about stuff in the pybind11 library
-  PYTHONFLAGS += -Wno-deprecated-declarations
+  LIBS = -lmkl_rt -lm -lgsl -lgslcblas  # -lnlopt  include lnlopt to test code in HF_Pfaffian
 endif
 
 ifeq ($(THEHOST),bebop)  # Argonne bebop
-  CFLAGS = -O3 -fopenmp 
+  CFLAGS = -O3 -fPIC -fopenmp 
   LIBS = -m64  -Wl,--no-as-needed -lm -lgsl -lgslcblas -lmkl_intel_lp64  -lmkl_sequential -lmkl_gf_ilp64 -lmkl_gnu_thread -lmkl_core -lpthread -ldl
-  PYTHON_LDFLAGS += -undefined dynamic_lookup # This avoids trouble with missing symbols (see pybind11.readthedocs.io/en/stable/compiling.html )
-  PYTHONFLAGS +=  $(shell $(PYTHON_CONFIG) --cflags | sed -e 's/-arch i386//')
-  PYTHONFLAGS += -Wno-unused-value # suppress annoying warnings about stuff in the pybind11 library
-  PYTHONFLAGS += -Wno-deprecated-declarations
 endif
 
 ifeq ($(THEHOST),crc)   # Notre Dame CRC
-  CFLAGS = -O3 -I/opt/crc/i/intel/19.0/mkl/include/ -fopenmp
+  CFLAGS = -O3 -fPIC -I/opt/crc/i/intel/19.0/mkl/include/ -fopenmp
   LIBS = -m64  -Wl,--no-as-needed -lm -lgsl -lgslcblas -lmkl_intel_lp64  -lmkl_sequential -lmkl_gf_ilp64 -lmkl_gnu_thread -lmkl_core -lpthread -ldl -lgomp
-  PYTHON_LDFLAGS += -undefined dynamic_lookup # This avoids trouble with missing symbols (see pybind11.readthedocs.io/en/stable/compiling.html )
-  PYTHONFLAGS +=  $(shell $(PYTHON_CONFIG) --cflags | sed -e 's/-arch i386//')
-  PYTHONFLAGS += -Wno-unused-value # suppress annoying warnings about stuff in the pybind11 library
-  PYTHONFLAGS += -Wno-deprecated-declarations
 endif
 
 #----------------------------------------------------
@@ -64,7 +56,7 @@ clean:
 
 OFILES = ModelSpace.o Hamiltonian.o AngMom.o ReadWriteFiles.o HFbasis.o Pfaffian_tools.o GCM_Tools.o
 #--------------------------------------------------
-#   executable files
+#   executable files:
 # HF
 HF_Pfaffian.exe: $(OFILES) HF_Pfaffian.o 
 	$(FC) -o $@ HF_Pfaffian.o $(CFLAGS) $(OFILES) $(LIBS) 
@@ -88,7 +80,7 @@ pyHFAndHFB.so: pyHFAndHFB.o $(OFILES) HartreeFock.o
 .cpp.o:
 	$(FC) $(CFLAGS) -c $*.cpp
 
-pyHFAndHFB.o: pyHFAndHFB.cpp
+pyHFAndHFB.o: pyHFandHFB.cpp
 	$(FC) -c  $(CFLAGS) $(LIBS) -I$(PYBIND11_INCLUDE_PATH) $(PYTHONFLAGS)  $^ -o $@
 
 

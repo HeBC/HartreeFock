@@ -444,13 +444,14 @@ void HartreeFock::Solve_hybrid_Constraint()
         // Element found
         int index = std::distance(Qtype.begin(), it);
         // std::cout << "Element " << Qtype[index] << " found at index " << index << std::endl;
-        // Load Proton Jx
+        // Load Proton Jz
         memset(QOperator_p[index].data(), 0, (dim_p * dim_p) * sizeof(double));
         for (size_t i = 0; i < dim_p; i++)
         {
             for (size_t j = 0; j < dim_p; j++)
             {
-                if (modelspace->Orbits_p[modelspace->Get_ProtonOrbitIndexInMscheme(i)].l == modelspace->Orbits_p[modelspace->Get_ProtonOrbitIndexInMscheme(j)].l)
+                if (modelspace->Orbits_p[modelspace->Get_ProtonOrbitIndexInMscheme(i)].l == modelspace->Orbits_p[modelspace->Get_ProtonOrbitIndexInMscheme(j)].l
+                    and modelspace->Orbits_p[modelspace->Get_ProtonOrbitIndexInMscheme(i)].n == modelspace->Orbits_p[modelspace->Get_ProtonOrbitIndexInMscheme(j)].n)
                 {
                     if (modelspace->Get_MSmatrix_2j(Proton, i) == modelspace->Get_MSmatrix_2j(Proton, j))
                     {
@@ -462,13 +463,14 @@ void HartreeFock::Solve_hybrid_Constraint()
                 }
             }
         }
-        // Load Neutron Jx
+        // Load Neutron Jz
         memset(QOperator_n[index].data(), 0, (dim_n * dim_n) * sizeof(double));
         for (size_t i = 0; i < dim_n; i++)
         {
             for (size_t j = 0; j < dim_n; j++)
             {
-                if (modelspace->Orbits_n[modelspace->Get_NeutronOrbitIndexInMscheme(i)].l == modelspace->Orbits_n[modelspace->Get_NeutronOrbitIndexInMscheme(j)].l)
+                if (modelspace->Orbits_n[modelspace->Get_NeutronOrbitIndexInMscheme(i)].l == modelspace->Orbits_n[modelspace->Get_NeutronOrbitIndexInMscheme(j)].l
+                    and modelspace->Orbits_n[modelspace->Get_NeutronOrbitIndexInMscheme(i)].n == modelspace->Orbits_n[modelspace->Get_NeutronOrbitIndexInMscheme(j)].n)
                 {
                     if (modelspace->Get_MSmatrix_2j(Neutron, i) == modelspace->Get_MSmatrix_2j(Neutron, j))
                     {
@@ -480,7 +482,7 @@ void HartreeFock::Solve_hybrid_Constraint()
                 }
             }
         }
-
+        // Check_matrix(dim_p, QOperator_p[index].data());
         // load targets
         targets[index] = modelspace->GetTargetJz();
     }
@@ -503,6 +505,9 @@ void HartreeFock::Solve_hybrid_Constraint()
     CalcEHF();
     for (iterations = 0; iterations < maxiter; ++iterations)
     {
+
+        // std::cout <<iterations << "  " <<  E_previous << "  " <<  fabs(E_previous - EHF) <<  "  " <<gradient_eta << std::endl;
+
         E_previous = this->EHF;
         std::vector<double> Z_p(dim_p * dim_p, 0); // gradient matrix
         std::vector<double> Z_n(dim_n * dim_n, 0);
@@ -607,10 +612,10 @@ void HartreeFock::Solve_hybrid_Constraint()
             cblas_daxpy(dim_p * dim_p, -b_p[i], Q_HF_orb_p[i].data(), 1, Z_p.data(), 1);
             cblas_daxpy(dim_n * dim_n, -b_n[i], Q_HF_orb_n[i].data(), 1, Z_n.data(), 1);
         }
-        UpdateU_Thouless_pade(Z_p.data(), Z_n.data());
-        // UpdateU_Thouless_1st(Z_p.data(), Z_n.data());
+        // UpdateU_Thouless_pade(Z_p.data(), Z_n.data());
+        UpdateU_Thouless_1st(Z_p.data(), Z_n.data());
 
-        if (iterations > 200 and (DIIS_error_mats_p.size() < 1 or frobenius_norm(DIIS_error_mats_n.back()) > 0.01 or frobenius_norm(DIIS_error_mats_p.back()) > 0.01))
+        if (iterations > 400 and (DIIS_error_mats_p.size() < 1 or frobenius_norm(DIIS_error_mats_n.back()) > 0.01 or frobenius_norm(DIIS_error_mats_p.back()) > 0.01))
         // if (iterations > 100 and iterations % 20 == 1)
         {
             std::cout << "Still not converged after " << iterations << " iterations. Switching to DIIS." << std::endl;
@@ -645,6 +650,17 @@ void HartreeFock::Solve_hybrid_Constraint()
 
         //   std::cout << "   " << std::setw(5) << iterations << "   " << std::setw(10) << std::setfill(' ') << std::fixed << std::setprecision(4) << EHF << std::endl;
         //   if (CheckConvergence())
+
+/*
+        double frobenius_p, frobenius_n;
+        frobenius_p = frobenius_norm(Z_p);
+        frobenius_n = frobenius_norm(Z_n);
+
+        if (fabs(frobenius_p + frobenius_n) < this->tolerance)
+            break;
+*/
+
+
         if (fabs(E_previous - EHF) < this->tolerance)
             break;
     }
@@ -662,6 +678,7 @@ void HartreeFock::Solve_hybrid_Constraint()
     }
     PrintEHF();
 
+    // Q constraint
     std::cout << std::endl;
     std::cout << "\033[38;5;202mConstraints:\033[0m" << std::endl;
     std::cout << "  "
@@ -842,6 +859,18 @@ void HartreeFock::Solve_gradient_Constraint()
         Qtype.push_back("QuadrupoleQ0");
         Qtype.push_back("QuadrupoleQ2");
     }
+    // Jx
+    if (modelspace->Get_Jx_constraint() == true)
+    {
+        number_of_Q += 1; //  Jx
+        Qtype.push_back("Jx");
+    }
+    // Jz
+    if (modelspace->Get_Jz_constraint() == true)
+    {
+        number_of_Q += 1; //  Jz
+        Qtype.push_back("Jz");
+    }
 
     // read Operators
     if (number_of_Q == 0)
@@ -912,6 +941,130 @@ void HartreeFock::Solve_gradient_Constraint()
         // load targets
         targets[index] = modelspace->GetShapeQ0();
         targets[index + 1] = modelspace->GetShapeQ2();
+    }
+
+        /// Load Jx
+    /// <j', m'|Jx|j,m> = 1/2 ( <j', m'|J+|j, m> + <j', m'|J−|j, m> )
+    it = std::find(Qtype.begin(), Qtype.end(), "Jx");
+    if (it != Qtype.end())
+    {
+        // Element found
+        int index = std::distance(Qtype.begin(), it);
+        // std::cout << "Element " << Qtype[index] << " found at index " << index << std::endl;
+        // Load Proton Jx
+        memset(QOperator_p[index].data(), 0, (dim_p * dim_p) * sizeof(double));
+        for (size_t i = 0; i < dim_p; i++)
+        {
+            for (size_t j = 0; j < dim_p; j++)
+            {
+                if (modelspace->Orbits_p[modelspace->Get_ProtonOrbitIndexInMscheme(i)].l == modelspace->Orbits_p[modelspace->Get_ProtonOrbitIndexInMscheme(j)].l
+                    and modelspace->Orbits_p[modelspace->Get_ProtonOrbitIndexInMscheme(i)].n == modelspace->Orbits_p[modelspace->Get_ProtonOrbitIndexInMscheme(j)].n)
+                {
+                    int ji, jj;
+                    ji = modelspace->Get_MSmatrix_2j(Proton, i);
+                    jj = modelspace->Get_MSmatrix_2j(Proton, j);
+                    if (ji == jj)
+                    {
+                        int mi, mj;
+                        mi = modelspace->Get_MSmatrix_2m(Proton, i);
+                        mj = modelspace->Get_MSmatrix_2m(Proton, j);
+                        if (mi == mj + 2)
+                        {
+                            QOperator_p[index][i * dim_p + j] = 0.5 * sqrt((jj - mj) * (jj + mj + 2.) / 4.);
+                        }
+                        else if (mi == mj - 2)
+                        {
+                            QOperator_p[index][i * dim_p + j] = 0.5 * sqrt((jj + mj) * (jj - mj + 2.) / 4.);
+                        }
+                    }
+                }
+            }
+        }
+        // Load Neutron Jx
+        memset(QOperator_n[index].data(), 0, (dim_n * dim_n) * sizeof(double));
+        for (size_t i = 0; i < dim_n; i++)
+        {
+            for (size_t j = 0; j < dim_n; j++)
+            {
+                if (modelspace->Orbits_n[modelspace->Get_NeutronOrbitIndexInMscheme(i)].l == modelspace->Orbits_n[modelspace->Get_NeutronOrbitIndexInMscheme(j)].l
+                    and modelspace->Orbits_n[modelspace->Get_NeutronOrbitIndexInMscheme(i)].n == modelspace->Orbits_n[modelspace->Get_NeutronOrbitIndexInMscheme(j)].n)
+                {
+                    int ji, jj;
+                    ji = modelspace->Get_MSmatrix_2j(Neutron, i);
+                    jj = modelspace->Get_MSmatrix_2j(Neutron, j);
+                    if (ji == jj)
+                    {
+                        int mi, mj;
+                        mi = modelspace->Get_MSmatrix_2m(Neutron, i);
+                        mj = modelspace->Get_MSmatrix_2m(Neutron, j);
+                        if (mi == mj + 2)
+                        {
+                            QOperator_n[index][i * dim_n + j] = 0.5 * sqrt((jj - mj) * (jj + mj + 2.) / 4.);
+                        }
+                        else if (mi == mj - 2)
+                        {
+                            QOperator_n[index][i * dim_n + j] = 0.5 * sqrt((jj + mj) * (jj - mj + 2.) / 4.);
+                        }
+                    }
+                }
+            }
+        }
+        // Check_matrix(dim_p, QOperator_p[index].data());
+        // Check_matrix(dim_n, QOperator_n[index].data());
+        // std::cout<< modelspace->GetTargetJx() << std::endl;
+
+        // load targets
+        targets[index] = sqrt(modelspace->GetTargetJx());
+    }
+
+    /// Load Jz
+    it = std::find(Qtype.begin(), Qtype.end(), "Jz");
+    if (it != Qtype.end())
+    {
+        // Element found
+        int index = std::distance(Qtype.begin(), it);
+        // std::cout << "Element " << Qtype[index] << " found at index " << index << std::endl;
+        // Load Proton Jz
+        memset(QOperator_p[index].data(), 0, (dim_p * dim_p) * sizeof(double));
+        for (size_t i = 0; i < dim_p; i++)
+        {
+            for (size_t j = 0; j < dim_p; j++)
+            {
+                if (modelspace->Orbits_p[modelspace->Get_ProtonOrbitIndexInMscheme(i)].l == modelspace->Orbits_p[modelspace->Get_ProtonOrbitIndexInMscheme(j)].l
+                    and modelspace->Orbits_p[modelspace->Get_ProtonOrbitIndexInMscheme(i)].n == modelspace->Orbits_p[modelspace->Get_ProtonOrbitIndexInMscheme(j)].n)
+                {
+                    if (modelspace->Get_MSmatrix_2j(Proton, i) == modelspace->Get_MSmatrix_2j(Proton, j))
+                    {
+                        if (modelspace->Get_MSmatrix_2m(Proton, i) == modelspace->Get_MSmatrix_2m(Proton, j))
+                        {
+                            QOperator_p[index][i * dim_p + j] = modelspace->Get_MSmatrix_2m(Proton, j) * 0.5;
+                        }
+                    }
+                }
+            }
+        }
+        // Load Neutron Jz
+        memset(QOperator_n[index].data(), 0, (dim_n * dim_n) * sizeof(double));
+        for (size_t i = 0; i < dim_n; i++)
+        {
+            for (size_t j = 0; j < dim_n; j++)
+            {
+                if (modelspace->Orbits_n[modelspace->Get_NeutronOrbitIndexInMscheme(i)].l == modelspace->Orbits_n[modelspace->Get_NeutronOrbitIndexInMscheme(j)].l
+                    and modelspace->Orbits_n[modelspace->Get_NeutronOrbitIndexInMscheme(i)].n == modelspace->Orbits_n[modelspace->Get_NeutronOrbitIndexInMscheme(j)].n)
+                {
+                    if (modelspace->Get_MSmatrix_2j(Neutron, i) == modelspace->Get_MSmatrix_2j(Neutron, j))
+                    {
+                        if (modelspace->Get_MSmatrix_2m(Neutron, i) == modelspace->Get_MSmatrix_2m(Neutron, j))
+                        {
+                            QOperator_n[index][i * dim_p + j] = modelspace->Get_MSmatrix_2m(Neutron, j) * 0.5;
+                        }
+                    }
+                }
+            }
+        }
+        // Check_matrix(dim_p, QOperator_p[index].data());
+        // load targets
+        targets[index] = modelspace->GetTargetJz();
     }
 
     /// Load operator ...
@@ -1052,6 +1205,34 @@ void HartreeFock::Solve_gradient_Constraint()
         std::cout << "\033[31m!!!! Warning: Restricted Hartree-Fock calculation didn't converge after " << iterations << " iterations.\033[0m" << std::endl;
         std::cout << std::endl;
     }
+
+
+    std::cout << std::endl;
+    std::cout << "\033[38;5;202mConstraints:\033[0m" << std::endl;
+    std::cout << "  "
+              << "Qi"
+              << "    "
+              << "Constraint type"
+              << "       "
+              << "<Q>"
+              << "       "
+              << "target"
+              << "        "
+              << "Qp"
+              << "         "
+              << "Qn"
+              << "          "
+              << "ΔQ" << std::endl;
+    std::cout << std::setprecision(4);
+    for (size_t i = 0; i < number_of_Q; i++)
+    {
+        double tempQp, tempQn;
+        CalOnebodyOperator(QOperator_p[i].data(), QOperator_n[i].data(), tempQp, tempQn);
+        deltaQs[i] = tempQp + tempQn - targets[i];
+        std::cout << std::right << std::fixed << "  " << i << "   " << std::setw(16) << Qtype[i] << "    " << std::setw(8) << tempQp + tempQn << "    " << std::setw(8) << targets[i] << "    " << std::setw(8) << tempQp << "   " << std::setw(8) << tempQn << "    " << std::setw(8) << deltaQs[i] << std::endl;
+    }
+    std::cout << std::endl;
+
     PrintEHF();
 }
 

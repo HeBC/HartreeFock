@@ -54,8 +54,8 @@ int main(int argc, char *argv[])
     int dim_n = MS.Get_MScheme_dim(Neutron);
     //________________________________________
     srand(time(NULL)); // seed the random number generator with current time
-    PNbasis basis_bra(MS, AngMomProj);
-    PNbasis basis_ket(MS, AngMomProj);
+    //PNbasis basis_bra(MS, AngMomProj);
+    //PNbasis basis_ket(MS, AngMomProj);
 
     GCM_Projection myfun(MS, Hinput, AngMomProj);
     myfun.ReadBasis("Input/GCMpoints/");

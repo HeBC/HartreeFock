@@ -1592,22 +1592,6 @@ void Hamiltonian::Prepare_MschemeH() // restricted H for pfaffian code
                     }
                     double C2 = AngMom::cgc(J, M, j3 * 0.5, m3 * 0.5, j4 * 0.5, m4 * 0.5);
                     MSMEs.add_Vpp(ms->GetMS_index_p(a, j1, m1), ms->GetMS_index_p(b, j2, m2), ms->GetMS_index_p(c, j3, m3), ms->GetMS_index_p(d, j4, m4), -MassDep * V * C1 * C2);
-                    /*
-                    if (a != b and c == d)
-                    {
-                        MSMEs.add_Vpp(ms->GetMS_index_p(b, j2, m2), ms->GetMS_index_p(a, j1, m1), ms->GetMS_index_p(c, j3, m3), ms->GetMS_index_p(d, j4, m4), MassDep * V * C1 * C2);
-                    }
-                    if (a == b and c != d)
-                    {
-                        MSMEs.add_Vpp(ms->GetMS_index_p(a, j1, m1), ms->GetMS_index_p(b, j2, m2), ms->GetMS_index_p(d, j4, m4), ms->GetMS_index_p(c, j3, m3), MassDep * V * C1 * C2);
-                    }
-                    if (a != b and c != d)
-                    {
-                        MSMEs.add_Vpp(ms->GetMS_index_p(b, j2, m2), ms->GetMS_index_p(a, j1, m1), ms->GetMS_index_p(c, j3, m3), ms->GetMS_index_p(d, j4, m4), MassDep * V * C1 * C2);
-                        MSMEs.add_Vpp(ms->GetMS_index_p(a, j1, m1), ms->GetMS_index_p(b, j2, m2), ms->GetMS_index_p(d, j4, m4), ms->GetMS_index_p(c, j3, m3), MassDep * V * C1 * C2);
-                        MSMEs.add_Vpp(ms->GetMS_index_p(b, j2, m2), ms->GetMS_index_p(a, j1, m1), ms->GetMS_index_p(d, j4, m4), ms->GetMS_index_p(c, j3, m3), -MassDep * V * C1 * C2);
-                    }
-                    */
                 }
             }
         }

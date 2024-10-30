@@ -51,6 +51,8 @@ public:
     void DoCalculation();          // Do projection for GCM
     void DoCalculation_LAmethod(); // Do projection for GCM with linear algebra method
     void PrintResults();
+    void PrintInfo();
+    void Do_Projection();
     double Get_Overlap_dependence() { return Overlap_dependence_threshold; };
     // int SelectBasis();                   // select orthogonal basis, return the number of taken basis
     // void OptimizeConfigruation();        // Generate a orthogonal configruation; Orthogonal to one configuration
@@ -85,5 +87,10 @@ private:
 
     double Overlap_dependence_threshold = 1.e-4;
 };
+
+
+void mpi_initialize();
+void mpi_finalize();
+
 
 #endif

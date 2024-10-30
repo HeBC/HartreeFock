@@ -53,6 +53,25 @@ void ReadWriteFiles::Read_KShell_HF_input(string filename, ModelSpace &ms, Hamil
   return;
 }
 
+void ReadWriteFiles::Read_KShell_PHF_input(string filename, ModelSpace &ms, Hamiltonian &inputH, string Ref)
+{
+  double A = 0, Z = 0;
+  double N_p = 0, N_n = 0;
+  ms.GetAZfromString(Ref, A, Z);
+  ms.Set_RefString(Ref);
+  inputH.snt_file = filename;
+  inputH.RemoveWhitespaceInFilename();
+  //--------------------------------- Read Kshell interaction
+  this->ReadTokyo(inputH.GetKshellSntFile(), ms, inputH);
+  ms.SetProtonNum(Z - ms.GetCoreProtonNum());
+  ms.SetNeutronNum(A - Z - ms.GetCoreNeutronNum());
+  ms.InitialModelSpace_HF();
+  // inputH.Prepare_MschemeH_Unrestricted(); //
+  inputH.Prepare_MschemeH();  // Be careful about this !!!
+  return;
+}
+
+
 void ReadWriteFiles::Read_OSLO_HF_input(string filename, ModelSpace &ms, Hamiltonian &inputH)
 {
   this->ReadInputInfo_pnSystem_GCM("InputFile_OSLO.dat", ms, inputH);
