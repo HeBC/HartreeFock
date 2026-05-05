@@ -55,7 +55,7 @@ clean:
 	/bin/rm -f *.o *.exe *.so
 
 OFILES = ModelSpace.o Hamiltonian.o AngMom.o ReadWriteFiles.o HFbasis.o Pfaffian_tools.o GCM_Tools.o
-HF_SOLVER_OFILES = HartreeFock.o HartreeFock_Broyden.o
+HF_SOLVER_OFILES = HartreeFock.o HartreeFock_Broyden.o HartreeFock_Broyden_Constraint.o
 #--------------------------------------------------
 #   executable files:
 # HF
