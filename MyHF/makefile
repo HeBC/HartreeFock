@@ -55,6 +55,7 @@ clean:
 	/bin/rm -f *.o *.exe *.so
 
 OFILES = ModelSpace.o Hamiltonian.o AngMom.o ReadWriteFiles.o HFbasis.o Pfaffian_tools.o GCM_Tools.o
+HF_SOLVER_OFILES = HartreeFock.o HartreeFock_Broyden.o
 #--------------------------------------------------
 #   executable files:
 # HF
@@ -63,8 +64,8 @@ HF_Pfaffian.exe: $(OFILES) HF_Pfaffian.o
 
 
 # HF
-HartreeFock.exe: $(OFILES) HartreeFock.o 
-	$(FC) -o $@ HartreeFock.o $(CFLAGS) $(OFILES) $(LIBS)
+HartreeFock.exe: $(OFILES) $(HF_SOLVER_OFILES) 
+	$(FC) -o $@ $(HF_SOLVER_OFILES) $(CFLAGS) $(OFILES) $(LIBS)
 
 
 # HF Projection
@@ -72,8 +73,8 @@ HF_Projection.exe: $(OFILES) HF_Projection.o
 	$(FC) -o $@ HF_Projection.o $(CFLAGS) $(OFILES) $(LIBS) 
 
 # pybind11
-pyHFAndHFB.so: pyHFAndHFB.o $(OFILES) HartreeFock.o 
-	$(FC) $(CFLAGS) $(PYTHONFLAGS) -I$(PYBIND11_INCLUDE_PATH) $(LIBS) -shared $(OFILES) HartreeFock.o  pyHFAndHFB.o -o $@
+pyHFAndHFB.so: pyHFAndHFB.o $(OFILES) $(HF_SOLVER_OFILES) 
+	$(FC) $(CFLAGS) $(PYTHONFLAGS) -I$(PYBIND11_INCLUDE_PATH) $(LIBS) -shared $(OFILES) $(HF_SOLVER_OFILES) pyHFAndHFB.o -o $@
 
 
 #---- cpp file  ----
