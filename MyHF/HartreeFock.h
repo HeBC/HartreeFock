@@ -39,6 +39,7 @@ public:
     void Solve_gradient_Constraint();
     void Solve_hybrid();
     void Solve_hybrid_Constraint(); // not work now!!!
+    void Solve_broyden(int history_size = 8, double alpha = 0.2, double w0 = 0.01); /// Fixed-point HF with modified Broyden density mixing
     void Solve_diag();              /// Diagonalize and UpdateF until convergence
 
     //---------------------
