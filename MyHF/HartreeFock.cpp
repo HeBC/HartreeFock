@@ -3242,11 +3242,22 @@ void HartreeFock::HF_ShapeCoefficients_Lab()
     }
     r0 = 1.27;
 
-    Qud0 *= 1.005 * 1.005 * pow(massA, 1. / 3.);
-    Qud2 *= 1.005 * 1.005 * pow(massA, 1. / 3.);
+    double hw = modelspace->Get_hw();
+    if( fabs(hw) > 1.e-5 )
+    {
+        double b_sqare = 197.33 * 193.33 / 940. / hw; 
+        Qud0 *= b_sqare;
+        Qud2 *= b_sqare;
+    }
+    else
+    {
+        Qud0 *= 1.005 * 1.005 * pow(massA, 1. / 3.);
+        Qud2 *= 1.005 * 1.005 * pow(massA, 1. / 3.);
+    }
+
 
     //-------- shape restruction
-    std::cout << "  Deformation parameters (in unit of fm^2) : " << std::endl;
+    std::cout << "  Deformation parameters (in unit of e^2 fm^2) : " << std::endl;
     std::cout << "      Q0: " << std::setw(7) << std::setfill(' ') << std::fixed << std::setprecision(4) << Qud0 << "     Q2: " << Qud2 << "     Q-2: " << Qud2 << std::endl;
 
     double gamma = sqrt(2.) * Qud2 / Qud0;
