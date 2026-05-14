@@ -131,15 +131,11 @@ namespace
 }
 
 //*********************************************************************
-// Fixed-point Hartree-Fock iteration accelerated by Johnson's modified
-// Broyden method.  The vector being mixed is the combined proton and
-// neutron density matrix, x = (rho_p, rho_n).  The residual is
-// F(x) = rho_out - rho_in.
-//
-// Important implementation detail: if Broyden history is bad, this routine
-// falls back to the plain diagonal update x_{k+1}=rho_out.  Therefore, with
-// alpha=1, it must be able to recover the same convergence behavior as
-// Solve_diag().
+// Fixed-point Hartree-Fock iteration accelerated by a guarded modified
+// Broyden step.  The reference update is the same diagonal HF map used by
+// Solve_diag(): x_{k+1}=rho_out.  Broyden is treated only as an optional
+// correction; if it destabilizes the iteration, it is disabled permanently
+// and the solver continues with the diagonal map.
 void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
 {
     if (history_size < 1)
@@ -183,7 +179,7 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
     double best_residual_norm = std::numeric_limits<double>::infinity();
     double previous_residual_norm = std::numeric_limits<double>::infinity();
     int no_improvement_count = 0;
-    int disable_broyden_count = 0;
+    bool broyden_enabled = true;
     const int broyden_start_iteration = 3;
 
     std::cout << "  Modified Broyden HF debug: history_size = " << history_size
@@ -224,7 +220,7 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
                       << "  best = " << best_residual_norm
                       << "  hist = " << dF_history.size()
                       << "  no_improve = " << no_improvement_count
-                      << "  disabled = " << disable_broyden_count
+                      << "  broyden = " << (broyden_enabled ? "on" : "off")
                       << std::defaultfloat << std::endl;
         }
 
@@ -234,23 +230,25 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
             break;
         }
 
-        // A bad Broyden history can corrupt an otherwise convergent diagonal HF
-        // map.  When the residual stalls or jumps, discard the history and run
-        // several pure diagonal updates before collecting new secant vectors.
-        if (residual_norm > 2.0 * previous_residual_norm || no_improvement_count >= 12)
+        if (broyden_enabled && (residual_norm > 2.0 * previous_residual_norm || no_improvement_count >= 12))
         {
+            // The uploaded log showed repeated resets driven by rho_res rather
+            // than by the actual HF convergence criterion.  That reset cycle
+            // prevented the method from ever behaving like Solve_diag().  Once
+            // Broyden is identified as harmful, turn it off and continue with
+            // the diagonal fixed-point map instead of repeatedly re-enabling it.
+            broyden_enabled = false;
             dF_history.clear();
             u_history.clear();
             w_history.clear();
             F_prev.clear();
             x_prev.clear();
-            disable_broyden_count = 8;
             no_improvement_count = 0;
-            std::cout << "  Broyden history reset at iteration " << iterations
-                      << "; using pure diagonal updates temporarily." << std::endl;
+            std::cout << "  Broyden disabled at iteration " << iterations
+                      << "; continuing with the plain diagonal HF map." << std::endl;
         }
 
-        if (!F_prev.empty())
+        if (broyden_enabled && !F_prev.empty())
         {
             std::vector<double> dF(nvec, 0.0);
             std::vector<double> dx(nvec, 0.0);
@@ -289,9 +287,7 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
             }
         }
 
-        // The diagonal HF update is x_out = x + F.  For alpha=1 this is exactly
-        // the reference fixed-point map.  Broyden is only allowed to replace it
-        // if the correction passes conservative checks.
+        // Plain diagonal HF update.  With alpha=1 this is x_out exactly.
         std::vector<double> step(nvec, 0.0);
         for (size_t i = 0; i < nvec; ++i)
         {
@@ -300,7 +296,7 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
 
         bool used_broyden_step = false;
         const int m = static_cast<int>(dF_history.size());
-        if (disable_broyden_count == 0 && iterations >= broyden_start_iteration && m > 0)
+        if (broyden_enabled && iterations >= broyden_start_iteration && m > 0)
         {
             std::vector<double> A(static_cast<size_t>(m) * m, 0.0);
             std::vector<double> gamma(m, 0.0);
@@ -346,11 +342,6 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
             }
         }
 
-        if (disable_broyden_count > 0)
-        {
-            disable_broyden_count -= 1;
-        }
-
         x_prev = x;
         F_prev = F;
         previous_residual_norm = residual_norm;
@@ -360,13 +351,14 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
             x[i] += step[i];
             if (!std::isfinite(x[i]))
             {
-                std::cout << "\033[31m!!!! Warning: non-finite density in Broyden iteration; reverting to best density.\033[0m" << std::endl;
+                std::cout << "\033[31m!!!! Warning: non-finite density in Broyden iteration; reverting to best density and falling back to Solve_diag().\033[0m" << std::endl;
                 if (!best_x.empty())
                 {
-                    x = best_x;
+                    unpack_density(best_x, dim_p, dim_n, rho_p, rho_n);
+                    UpdateF();
                 }
-                iterations = maxiter;
-                break;
+                Solve_diag();
+                return;
             }
         }
 
@@ -375,20 +367,8 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
             std::cout << "                 step = " << (used_broyden_step ? "Broyden" : "diag") << std::endl;
         }
 
-        if (iterations >= maxiter)
-        {
-            break;
-        }
-
         enforce_density_block(x, 0, dim_p, static_cast<double>(N_p));
         enforce_density_block(x, np, dim_n, static_cast<double>(N_n));
-    }
-
-    if (iterations >= maxiter && !best_x.empty())
-    {
-        std::cout << "  Restoring best Broyden density with rho_res = " << std::scientific
-                  << best_residual_norm << std::defaultfloat << std::endl;
-        x = best_x;
     }
 
     unpack_density(x, dim_p, dim_n, rho_p, rho_n);
