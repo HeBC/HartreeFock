@@ -793,8 +793,8 @@ void Hamiltonian::CalNumberInitial() // count the number of terms need to calcul
     OB_max_t = std::min(t_p_max, t_n_max);
 
     // Initial index for Quadrupole
-    if (ms->GetIsShapeConstrained())
-    {
+    //if (ms->GetIsShapeConstrained())
+    //{
         int tempcount;
         // Proton
         int orb_num = ms->GetProtonOrbitsNum();
@@ -853,7 +853,7 @@ void Hamiltonian::CalNumberInitial() // count the number of terms need to calcul
                 Q2MEs_n.Total_Number++;
             }
         }
-    }
+    // }
 }
 
 // in unit of b^2
@@ -1285,10 +1285,10 @@ void Hamiltonian::Prepare_MschemeH_Unrestricted() /// work for the HF_Diag code
     }
 
     // Initial index for Quadrupole
-    if (ms->GetIsShapeConstrained())
-    {
+    //if (ms->GetIsShapeConstrained())
+    //{
         this->Initial_Q2();
-    }
+    //}
 }
 
 void Hamiltonian::Prepare_MschemeH_Unrestricted_ForPhaffian() /// work for the HF_Pfaffian code
@@ -1734,10 +1734,10 @@ void Hamiltonian::Prepare_MschemeH() // restricted H for pfaffian code
 
     // Initial index for Quadrupole
     // if (ms->GetIsShapeConstrained())  //always initial Q2
-    if (ms->GetIsShapeConstrained())
-    {
+    // if (ms->GetIsShapeConstrained())
+    // {
         this->Initial_Q2();
-    }
+    // }
 }
 
 void Hamiltonian::Initial_Q2()
