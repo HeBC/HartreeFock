@@ -131,11 +131,8 @@ namespace
 }
 
 //*********************************************************************
-// Fixed-point Hartree-Fock iteration accelerated by a guarded modified
-// Broyden step.  The reference update is the same diagonal HF map used by
-// Solve_diag(): x_{k+1}=rho_out.  Broyden is treated only as an optional
-// correction; if it destabilizes the iteration, it is disabled permanently
-// and the solver continues with the diagonal map.
+// Fixed-point Hartree-Fock iteration accelerated by modified Broyden.
+// The vector being mixed is x=(rho_p,rho_n), with residual F=rho_out-rho_in.
 void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
 {
     if (history_size < 1)
@@ -165,7 +162,6 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
     std::vector<double> F(nvec, 0.0);
     std::vector<double> x_prev;
     std::vector<double> F_prev;
-    std::vector<double> best_x;
 
     std::deque<std::vector<double>> dF_history;
     std::deque<std::vector<double>> u_history;
@@ -176,10 +172,6 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
     enforce_density_block(x, 0, dim_p, static_cast<double>(N_p));
     enforce_density_block(x, np, dim_n, static_cast<double>(N_n));
 
-    double best_residual_norm = std::numeric_limits<double>::infinity();
-    double previous_residual_norm = std::numeric_limits<double>::infinity();
-    int no_improvement_count = 0;
-    bool broyden_enabled = true;
     const int broyden_start_iteration = 3;
 
     std::cout << "  Modified Broyden HF debug: history_size = " << history_size
@@ -200,27 +192,13 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
         }
 
         const double residual_norm = vector_norm(F) * inv_sqrt_nvec;
-
-        if (residual_norm < best_residual_norm)
-        {
-            best_residual_norm = residual_norm;
-            best_x = x_out;
-            no_improvement_count = 0;
-        }
-        else
-        {
-            no_improvement_count += 1;
-        }
-
         const bool energy_converged = CheckConvergence();
+
         if (iterations < 10 || iterations % 10 == 0 || energy_converged)
         {
             std::cout << "  Broyden iter " << std::setw(5) << iterations
                       << "  rho_res = " << std::scientific << std::setprecision(6) << residual_norm
-                      << "  best = " << best_residual_norm
                       << "  hist = " << dF_history.size()
-                      << "  no_improve = " << no_improvement_count
-                      << "  broyden = " << (broyden_enabled ? "on" : "off")
                       << std::defaultfloat << std::endl;
         }
 
@@ -230,25 +208,7 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
             break;
         }
 
-        if (broyden_enabled && (residual_norm > 2.0 * previous_residual_norm || no_improvement_count >= 12))
-        {
-            // The uploaded log showed repeated resets driven by rho_res rather
-            // than by the actual HF convergence criterion.  That reset cycle
-            // prevented the method from ever behaving like Solve_diag().  Once
-            // Broyden is identified as harmful, turn it off and continue with
-            // the diagonal fixed-point map instead of repeatedly re-enabling it.
-            broyden_enabled = false;
-            dF_history.clear();
-            u_history.clear();
-            w_history.clear();
-            F_prev.clear();
-            x_prev.clear();
-            no_improvement_count = 0;
-            std::cout << "  Broyden disabled at iteration " << iterations
-                      << "; continuing with the plain diagonal HF map." << std::endl;
-        }
-
-        if (broyden_enabled && !F_prev.empty())
+        if (!F_prev.empty())
         {
             std::vector<double> dF(nvec, 0.0);
             std::vector<double> dx(nvec, 0.0);
@@ -287,7 +247,7 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
             }
         }
 
-        // Plain diagonal HF update.  With alpha=1 this is x_out exactly.
+        // Simple fixed-point update: x_{k+1}=x_k+alpha F_k.
         std::vector<double> step(nvec, 0.0);
         for (size_t i = 0; i < nvec; ++i)
         {
@@ -296,7 +256,7 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
 
         bool used_broyden_step = false;
         const int m = static_cast<int>(dF_history.size());
-        if (broyden_enabled && iterations >= broyden_start_iteration && m > 0)
+        if (iterations >= broyden_start_iteration && m > 0)
         {
             std::vector<double> A(static_cast<size_t>(m) * m, 0.0);
             std::vector<double> gamma(m, 0.0);
@@ -317,7 +277,9 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
                 std::vector<double> broyden_step = step;
                 for (int ih = 0; ih < m; ++ih)
                 {
-                    const double coeff = w_history[ih] * gamma[ih];
+                    // gamma already equals beta_{ij} w_j <dF_j|F>.
+                    // Do not multiply by w_i again here.
+                    const double coeff = gamma[ih];
                     for (size_t i = 0; i < nvec; ++i)
                     {
                         broyden_step[i] -= coeff * u_history[ih][i];
@@ -329,7 +291,7 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
                 const double alignment = dot_product(broyden_step, F);
 
                 if (std::isfinite(broyden_step_norm) &&
-                    broyden_step_norm <= 2.0 * std::max(simple_step_norm, 1.0e-14) &&
+                    broyden_step_norm <= 5.0 * std::max(simple_step_norm, 1.0e-14) &&
                     alignment > 0.0)
                 {
                     step.swap(broyden_step);
@@ -344,27 +306,26 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
 
         x_prev = x;
         F_prev = F;
-        previous_residual_norm = residual_norm;
 
         for (size_t i = 0; i < nvec; ++i)
         {
             x[i] += step[i];
             if (!std::isfinite(x[i]))
             {
-                std::cout << "\033[31m!!!! Warning: non-finite density in Broyden iteration; reverting to best density and falling back to Solve_diag().\033[0m" << std::endl;
-                if (!best_x.empty())
-                {
-                    unpack_density(best_x, dim_p, dim_n, rho_p, rho_n);
-                    UpdateF();
-                }
-                Solve_diag();
-                return;
+                std::cout << "\033[31m!!!! Warning: non-finite density in Broyden iteration; aborting Broyden solve.\033[0m" << std::endl;
+                iterations = maxiter;
+                break;
             }
         }
 
         if (iterations < 10 || iterations % 10 == 0)
         {
             std::cout << "                 step = " << (used_broyden_step ? "Broyden" : "diag") << std::endl;
+        }
+
+        if (iterations >= maxiter)
+        {
+            break;
         }
 
         enforce_density_block(x, 0, dim_p, static_cast<double>(N_p));
