@@ -49,26 +49,56 @@ namespace
         std::copy(x.begin() + np, x.begin() + np + nn, n);
     }
 
-    void symmetrize_block(std::vector<double>& x, size_t offset, int dim)
+    void zero_hh_pp_block(std::vector<double>& z, size_t offset, int dim, int n_holes)
     {
         for (int i = 0; i < dim; ++i)
         {
-            for (int j = i + 1; j < dim; ++j)
+            const bool occ_i = (i < n_holes);
+            for (int j = 0; j < dim; ++j)
             {
-                const size_t ij = offset + static_cast<size_t>(i) * static_cast<size_t>(dim) + static_cast<size_t>(j);
-                const size_t ji = offset + static_cast<size_t>(j) * static_cast<size_t>(dim) + static_cast<size_t>(i);
-                const double avg = 0.5 * (x[ij] + x[ji]);
-                x[ij] = avg;
-                x[ji] = avg;
+                const bool occ_j = (j < n_holes);
+                if (occ_i == occ_j)
+                {
+                    z[offset + static_cast<size_t>(i) * static_cast<size_t>(dim) + static_cast<size_t>(j)] = 0.0;
+                }
             }
         }
     }
 
-    void symmetrize_field(std::vector<double>& x, int dim_p, int dim_n)
+    void enforce_antisymmetric_block(std::vector<double>& z, size_t offset, int dim)
+    {
+        for (int i = 0; i < dim; ++i)
+        {
+            z[offset + static_cast<size_t>(i) * static_cast<size_t>(dim) + static_cast<size_t>(i)] = 0.0;
+            for (int j = i + 1; j < dim; ++j)
+            {
+                const size_t ij = offset + static_cast<size_t>(i) * static_cast<size_t>(dim) + static_cast<size_t>(j);
+                const size_t ji = offset + static_cast<size_t>(j) * static_cast<size_t>(dim) + static_cast<size_t>(i);
+                const double a = 0.5 * (z[ij] - z[ji]);
+                z[ij] = a;
+                z[ji] = -a;
+            }
+        }
+    }
+
+    void enforce_thouless_generator(std::vector<double>& z, int dim_p, int dim_n, int N_p, int N_n)
     {
         const size_t np = static_cast<size_t>(dim_p) * static_cast<size_t>(dim_p);
-        symmetrize_block(x, 0, dim_p);
-        symmetrize_block(x, np, dim_n);
+        zero_hh_pp_block(z, 0, dim_p, N_p);
+        zero_hh_pp_block(z, np, dim_n, N_n);
+        enforce_antisymmetric_block(z, 0, dim_p);
+        enforce_antisymmetric_block(z, np, dim_n);
+    }
+
+    void cap_generator_norm(std::vector<double>& z, double max_norm)
+    {
+        double max_abs = 0.0;
+        for (double x : z) max_abs = std::max(max_abs, std::fabs(x));
+        if (max_abs > max_norm && max_abs > 0.0)
+        {
+            const double scale = max_norm / max_abs;
+            for (double& x : z) x *= scale;
+        }
     }
 
     bool solve_linear_system(std::vector<double> A, std::vector<double>& b, int n)
@@ -124,20 +154,18 @@ namespace
 }
 
 //*********************************************************************
-// Modified Broyden acceleration for the HF SCF loop.
+// Modified Broyden acceleration in the Thouless-gradient space.
 //
-// This class is orbital-state driven: Diagonalize() updates U, and
-// UpdateDensityMatrix() builds an idempotent density from U.  Therefore the
-// correct SCF vector to mix here is the Fock field, not the density.  The map is
-//
-//   Fock_in -> Diagonalize -> rho[U] -> UpdateF -> Fock_out,
-//
-// and the residual is R = Fock_out - Fock_in.  With alpha=1 and no Broyden
-// history this reduces exactly to the diagonal HF fixed-point iteration.
+// The HF variational condition is the vanishing particle-hole block of the
+// Fock matrix in the current HF basis.  This is the vector that should be mixed
+// in this class, because UpdateU_Thouless_pade() updates the orbital manifold
+// directly and keeps the density idempotent.  Mixing the full density or the
+// full Fock field includes large hh/pp pieces that are not the HF residual and
+// pollutes the Broyden metric.
 void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
 {
     if (history_size < 1) history_size = 1;
-    if (alpha <= 0.0) alpha = 0.5;
+    if (alpha <= 0.0) alpha = 0.35;
     if (alpha > 1.0) alpha = 1.0;
     if (w0 <= 0.0) w0 = 0.01;
 
@@ -145,25 +173,27 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
     const size_t nn = static_cast<size_t>(dim_n) * static_cast<size_t>(dim_n);
     const size_t nvec = np + nn;
     const double inv_sqrt_nvec = 1.0 / std::sqrt(static_cast<double>(nvec));
+    const double max_thouless_element = 0.35;
 
-    std::vector<double> x;
-    std::vector<double> x_out(nvec, 0.0);
-    std::vector<double> R(nvec, 0.0);
-    std::vector<double> x_prev;
-    std::vector<double> R_prev;
+    std::vector<double> residual(nvec, 0.0);
+    std::vector<double> residual_prev;
+    std::vector<double> step_prev;
 
-    std::deque<std::vector<double>> dR_history;
+    std::deque<std::vector<double>> dF_history;
     std::deque<std::vector<double>> u_history;
     std::deque<double> w_history;
 
     UpdateDensityMatrix();
     UpdateF();
-    pack_blocks(FockTerm_p, FockTerm_n, dim_p, dim_n, x);
-    symmetrize_field(x, dim_p, dim_n);
+    Diagonalize();
+    UpdateDensityMatrix();
+    UpdateF();
+    CalcEHF();
 
-    double prev_rms_field = std::numeric_limits<double>::infinity();
+    double previous_energy = EHF;
+    double previous_rms = std::numeric_limits<double>::infinity();
 
-    std::cout << "  Modified Broyden HF debug: vector = Fock field"
+    std::cout << "  Modified Broyden HF debug: vector = Thouless ph-gradient"
               << "  history_size = " << history_size
               << "  alpha = " << alpha
               << "  w0 = " << w0
@@ -171,90 +201,117 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
 
     for (iterations = 0; iterations < maxiter; ++iterations)
     {
-        unpack_blocks(x, dim_p, dim_n, FockTerm_p, FockTerm_n);
-        Diagonalize();
-        UpdateDensityMatrix();
-        UpdateF();
-        pack_blocks(FockTerm_p, FockTerm_n, dim_p, dim_n, x_out);
-        symmetrize_field(x_out, dim_p, dim_n);
+        // FockTerm is rebuilt in the original m-scheme basis at the end of each
+        // iteration.  Transform a copy of that field into the current HF basis;
+        // the ph block is the actual HF residual.
+        std::vector<double> Fock_orb_p(FockTerm_p, FockTerm_p + dim_p * dim_p);
+        std::vector<double> Fock_orb_n(FockTerm_n, FockTerm_n + dim_n * dim_n);
+        TransferOperatorToHFbasis(Fock_orb_p.data(), Fock_orb_n.data());
 
-        for (size_t i = 0; i < nvec; ++i)
+        std::fill(residual.begin(), residual.end(), 0.0);
+
+        for (int i = 0; i < dim_p; ++i)
         {
-            R[i] = x_out[i] - x[i];
+            const bool occ_i = (i < N_p);
+            for (int j = 0; j < dim_p; ++j)
+            {
+                const bool occ_j = (j < N_p);
+                if (occ_i == occ_j) continue;
+
+                const double denom = std::fabs(Fock_orb_p[i * dim_p + i] - Fock_orb_p[j * dim_p + j]);
+                double value = Fock_orb_p[i * dim_p + j] * (occ_i ? 1.0 : -1.0);
+                if (denom > 1.0e-5) value /= denom;
+                residual[static_cast<size_t>(i) * static_cast<size_t>(dim_p) + static_cast<size_t>(j)] = value;
+            }
         }
 
-        const double diff_field = l1_norm(R);
-        const double rms_field = vector_norm(R) * inv_sqrt_nvec;
-        const bool sp_converged = CheckConvergence();
+        for (int i = 0; i < dim_n; ++i)
+        {
+            const bool occ_i = (i < N_n);
+            for (int j = 0; j < dim_n; ++j)
+            {
+                const bool occ_j = (j < N_n);
+                if (occ_i == occ_j) continue;
 
-        if (iterations < 10 || iterations % 10 == 0 || sp_converged || rms_field < tolerance)
+                const double denom = std::fabs(Fock_orb_n[i * dim_n + i] - Fock_orb_n[j * dim_n + j]);
+                double value = Fock_orb_n[i * dim_n + j] * (occ_i ? 1.0 : -1.0);
+                if (denom > 1.0e-5) value /= denom;
+                residual[np + static_cast<size_t>(i) * static_cast<size_t>(dim_n) + static_cast<size_t>(j)] = value;
+            }
+        }
+
+        enforce_thouless_generator(residual, dim_p, dim_n, N_p, N_n);
+
+        const double grad_l1 = l1_norm(residual);
+        const double grad_rms = vector_norm(residual) * inv_sqrt_nvec;
+        const double dE = std::fabs(EHF - previous_energy);
+
+        if (iterations < 10 || iterations % 10 == 0 || grad_rms < tolerance || dE < tolerance)
         {
             std::cout << "  Broyden iter " << std::setw(5) << iterations
-                      << "  field_l1 = " << std::scientific << std::setprecision(6) << diff_field
-                      << "  field_rms = " << rms_field
-                      << "  hist = " << dR_history.size()
-                      << "  sp_conv = " << (sp_converged ? "yes" : "no")
+                      << "  grad_l1 = " << std::scientific << std::setprecision(6) << grad_l1
+                      << "  grad_rms = " << grad_rms
+                      << "  dE = " << dE
+                      << "  E = " << EHF
+                      << "  hist = " << dF_history.size()
                       << std::defaultfloat << std::endl;
         }
 
-        if (sp_converged || rms_field < tolerance)
+        if (iterations > 1 && (grad_rms < tolerance || dE < tolerance))
         {
-            x = x_out;
             break;
         }
 
-        if (!x_prev.empty() && !R_prev.empty())
+        if (!residual_prev.empty() && !step_prev.empty())
         {
-            std::vector<double> dx(nvec, 0.0);
-            std::vector<double> dR(nvec, 0.0);
+            std::vector<double> dF(nvec, 0.0);
             for (size_t i = 0; i < nvec; ++i)
             {
-                dx[i] = x[i] - x_prev[i];
-                dR[i] = R[i] - R_prev[i];
+                dF[i] = residual[i] - residual_prev[i];
             }
 
-            const double dR_norm = vector_norm(dR);
-            if (dR_norm > 1.0e-14)
+            const double dF_norm = vector_norm(dF);
+            if (dF_norm > 1.0e-14)
             {
+                std::vector<double> dx = step_prev;
                 for (size_t i = 0; i < nvec; ++i)
                 {
-                    dx[i] /= dR_norm;
-                    dR[i] /= dR_norm;
+                    dF[i] /= dF_norm;
+                    dx[i] /= dF_norm;
                 }
 
                 std::vector<double> u(nvec, 0.0);
                 for (size_t i = 0; i < nvec; ++i)
                 {
-                    u[i] = alpha * dR[i] + dx[i];
+                    u[i] = alpha * dF[i] + dx[i];
                 }
+                enforce_thouless_generator(u, dim_p, dim_n, N_p, N_n);
 
-                const double prev_norm2 = dot_product(R_prev, R_prev) / static_cast<double>(nvec);
+                const double prev_norm2 = dot_product(residual_prev, residual_prev) / static_cast<double>(nvec);
                 const double rms_prev = std::sqrt(std::max(1.0e-28, prev_norm2));
                 const double weight = std::max(1.0, 1.0 / rms_prev);
 
-                dR_history.push_back(std::move(dR));
+                dF_history.push_back(std::move(dF));
                 u_history.push_back(std::move(u));
                 w_history.push_back(weight);
 
-                while (static_cast<int>(dR_history.size()) > history_size)
+                while (static_cast<int>(dF_history.size()) > history_size)
                 {
-                    dR_history.pop_front();
+                    dF_history.pop_front();
                     u_history.pop_front();
                     w_history.pop_front();
                 }
             }
         }
 
-        std::vector<double> x_linear(nvec, 0.0);
+        std::vector<double> step(nvec, 0.0);
         for (size_t i = 0; i < nvec; ++i)
         {
-            x_linear[i] = x[i] + alpha * R[i];
+            step[i] = alpha * residual[i];
         }
 
-        std::vector<double> x_next = x_linear;
         bool used_broyden = false;
-        const int m = static_cast<int>(dR_history.size());
-
+        const int m = static_cast<int>(dF_history.size());
         if (m >= 2)
         {
             std::vector<double> B(static_cast<size_t>(m) * static_cast<size_t>(m), 0.0);
@@ -262,65 +319,76 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
 
             for (int i = 0; i < m; ++i)
             {
-                gamma[i] = w_history[i] * dot_product(dR_history[i], R);
+                gamma[i] = w_history[i] * dot_product(dF_history[i], residual);
                 for (int j = 0; j < m; ++j)
                 {
                     B[static_cast<size_t>(i) * m + j] =
-                        w_history[i] * w_history[j] * dot_product(dR_history[i], dR_history[j]);
+                        w_history[i] * w_history[j] * dot_product(dF_history[i], dF_history[j]);
                 }
                 B[static_cast<size_t>(i) * m + i] += w0 * w0;
             }
 
             if (solve_linear_system(B, gamma, m))
             {
-                std::vector<double> candidate = x_linear;
+                std::vector<double> candidate = step;
                 for (int ih = 0; ih < m; ++ih)
                 {
                     const double coeff = w_history[ih] * gamma[ih];
-                    if (coeff != 0.0)
+                    for (size_t i = 0; i < nvec; ++i)
                     {
-                        for (size_t i = 0; i < nvec; ++i)
-                        {
-                            candidate[i] -= coeff * u_history[ih][i];
-                        }
+                        candidate[i] -= coeff * u_history[ih][i];
                     }
                 }
 
+                enforce_thouless_generator(candidate, dim_p, dim_n, N_p, N_n);
+                cap_generator_norm(candidate, max_thouless_element);
                 if (all_finite(candidate))
                 {
-                    x_next.swap(candidate);
+                    step.swap(candidate);
                     used_broyden = true;
                 }
                 else
                 {
-                    dR_history.clear();
+                    dF_history.clear();
                     u_history.clear();
                     w_history.clear();
                 }
             }
         }
 
-        symmetrize_field(x_next, dim_p, dim_n);
+        enforce_thouless_generator(step, dim_p, dim_n, N_p, N_n);
+        cap_generator_norm(step, max_thouless_element);
 
-        if (used_broyden && rms_field > 1.5 * prev_rms_field)
+        std::vector<double> step_p(np, 0.0);
+        std::vector<double> step_n(nn, 0.0);
+        std::copy(step.begin(), step.begin() + np, step_p.begin());
+        std::copy(step.begin() + np, step.end(), step_n.begin());
+
+        previous_energy = EHF;
+        UpdateU_Thouless_pade(step_p.data(), step_n.data());
+        UpdateDensityMatrix();
+        UpdateF();
+        CalcEHF();
+
+        if (used_broyden && grad_rms > 1.5 * previous_rms)
         {
-            dR_history.clear();
+            dF_history.clear();
             u_history.clear();
             w_history.clear();
         }
 
         if (iterations < 10 || iterations % 10 == 0)
         {
-            std::cout << "                 step = " << (used_broyden ? "Broyden-field" : "linear-field") << std::endl;
+            std::cout << "                 step = " << (used_broyden ? "Broyden-Thouless" : "linear-Thouless") << std::endl;
         }
 
-        x_prev = x;
-        R_prev = R;
-        prev_rms_field = rms_field;
-        x = std::move(x_next);
+        residual_prev = residual;
+        step_prev = step;
+        previous_rms = grad_rms;
     }
 
-    unpack_blocks(x, dim_p, dim_n, FockTerm_p, FockTerm_n);
+    UpdateDensityMatrix();
+    UpdateF();
     Diagonalize();
     UpdateDensityMatrix();
     UpdateF();
@@ -329,11 +397,11 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
     std::cout << std::setw(15) << std::setprecision(10);
     if (iterations < maxiter)
     {
-        std::cout << "  HF converged with Fock-field modified Broyden after " << iterations << " iterations. " << std::endl;
+        std::cout << "  HF converged with Thouless-gradient modified Broyden after " << iterations << " iterations. " << std::endl;
     }
     else
     {
-        std::cout << "\033[31m!!!! Warning: Hartree-Fock calculation did not converge with Fock-field modified Broyden after "
+        std::cout << "\033[31m!!!! Warning: Hartree-Fock calculation did not converge with Thouless-gradient modified Broyden after "
                   << iterations << " iterations.\033[0m" << std::endl << std::endl;
     }
     PrintEHF();
