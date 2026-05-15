@@ -4,41 +4,50 @@
 
 namespace
 {
-    double dot_product(const std::vector<double> &a, const std::vector<double> &b)
+    double dot_product(const std::vector<double>& a, const std::vector<double>& b)
     {
-        double value = 0.0;
-        for (size_t i = 0; i < a.size(); ++i)
-        {
-            value += a[i] * b[i];
-        }
-        return value;
+        double v = 0.0;
+        for (size_t i = 0; i < a.size(); ++i) v += a[i] * b[i];
+        return v;
     }
 
-    double vector_norm(const std::vector<double> &a)
+    double vector_norm(const std::vector<double>& a)
     {
         return std::sqrt(dot_product(a, a));
     }
 
-    void pack_density(const double *rho_p, const double *rho_n,
-                      int dim_p, int dim_n, std::vector<double> &x)
+    double l1_norm(const std::vector<double>& a)
     {
-        const size_t np = static_cast<size_t>(dim_p) * static_cast<size_t>(dim_p);
-        const size_t nn = static_cast<size_t>(dim_n) * static_cast<size_t>(dim_n);
+        double v = 0.0;
+        for (double x : a) v += std::fabs(x);
+        return v;
+    }
+
+    bool all_finite(const std::vector<double>& a)
+    {
+        for (double x : a)
+            if (!std::isfinite(x)) return false;
+        return true;
+    }
+
+    void pack_density(const double* rho_p, const double* rho_n, int dim_p, int dim_n, std::vector<double>& x)
+    {
+        const size_t np = static_cast<size_t>(dim_p) * dim_p;
+        const size_t nn = static_cast<size_t>(dim_n) * dim_n;
         x.resize(np + nn);
         std::copy(rho_p, rho_p + np, x.begin());
         std::copy(rho_n, rho_n + nn, x.begin() + np);
     }
 
-    void unpack_density(const std::vector<double> &x, int dim_p, int dim_n,
-                        double *rho_p, double *rho_n)
+    void unpack_density(const std::vector<double>& x, int dim_p, int dim_n, double* rho_p, double* rho_n)
     {
-        const size_t np = static_cast<size_t>(dim_p) * static_cast<size_t>(dim_p);
-        const size_t nn = static_cast<size_t>(dim_n) * static_cast<size_t>(dim_n);
+        const size_t np = static_cast<size_t>(dim_p) * dim_p;
+        const size_t nn = static_cast<size_t>(dim_n) * dim_n;
         std::copy(x.begin(), x.begin() + np, rho_p);
         std::copy(x.begin() + np, x.begin() + np + nn, rho_n);
     }
 
-    void enforce_density_block(std::vector<double> &x, size_t offset, int dim, double target_trace)
+    void enforce_density_block(std::vector<double>& x, size_t offset, int dim, double target_trace)
     {
         for (int i = 0; i < dim; ++i)
         {
@@ -51,225 +60,141 @@ namespace
                 x[ji] = avg;
             }
         }
-
-        double trace = 0.0;
-        for (int i = 0; i < dim; ++i)
-        {
-            trace += x[offset + static_cast<size_t>(i) * dim + i];
-        }
-
-        const double correction = (target_trace - trace) / static_cast<double>(dim);
-        for (int i = 0; i < dim; ++i)
-        {
-            x[offset + static_cast<size_t>(i) * dim + i] += correction;
-        }
+        double tr = 0.0;
+        for (int i = 0; i < dim; ++i) tr += x[offset + static_cast<size_t>(i) * dim + i];
+        const double corr = (target_trace - tr) / static_cast<double>(dim);
+        for (int i = 0; i < dim; ++i) x[offset + static_cast<size_t>(i) * dim + i] += corr;
     }
 
-    bool solve_linear_system(std::vector<double> A, std::vector<double> &b, int n)
+    void enforce_density(std::vector<double>& x, int dim_p, int dim_n, int N_p, int N_n)
     {
-        const double pivot_tol = 1.0e-14;
+        const size_t np = static_cast<size_t>(dim_p) * dim_p;
+        enforce_density_block(x, 0, dim_p, static_cast<double>(N_p));
+        enforce_density_block(x, np, dim_n, static_cast<double>(N_n));
+    }
 
+    bool solve_linear_system(std::vector<double> A, std::vector<double>& b, int n)
+    {
+        const double tol = 1.0e-14;
         for (int k = 0; k < n; ++k)
         {
-            int pivot = k;
-            double max_abs = std::fabs(A[static_cast<size_t>(k) * n + k]);
+            int piv = k;
+            double mx = std::fabs(A[static_cast<size_t>(k) * n + k]);
             for (int i = k + 1; i < n; ++i)
             {
-                const double value = std::fabs(A[static_cast<size_t>(i) * n + k]);
-                if (value > max_abs)
-                {
-                    max_abs = value;
-                    pivot = i;
-                }
+                const double v = std::fabs(A[static_cast<size_t>(i) * n + k]);
+                if (v > mx) { mx = v; piv = i; }
             }
-
-            if (max_abs < pivot_tol)
-            {
-                return false;
-            }
-
-            if (pivot != k)
+            if (mx < tol) return false;
+            if (piv != k)
             {
                 for (int j = k; j < n; ++j)
-                {
-                    std::swap(A[static_cast<size_t>(k) * n + j],
-                              A[static_cast<size_t>(pivot) * n + j]);
-                }
-                std::swap(b[k], b[pivot]);
+                    std::swap(A[static_cast<size_t>(k) * n + j], A[static_cast<size_t>(piv) * n + j]);
+                std::swap(b[k], b[piv]);
             }
-
             const double diag = A[static_cast<size_t>(k) * n + k];
             for (int i = k + 1; i < n; ++i)
             {
-                const double factor = A[static_cast<size_t>(i) * n + k] / diag;
+                const double f = A[static_cast<size_t>(i) * n + k] / diag;
                 A[static_cast<size_t>(i) * n + k] = 0.0;
                 for (int j = k + 1; j < n; ++j)
-                {
-                    A[static_cast<size_t>(i) * n + j] -= factor * A[static_cast<size_t>(k) * n + j];
-                }
-                b[i] -= factor * b[k];
+                    A[static_cast<size_t>(i) * n + j] -= f * A[static_cast<size_t>(k) * n + j];
+                b[i] -= f * b[k];
             }
         }
-
         for (int i = n - 1; i >= 0; --i)
         {
             double rhs = b[i];
-            for (int j = i + 1; j < n; ++j)
-            {
-                rhs -= A[static_cast<size_t>(i) * n + j] * b[j];
-            }
+            for (int j = i + 1; j < n; ++j) rhs -= A[static_cast<size_t>(i) * n + j] * b[j];
             const double diag = A[static_cast<size_t>(i) * n + i];
-            if (std::fabs(diag) < pivot_tol)
-            {
-                return false;
-            }
+            if (std::fabs(diag) < tol) return false;
             b[i] = rhs / diag;
         }
-
         return true;
     }
 }
 
-//*********************************************************************
-// Fixed-point Hartree-Fock iteration accelerated by modified Broyden.
-// The vector being mixed is x=(rho_p,rho_n), with residual F=rho_out-rho_in.
-//
-// The key structural points are:
-//   1. Broyden convergence is controlled by rho_out-rho_in, not by
-//      CheckConvergence(), which only tests Fock eigenvalue stagnation.
-//   2. Trial steps are accepted only if they improve the explicitly evaluated
-//      next SCF residual.  The current point is included as a zero-step
-//      candidate, so the line search can never be forced to accept a worse
-//      density.
-//   3. Trial evaluations are allowed to mutate U/energies internally, but the
-//      beginning of each iteration always reconstructs F, U, and rho_out from
-//      the selected density x.
 void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
 {
-    if (history_size < 1)
-    {
-        history_size = 1;
-    }
-    if (alpha <= 0.0)
-    {
-        alpha = 1.0;
-    }
-    if (alpha > 1.0)
-    {
-        alpha = 1.0;
-    }
-    if (w0 <= 0.0)
-    {
-        w0 = 0.01;
-    }
+    if (history_size < 1) history_size = 1;
+    if (alpha <= 0.0) alpha = 1.0;
+    if (alpha > 1.0) alpha = 1.0;
+    if (w0 <= 0.0) w0 = 0.01;
 
-    const size_t np = static_cast<size_t>(dim_p) * static_cast<size_t>(dim_p);
-    const size_t nn = static_cast<size_t>(dim_n) * static_cast<size_t>(dim_n);
+    const size_t np = static_cast<size_t>(dim_p) * dim_p;
+    const size_t nn = static_cast<size_t>(dim_n) * dim_n;
     const size_t nvec = np + nn;
     const double inv_sqrt_nvec = 1.0 / std::sqrt(static_cast<double>(nvec));
-    const double residual_tolerance = std::max(tolerance, 1.0e-10);
 
-    std::vector<double> x;
-    std::vector<double> x_out(nvec, 0.0);
-    std::vector<double> F(nvec, 0.0);
-    std::vector<double> x_prev;
-    std::vector<double> F_prev;
-
-    std::deque<std::vector<double>> dF_history;
-    std::deque<std::vector<double>> u_history;
+    std::vector<double> x, x_out(nvec, 0.0), F(nvec, 0.0), x_prev, F_prev;
+    std::deque<std::vector<double>> dF_history, u_history;
     std::deque<double> w_history;
 
     UpdateDensityMatrix();
     pack_density(rho_p, rho_n, dim_p, dim_n, x);
-    enforce_density_block(x, 0, dim_p, static_cast<double>(N_p));
-    enforce_density_block(x, np, dim_n, static_cast<double>(N_n));
+    enforce_density(x, dim_p, dim_n, N_p, N_n);
 
-    auto evaluate_residual = [&](std::vector<double> candidate) -> double
-    {
-        enforce_density_block(candidate, 0, dim_p, static_cast<double>(N_p));
-        enforce_density_block(candidate, np, dim_n, static_cast<double>(N_n));
-        unpack_density(candidate, dim_p, dim_n, rho_p, rho_n);
-        UpdateF();
-        Diagonalize();
-        UpdateDensityMatrix();
-
-        std::vector<double> candidate_out(nvec, 0.0);
-        pack_density(rho_p, rho_n, dim_p, dim_n, candidate_out);
-
-        for (size_t i = 0; i < nvec; ++i)
-        {
-            candidate_out[i] -= candidate[i];
-        }
-        return vector_norm(candidate_out) * inv_sqrt_nvec;
-    };
-
-    const int broyden_start_iteration = 3;
-    const std::vector<double> line_search_scales = {1.0, 0.8, 0.5, 0.25, 0.10, 0.05, 0.02};
+    double prev_diff_density = std::numeric_limits<double>::infinity();
 
     std::cout << "  Modified Broyden HF debug: history_size = " << history_size
               << " alpha = " << alpha << " w0 = " << w0
-              << " residual_tol = " << residual_tolerance << std::endl;
+              << " density_tol = " << tolerance << std::endl;
 
     for (iterations = 0; iterations < maxiter; ++iterations)
     {
         unpack_density(x, dim_p, dim_n, rho_p, rho_n);
-
         UpdateF();
         Diagonalize();
         UpdateDensityMatrix();
         pack_density(rho_p, rho_n, dim_p, dim_n, x_out);
 
-        for (size_t i = 0; i < nvec; ++i)
-        {
-            F[i] = x_out[i] - x[i];
-        }
+        for (size_t i = 0; i < nvec; ++i) F[i] = x_out[i] - x[i];
 
-        const double residual_norm = vector_norm(F) * inv_sqrt_nvec;
+        const double diff_density = l1_norm(F);
+        const double rms_density = vector_norm(F) * inv_sqrt_nvec;
+        CalcEHF();
 
-        if (iterations < 10 || iterations % 10 == 0 || residual_norm < residual_tolerance)
+        if (iterations < 10 || iterations % 10 == 0 || (diff_density < tolerance && iterations > 1))
         {
             std::cout << "  Broyden iter " << std::setw(5) << iterations
-                      << "  rho_res = " << std::scientific << std::setprecision(6) << residual_norm
+                      << "  diff_density = " << std::scientific << std::setprecision(6) << diff_density
+                      << "  rms_density = " << rms_density
                       << "  hist = " << dF_history.size()
                       << std::defaultfloat << std::endl;
         }
 
-        if (residual_norm < residual_tolerance)
+        if (diff_density < tolerance && iterations > 1)
         {
             x = x_out;
             break;
         }
 
-        if (!F_prev.empty())
+        if (!x_prev.empty() && !F_prev.empty())
         {
-            std::vector<double> dF(nvec, 0.0);
-            std::vector<double> dx(nvec, 0.0);
+            std::vector<double> dx(nvec, 0.0), dF(nvec, 0.0);
             for (size_t i = 0; i < nvec; ++i)
             {
-                dF[i] = F[i] - F_prev[i];
                 dx[i] = x[i] - x_prev[i];
+                dF[i] = F[i] - F_prev[i];
             }
-
             const double dF_norm = vector_norm(dF);
             if (dF_norm > 1.0e-14)
             {
                 for (size_t i = 0; i < nvec; ++i)
                 {
-                    dF[i] /= dF_norm;
                     dx[i] /= dF_norm;
+                    dF[i] /= dF_norm;
                 }
-
                 std::vector<double> u(nvec, 0.0);
-                for (size_t i = 0; i < nvec; ++i)
-                {
-                    u[i] = alpha * dF[i] + dx[i];
-                }
+                for (size_t i = 0; i < nvec; ++i) u[i] = alpha * dF[i] + dx[i];
 
-                const double weight = std::min(1.0e8, std::max(1.0, 1.0 / std::max(residual_norm, 1.0e-12)));
+                const double prev_norm2 = dot_product(F_prev, F_prev) / static_cast<double>(nvec);
+                const double rms_prev = std::sqrt(std::max(1.0e-28, prev_norm2));
+                const double weight = std::max(1.0, 1.0 / rms_prev);
+
                 dF_history.push_back(std::move(dF));
                 u_history.push_back(std::move(u));
                 w_history.push_back(weight);
-
                 while (static_cast<int>(dF_history.size()) > history_size)
                 {
                     dF_history.pop_front();
@@ -279,122 +204,61 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
             }
         }
 
-        std::vector<double> simple_step(nvec, 0.0);
-        for (size_t i = 0; i < nvec; ++i)
-        {
-            simple_step[i] = alpha * F[i];
-        }
+        std::vector<double> x_linear(nvec, 0.0);
+        for (size_t i = 0; i < nvec; ++i) x_linear[i] = x[i] + alpha * F[i];
 
-        std::vector<double> broyden_step = simple_step;
-        bool have_broyden_step = false;
+        std::vector<double> x_next = x_linear;
+        bool used_broyden = false;
         const int m = static_cast<int>(dF_history.size());
-        if (iterations >= broyden_start_iteration && m > 0)
+        if (m >= 2)
         {
-            std::vector<double> A(static_cast<size_t>(m) * m, 0.0);
-            std::vector<double> gamma(m, 0.0);
-
+            std::vector<double> B(static_cast<size_t>(m) * m, 0.0), gamma(m, 0.0);
             for (int i = 0; i < m; ++i)
             {
                 gamma[i] = w_history[i] * dot_product(dF_history[i], F);
                 for (int j = 0; j < m; ++j)
+                    B[static_cast<size_t>(i) * m + j] = w_history[i] * w_history[j] * dot_product(dF_history[i], dF_history[j]);
+                B[static_cast<size_t>(i) * m + i] += w0 * w0;
+            }
+            if (solve_linear_system(B, gamma, m))
+            {
+                std::vector<double> cand = x_linear;
+                for (int h = 0; h < m; ++h)
                 {
-                    A[static_cast<size_t>(i) * m + j] =
-                        w_history[i] * w_history[j] * dot_product(dF_history[i], dF_history[j]);
+                    const double coeff = w_history[h] * gamma[h];
+                    if (coeff != 0.0)
+                        for (size_t i = 0; i < nvec; ++i) cand[i] -= coeff * u_history[h][i];
                 }
-                A[static_cast<size_t>(i) * m + i] += w0 * w0;
-            }
-
-            if (solve_linear_system(A, gamma, m))
-            {
-                for (int ih = 0; ih < m; ++ih)
+                if (all_finite(cand))
                 {
-                    const double coeff = w_history[ih] * gamma[ih];
-                    for (size_t i = 0; i < nvec; ++i)
-                    {
-                        broyden_step[i] -= coeff * u_history[ih][i];
-                    }
+                    x_next.swap(cand);
+                    used_broyden = true;
                 }
-                have_broyden_step = std::isfinite(vector_norm(broyden_step));
-            }
-            else
-            {
-                std::cout << "  Warning: Broyden history matrix is singular; using tested simple mixing." << std::endl;
-            }
-        }
-
-        // Include the current point as the zero-step candidate.  This is the
-        // structural fix: previous versions always accepted one of the trial
-        // steps, even when every tested step made rho_res worse.
-        std::vector<double> best_x = x;
-        double best_trial_residual = residual_norm;
-        std::string best_label = "keep(0)";
-
-        auto test_step = [&](const std::vector<double> &step, double scale, const std::string &label)
-        {
-            std::vector<double> candidate = x;
-            for (size_t i = 0; i < nvec; ++i)
-            {
-                candidate[i] += scale * step[i];
-            }
-            const double trial_residual = evaluate_residual(candidate);
-            if (trial_residual < best_trial_residual)
-            {
-                best_trial_residual = trial_residual;
-                best_x = std::move(candidate);
-                best_label = label;
-            }
-        };
-
-        for (double scale : line_search_scales)
-        {
-            test_step(simple_step, scale, "simple(" + std::to_string(scale) + ")");
-        }
-        if (have_broyden_step)
-        {
-            for (double scale : line_search_scales)
-            {
-                test_step(broyden_step, scale, "Broyden(" + std::to_string(scale) + ")");
+                else
+                {
+                    dF_history.clear();
+                    u_history.clear();
+                    w_history.clear();
+                }
             }
         }
 
-        if (best_label == "keep(0)")
+        enforce_density(x_next, dim_p, dim_n, N_p, N_n);
+
+        if (used_broyden && diff_density > 1.5 * prev_diff_density)
         {
-            // A stale Broyden subspace can make all tested directions bad.  Do
-            // not keep collecting nearly identical secant vectors in that case.
             dF_history.clear();
             u_history.clear();
             w_history.clear();
-            F_prev.clear();
-            x_prev.clear();
-        }
-        else
-        {
-            x_prev = x;
-            F_prev = F;
-            x = best_x;
         }
 
-        // Restore the object to the accepted density.  This avoids leaving U,
-        // energies, and rho from the last rejected trial evaluation.
-        unpack_density(x, dim_p, dim_n, rho_p, rho_n);
-        UpdateF();
-        Diagonalize();
-        UpdateDensityMatrix();
-        pack_density(rho_p, rho_n, dim_p, dim_n, x_out);
+        if (iterations < 10 || iterations % 10 == 0)
+            std::cout << "                 step = " << (used_broyden ? "Broyden" : "linear") << std::endl;
 
-        if (iterations < 10 || iterations % 10 == 0 || best_label == "keep(0)")
-        {
-            std::cout << "                 accepted = " << best_label
-                      << "  trial_rho_res = " << std::scientific << best_trial_residual
-                      << std::defaultfloat << std::endl;
-        }
-
-        if (!std::isfinite(best_trial_residual))
-        {
-            std::cout << "\033[31m!!!! Warning: non-finite Broyden trial residual; aborting Broyden solve.\033[0m" << std::endl;
-            iterations = maxiter;
-            break;
-        }
+        x_prev = x;
+        F_prev = F;
+        prev_diff_density = diff_density;
+        x = std::move(x_next);
     }
 
     unpack_density(x, dim_p, dim_n, rho_p, rho_n);
@@ -406,14 +270,9 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
 
     std::cout << std::setw(15) << std::setprecision(10);
     if (iterations < maxiter)
-    {
         std::cout << "  HF converged with modified Broyden after " << iterations << " iterations. " << std::endl;
-    }
     else
-    {
         std::cout << "\033[31m!!!! Warning: Hartree-Fock calculation did not converge with modified Broyden after "
-                  << iterations << " iterations.\033[0m" << std::endl;
-        std::cout << std::endl;
-    }
+                  << iterations << " iterations.\033[0m" << std::endl << std::endl;
     PrintEHF();
 }
