@@ -75,7 +75,7 @@ PYBIND11_MODULE(pyHFAndHFB, m)
         .def("Solve_diag", &HartreeFock::Solve_diag)
         .def("Solve_hybrid", &HartreeFock::Solve_hybrid)
         .def("Solve_broyden", &HartreeFock::Solve_broyden,
-             py::arg("history_size") = 8, py::arg("alpha") = 1.0, py::arg("w0") = 0.01)
+             py::arg("history_size") = 8, py::arg("alpha") = 0.5, py::arg("w0") = 0.01)
         .def("Solve_broyden_Constraint", &HartreeFock::Solve_broyden_Constraint,
              py::arg("history_size") = 8, py::arg("alpha") = 0.2, py::arg("w0") = 0.01,
              py::arg("constraint_strength") = 0.1)
