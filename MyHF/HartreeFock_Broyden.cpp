@@ -133,6 +133,10 @@ namespace
 //*********************************************************************
 // Fixed-point Hartree-Fock iteration accelerated by modified Broyden.
 // The vector being mixed is x=(rho_p,rho_n), with residual F=rho_out-rho_in.
+//
+// Important: CheckConvergence() only checks Fock eigenvalue stagnation.  It is
+// not enough for Broyden because the eigenvalues can stagnate while the density
+// fixed-point residual remains large.  Here Broyden stops only on rho_res.
 void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
 {
     if (history_size < 1)
@@ -156,6 +160,7 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
     const size_t nn = static_cast<size_t>(dim_n) * static_cast<size_t>(dim_n);
     const size_t nvec = np + nn;
     const double inv_sqrt_nvec = 1.0 / std::sqrt(static_cast<double>(nvec));
+    const double residual_tolerance = std::max(tolerance, 1.0e-10);
 
     std::vector<double> x;
     std::vector<double> x_out(nvec, 0.0);
@@ -175,7 +180,8 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
     const int broyden_start_iteration = 3;
 
     std::cout << "  Modified Broyden HF debug: history_size = " << history_size
-              << " alpha = " << alpha << " w0 = " << w0 << std::endl;
+              << " alpha = " << alpha << " w0 = " << w0
+              << " residual_tol = " << residual_tolerance << std::endl;
 
     for (iterations = 0; iterations < maxiter; ++iterations)
     {
@@ -192,20 +198,28 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
         }
 
         const double residual_norm = vector_norm(F) * inv_sqrt_nvec;
-        const bool energy_converged = CheckConvergence();
+        const bool sp_energy_stagnated = CheckConvergence();
 
-        if (iterations < 10 || iterations % 10 == 0 || energy_converged)
+        if (iterations < 10 || iterations % 10 == 0 || residual_norm < residual_tolerance || sp_energy_stagnated)
         {
             std::cout << "  Broyden iter " << std::setw(5) << iterations
                       << "  rho_res = " << std::scientific << std::setprecision(6) << residual_norm
                       << "  hist = " << dF_history.size()
+                      << "  sp_stag = " << (sp_energy_stagnated ? "yes" : "no")
                       << std::defaultfloat << std::endl;
         }
 
-        if (energy_converged || residual_norm < tolerance)
+        if (residual_norm < residual_tolerance)
         {
             x = x_out;
             break;
+        }
+
+        if (sp_energy_stagnated && residual_norm > 1.0e-5)
+        {
+            std::cout << "  Warning: Fock eigenvalues stagnated but rho_res is still "
+                      << std::scientific << residual_norm << std::defaultfloat
+                      << "; continuing Broyden." << std::endl;
         }
 
         if (!F_prev.empty())
@@ -277,9 +291,9 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
                 std::vector<double> broyden_step = step;
                 for (int ih = 0; ih < m; ++ih)
                 {
-                    // gamma already equals beta_{ij} w_j <dF_j|F>.
-                    // Do not multiply by w_i again here.
-                    const double coeff = gamma[ih];
+                    // Johnson modified Broyden: gamma=A^{-1}c, c_i=w_i<dF_i|F>.
+                    // The update contains another factor w_i multiplying gamma_i.
+                    const double coeff = w_history[ih] * gamma[ih];
                     for (size_t i = 0; i < nvec; ++i)
                     {
                         broyden_step[i] -= coeff * u_history[ih][i];
