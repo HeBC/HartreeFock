@@ -134,9 +134,10 @@ namespace
 // Fixed-point Hartree-Fock iteration accelerated by modified Broyden.
 // The vector being mixed is x=(rho_p,rho_n), with residual F=rho_out-rho_in.
 //
-// Important: CheckConvergence() only checks Fock eigenvalue stagnation.  It is
-// not enough for Broyden because the eigenvalues can stagnate while the density
-// fixed-point residual remains large.  Here Broyden stops only on rho_res.
+// The important safeguard is residual-tested mixing.  A Broyden vector is not
+// accepted just because its norm/alignment looks reasonable; this routine
+// explicitly evaluates the next SCF residual for the trial density and accepts
+// the candidate with the smallest tested residual.
 void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
 {
     if (history_size < 1)
@@ -177,7 +178,27 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
     enforce_density_block(x, 0, dim_p, static_cast<double>(N_p));
     enforce_density_block(x, np, dim_n, static_cast<double>(N_n));
 
+    auto evaluate_residual = [&](std::vector<double> candidate) -> double
+    {
+        enforce_density_block(candidate, 0, dim_p, static_cast<double>(N_p));
+        enforce_density_block(candidate, np, dim_n, static_cast<double>(N_n));
+        unpack_density(candidate, dim_p, dim_n, rho_p, rho_n);
+        UpdateF();
+        Diagonalize();
+        UpdateDensityMatrix();
+
+        std::vector<double> candidate_out(nvec, 0.0);
+        pack_density(rho_p, rho_n, dim_p, dim_n, candidate_out);
+
+        for (size_t i = 0; i < nvec; ++i)
+        {
+            candidate_out[i] -= candidate[i];
+        }
+        return vector_norm(candidate_out) * inv_sqrt_nvec;
+    };
+
     const int broyden_start_iteration = 3;
+    const std::vector<double> line_search_scales = {1.0, 0.8, 0.5, 0.25, 0.10};
 
     std::cout << "  Modified Broyden HF debug: history_size = " << history_size
               << " alpha = " << alpha << " w0 = " << w0
@@ -213,13 +234,6 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
         {
             x = x_out;
             break;
-        }
-
-        if (sp_energy_stagnated && residual_norm > 1.0e-5)
-        {
-            std::cout << "  Warning: Fock eigenvalues stagnated but rho_res is still "
-                      << std::scientific << residual_norm << std::defaultfloat
-                      << "; continuing Broyden." << std::endl;
         }
 
         if (!F_prev.empty())
@@ -262,13 +276,14 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
         }
 
         // Simple fixed-point update: x_{k+1}=x_k+alpha F_k.
-        std::vector<double> step(nvec, 0.0);
+        std::vector<double> simple_step(nvec, 0.0);
         for (size_t i = 0; i < nvec; ++i)
         {
-            step[i] = alpha * F[i];
+            simple_step[i] = alpha * F[i];
         }
 
-        bool used_broyden_step = false;
+        std::vector<double> broyden_step = simple_step;
+        bool have_broyden_step = false;
         const int m = static_cast<int>(dF_history.size());
         if (iterations >= broyden_start_iteration && m > 0)
         {
@@ -288,62 +303,74 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
 
             if (solve_linear_system(A, gamma, m))
             {
-                std::vector<double> broyden_step = step;
                 for (int ih = 0; ih < m; ++ih)
                 {
-                    // Johnson modified Broyden: gamma=A^{-1}c, c_i=w_i<dF_i|F>.
-                    // The update contains another factor w_i multiplying gamma_i.
                     const double coeff = w_history[ih] * gamma[ih];
                     for (size_t i = 0; i < nvec; ++i)
                     {
                         broyden_step[i] -= coeff * u_history[ih][i];
                     }
                 }
-
-                const double simple_step_norm = vector_norm(step) * inv_sqrt_nvec;
-                const double broyden_step_norm = vector_norm(broyden_step) * inv_sqrt_nvec;
-                const double alignment = dot_product(broyden_step, F);
-
-                if (std::isfinite(broyden_step_norm) &&
-                    broyden_step_norm <= 5.0 * std::max(simple_step_norm, 1.0e-14) &&
-                    alignment > 0.0)
-                {
-                    step.swap(broyden_step);
-                    used_broyden_step = true;
-                }
+                have_broyden_step = std::isfinite(vector_norm(broyden_step));
             }
             else
             {
-                std::cout << "  Warning: Broyden history matrix is singular; using diagonal update." << std::endl;
+                std::cout << "  Warning: Broyden history matrix is singular; using tested simple mixing." << std::endl;
+            }
+        }
+
+        // Residual-tested line search.  This fixes the previous bug where a
+        // Broyden step was accepted using only a norm/alignment heuristic, which
+        // allowed steps that immediately worsened the actual SCF residual.
+        std::vector<double> best_x = x;
+        double best_trial_residual = std::numeric_limits<double>::infinity();
+        std::string best_label = "none";
+
+        auto test_step = [&](const std::vector<double> &step, double scale, const std::string &label)
+        {
+            std::vector<double> candidate = x;
+            for (size_t i = 0; i < nvec; ++i)
+            {
+                candidate[i] += scale * step[i];
+            }
+            const double trial_residual = evaluate_residual(candidate);
+            if (trial_residual < best_trial_residual)
+            {
+                best_trial_residual = trial_residual;
+                best_x = std::move(candidate);
+                best_label = label;
+            }
+        };
+
+        for (double scale : line_search_scales)
+        {
+            test_step(simple_step, scale, "simple(" + std::to_string(scale) + ")");
+        }
+        if (have_broyden_step)
+        {
+            for (double scale : line_search_scales)
+            {
+                test_step(broyden_step, scale, "Broyden(" + std::to_string(scale) + ")");
             }
         }
 
         x_prev = x;
         F_prev = F;
-
-        for (size_t i = 0; i < nvec; ++i)
-        {
-            x[i] += step[i];
-            if (!std::isfinite(x[i]))
-            {
-                std::cout << "\033[31m!!!! Warning: non-finite density in Broyden iteration; aborting Broyden solve.\033[0m" << std::endl;
-                iterations = maxiter;
-                break;
-            }
-        }
+        x = best_x;
 
         if (iterations < 10 || iterations % 10 == 0)
         {
-            std::cout << "                 step = " << (used_broyden_step ? "Broyden" : "diag") << std::endl;
+            std::cout << "                 accepted = " << best_label
+                      << "  trial_rho_res = " << std::scientific << best_trial_residual
+                      << std::defaultfloat << std::endl;
         }
 
-        if (iterations >= maxiter)
+        if (!std::isfinite(best_trial_residual))
         {
+            std::cout << "\033[31m!!!! Warning: non-finite Broyden trial residual; aborting Broyden solve.\033[0m" << std::endl;
+            iterations = maxiter;
             break;
         }
-
-        enforce_density_block(x, 0, dim_p, static_cast<double>(N_p));
-        enforce_density_block(x, np, dim_n, static_cast<double>(N_n));
     }
 
     unpack_density(x, dim_p, dim_n, rho_p, rho_n);
