@@ -134,10 +134,16 @@ namespace
 // Fixed-point Hartree-Fock iteration accelerated by modified Broyden.
 // The vector being mixed is x=(rho_p,rho_n), with residual F=rho_out-rho_in.
 //
-// The important safeguard is residual-tested mixing.  A Broyden vector is not
-// accepted just because its norm/alignment looks reasonable; this routine
-// explicitly evaluates the next SCF residual for the trial density and accepts
-// the candidate with the smallest tested residual.
+// The key structural points are:
+//   1. Broyden convergence is controlled by rho_out-rho_in, not by
+//      CheckConvergence(), which only tests Fock eigenvalue stagnation.
+//   2. Trial steps are accepted only if they improve the explicitly evaluated
+//      next SCF residual.  The current point is included as a zero-step
+//      candidate, so the line search can never be forced to accept a worse
+//      density.
+//   3. Trial evaluations are allowed to mutate U/energies internally, but the
+//      beginning of each iteration always reconstructs F, U, and rho_out from
+//      the selected density x.
 void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
 {
     if (history_size < 1)
@@ -198,7 +204,7 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
     };
 
     const int broyden_start_iteration = 3;
-    const std::vector<double> line_search_scales = {1.0, 0.8, 0.5, 0.25, 0.10};
+    const std::vector<double> line_search_scales = {1.0, 0.8, 0.5, 0.25, 0.10, 0.05, 0.02};
 
     std::cout << "  Modified Broyden HF debug: history_size = " << history_size
               << " alpha = " << alpha << " w0 = " << w0
@@ -219,14 +225,12 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
         }
 
         const double residual_norm = vector_norm(F) * inv_sqrt_nvec;
-        const bool sp_energy_stagnated = CheckConvergence();
 
-        if (iterations < 10 || iterations % 10 == 0 || residual_norm < residual_tolerance || sp_energy_stagnated)
+        if (iterations < 10 || iterations % 10 == 0 || residual_norm < residual_tolerance)
         {
             std::cout << "  Broyden iter " << std::setw(5) << iterations
                       << "  rho_res = " << std::scientific << std::setprecision(6) << residual_norm
                       << "  hist = " << dF_history.size()
-                      << "  sp_stag = " << (sp_energy_stagnated ? "yes" : "no")
                       << std::defaultfloat << std::endl;
         }
 
@@ -275,7 +279,6 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
             }
         }
 
-        // Simple fixed-point update: x_{k+1}=x_k+alpha F_k.
         std::vector<double> simple_step(nvec, 0.0);
         for (size_t i = 0; i < nvec; ++i)
         {
@@ -319,12 +322,12 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
             }
         }
 
-        // Residual-tested line search.  This fixes the previous bug where a
-        // Broyden step was accepted using only a norm/alignment heuristic, which
-        // allowed steps that immediately worsened the actual SCF residual.
+        // Include the current point as the zero-step candidate.  This is the
+        // structural fix: previous versions always accepted one of the trial
+        // steps, even when every tested step made rho_res worse.
         std::vector<double> best_x = x;
-        double best_trial_residual = std::numeric_limits<double>::infinity();
-        std::string best_label = "none";
+        double best_trial_residual = residual_norm;
+        std::string best_label = "keep(0)";
 
         auto test_step = [&](const std::vector<double> &step, double scale, const std::string &label)
         {
@@ -354,11 +357,32 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
             }
         }
 
-        x_prev = x;
-        F_prev = F;
-        x = best_x;
+        if (best_label == "keep(0)")
+        {
+            // A stale Broyden subspace can make all tested directions bad.  Do
+            // not keep collecting nearly identical secant vectors in that case.
+            dF_history.clear();
+            u_history.clear();
+            w_history.clear();
+            F_prev.clear();
+            x_prev.clear();
+        }
+        else
+        {
+            x_prev = x;
+            F_prev = F;
+            x = best_x;
+        }
 
-        if (iterations < 10 || iterations % 10 == 0)
+        // Restore the object to the accepted density.  This avoids leaving U,
+        // energies, and rho from the last rejected trial evaluation.
+        unpack_density(x, dim_p, dim_n, rho_p, rho_n);
+        UpdateF();
+        Diagonalize();
+        UpdateDensityMatrix();
+        pack_density(rho_p, rho_n, dim_p, dim_n, x_out);
+
+        if (iterations < 10 || iterations % 10 == 0 || best_label == "keep(0)")
         {
             std::cout << "                 accepted = " << best_label
                       << "  trial_rho_res = " << std::scientific << best_trial_residual
