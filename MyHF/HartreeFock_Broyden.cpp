@@ -4,6 +4,14 @@
 
 namespace
 {
+    struct ConstraintData
+    {
+        std::vector<std::string> names;
+        std::vector<double> targets;
+        std::vector<std::vector<double>> Qp;
+        std::vector<std::vector<double>> Qn;
+    };
+
     double dot_product(const std::vector<double>& a, const std::vector<double>& b)
     {
         double v = 0.0;
@@ -128,20 +136,30 @@ namespace
     }
 }
 
+void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
+{
+    Solve_broyden_impl(history_size, alpha, w0, false, 0.0);
+}
+
+void HartreeFock::Solve_broyden_Constraint(int history_size, double alpha, double w0, double constraint_strength)
+{
+    Solve_broyden_impl(history_size, alpha, w0, true, constraint_strength);
+}
+
 //*********************************************************************
 // Modified Broyden acceleration in Thouless particle-hole space.
 //
-// Important convention:
-//   The mixed vector below is a Thouless *displacement*, not the raw gradient.
-//   For a simple stable step we need Z = -alpha * gradient.  The previous
-//   implementation used the opposite sign, which explains the immediate energy
-//   increase and the non-convergent plateau.
-void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
+// The Broyden vector is the Thouless displacement that would reduce the
+// particle-hole Fock residual.  The sign is chosen so the linear step is the
+// same descent direction as the working gradient solver.
+void HartreeFock::Solve_broyden_impl(int history_size, double alpha, double w0,
+                                     bool use_constraints, double constraint_strength)
 {
     if (history_size < 1) history_size = 1;
-    if (alpha <= 0.0) alpha = 0.25;
+    if (alpha <= 0.0) alpha = use_constraints ? 0.20 : 0.25;
     if (alpha > 1.0) alpha = 1.0;
     if (w0 <= 0.0) w0 = 0.01;
+    if (constraint_strength < 0.0) constraint_strength = 0.0;
 
     const size_t np = static_cast<size_t>(dim_p) * static_cast<size_t>(dim_p);
     const size_t nn = static_cast<size_t>(dim_n) * static_cast<size_t>(dim_n);
@@ -149,13 +167,181 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
     if (nvec == 0) return;
 
     const double inv_sqrt_nvec = 1.0 / std::sqrt(static_cast<double>(nvec));
-    const double max_thouless_element = 5.0e-2;
+    const double max_thouless_element = use_constraints ? 3.0e-2 : 5.0e-2;
 
-    auto rebuild_fields = [&]()
+    ConstraintData constraints;
+    if (use_constraints)
+    {
+        if (modelspace->GetIsShapeConstrained())
+        {
+            constraints.names.push_back("QuadrupoleQ0");
+            constraints.targets.push_back(modelspace->GetShapeQ0());
+            constraints.names.push_back("QuadrupoleQ2");
+            constraints.targets.push_back(modelspace->GetShapeQ2());
+        }
+        if (modelspace->Get_Jx_constraint())
+        {
+            constraints.names.push_back("Jx");
+            constraints.targets.push_back(std::sqrt(modelspace->GetTargetJx()));
+        }
+        if (modelspace->Get_Jz_constraint())
+        {
+            constraints.names.push_back("Jz");
+            constraints.targets.push_back(modelspace->GetTargetJz());
+        }
+
+        if (constraints.names.empty())
+        {
+            std::cout << "  No active constraints. Falling back to unconstrained Broyden." << std::endl;
+            use_constraints = false;
+        }
+        else
+        {
+            constraints.Qp.assign(constraints.names.size(), std::vector<double>(np, 0.0));
+            constraints.Qn.assign(constraints.names.size(), std::vector<double>(nn, 0.0));
+
+            for (size_t iq = 0; iq < constraints.names.size(); ++iq)
+            {
+                if (constraints.names[iq] == "QuadrupoleQ0")
+                {
+                    for (size_t k = 0; k < Ham->Q2MEs_p.Q0_list.size(); ++k)
+                    {
+                        const int qidx = Ham->Q2MEs_p.Q0_list[k];
+                        const int ia = Ham->MSMEs.OB_p[qidx].GetIndex_a();
+                        const int ib = Ham->MSMEs.OB_p[qidx].GetIndex_b();
+                        constraints.Qp[iq][ia * dim_p + ib] = Ham->Q2MEs_p.Q0_MSMEs[k];
+                    }
+                    for (size_t k = 0; k < Ham->Q2MEs_n.Q0_list.size(); ++k)
+                    {
+                        const int qidx = Ham->Q2MEs_n.Q0_list[k];
+                        const int ia = Ham->MSMEs.OB_n[qidx].GetIndex_a();
+                        const int ib = Ham->MSMEs.OB_n[qidx].GetIndex_b();
+                        constraints.Qn[iq][ia * dim_n + ib] = Ham->Q2MEs_n.Q0_MSMEs[k];
+                    }
+                }
+                else if (constraints.names[iq] == "QuadrupoleQ2")
+                {
+                    for (size_t k = 0; k < Ham->Q2MEs_p.Q2_list.size(); ++k)
+                    {
+                        const int qidx = Ham->Q2MEs_p.Q2_list[k];
+                        const int ia = Ham->MSMEs.OB_p[qidx].GetIndex_a();
+                        const int ib = Ham->MSMEs.OB_p[qidx].GetIndex_b();
+                        constraints.Qp[iq][ia * dim_p + ib] = Ham->Q2MEs_p.Q2_MSMEs[k];
+                    }
+                    for (size_t k = 0; k < Ham->Q2MEs_p.Q_2_list.size(); ++k)
+                    {
+                        const int qidx = Ham->Q2MEs_p.Q_2_list[k];
+                        const int ia = Ham->MSMEs.OB_p[qidx].GetIndex_a();
+                        const int ib = Ham->MSMEs.OB_p[qidx].GetIndex_b();
+                        constraints.Qp[iq][ia * dim_p + ib] += Ham->Q2MEs_p.Q_2_MSMEs[k];
+                    }
+                    for (size_t k = 0; k < Ham->Q2MEs_n.Q2_list.size(); ++k)
+                    {
+                        const int qidx = Ham->Q2MEs_n.Q2_list[k];
+                        const int ia = Ham->MSMEs.OB_n[qidx].GetIndex_a();
+                        const int ib = Ham->MSMEs.OB_n[qidx].GetIndex_b();
+                        constraints.Qn[iq][ia * dim_n + ib] = Ham->Q2MEs_n.Q2_MSMEs[k];
+                    }
+                    for (size_t k = 0; k < Ham->Q2MEs_n.Q_2_list.size(); ++k)
+                    {
+                        const int qidx = Ham->Q2MEs_n.Q_2_list[k];
+                        const int ia = Ham->MSMEs.OB_n[qidx].GetIndex_a();
+                        const int ib = Ham->MSMEs.OB_n[qidx].GetIndex_b();
+                        constraints.Qn[iq][ia * dim_n + ib] += Ham->Q2MEs_n.Q_2_MSMEs[k];
+                    }
+                }
+                else if (constraints.names[iq] == "Jx")
+                {
+                    for (int i = 0; i < dim_p; ++i)
+                    {
+                        for (int j = 0; j < dim_p; ++j)
+                        {
+                            const int oi = modelspace->Get_ProtonOrbitIndexInMscheme(i);
+                            const int oj = modelspace->Get_ProtonOrbitIndexInMscheme(j);
+                            if (modelspace->Orbits_p[oi].l != modelspace->Orbits_p[oj].l) continue;
+                            if (modelspace->Orbits_p[oi].n != modelspace->Orbits_p[oj].n) continue;
+                            const int ji = modelspace->Get_MSmatrix_2j(Proton, i);
+                            const int jj = modelspace->Get_MSmatrix_2j(Proton, j);
+                            if (ji != jj) continue;
+                            const int mi = modelspace->Get_MSmatrix_2m(Proton, i);
+                            const int mj = modelspace->Get_MSmatrix_2m(Proton, j);
+                            if (mi == mj + 2)
+                                constraints.Qp[iq][i * dim_p + j] = 0.5 * std::sqrt((jj - mj) * (jj + mj + 2.0) / 4.0);
+                            else if (mi == mj - 2)
+                                constraints.Qp[iq][i * dim_p + j] = 0.5 * std::sqrt((jj + mj) * (jj - mj + 2.0) / 4.0);
+                        }
+                    }
+                    for (int i = 0; i < dim_n; ++i)
+                    {
+                        for (int j = 0; j < dim_n; ++j)
+                        {
+                            const int oi = modelspace->Get_NeutronOrbitIndexInMscheme(i);
+                            const int oj = modelspace->Get_NeutronOrbitIndexInMscheme(j);
+                            if (modelspace->Orbits_n[oi].l != modelspace->Orbits_n[oj].l) continue;
+                            if (modelspace->Orbits_n[oi].n != modelspace->Orbits_n[oj].n) continue;
+                            const int ji = modelspace->Get_MSmatrix_2j(Neutron, i);
+                            const int jj = modelspace->Get_MSmatrix_2j(Neutron, j);
+                            if (ji != jj) continue;
+                            const int mi = modelspace->Get_MSmatrix_2m(Neutron, i);
+                            const int mj = modelspace->Get_MSmatrix_2m(Neutron, j);
+                            if (mi == mj + 2)
+                                constraints.Qn[iq][i * dim_n + j] = 0.5 * std::sqrt((jj - mj) * (jj + mj + 2.0) / 4.0);
+                            else if (mi == mj - 2)
+                                constraints.Qn[iq][i * dim_n + j] = 0.5 * std::sqrt((jj + mj) * (jj - mj + 2.0) / 4.0);
+                        }
+                    }
+                }
+                else if (constraints.names[iq] == "Jz")
+                {
+                    for (int i = 0; i < dim_p; ++i)
+                    {
+                        constraints.Qp[iq][i * dim_p + i] = 0.5 * modelspace->Get_MSmatrix_2m(Proton, i);
+                    }
+                    for (int i = 0; i < dim_n; ++i)
+                    {
+                        constraints.Qn[iq][i * dim_n + i] = 0.5 * modelspace->Get_MSmatrix_2m(Neutron, i);
+                    }
+                }
+            }
+        }
+    }
+
+    auto constraint_penalty = [&]() -> double
+    {
+        if (!use_constraints) return 0.0;
+        double penalty = 0.0;
+        for (size_t iq = 0; iq < constraints.names.size(); ++iq)
+        {
+            const double qp = (np > 0) ? cblas_ddot(static_cast<int>(np), rho_p, 1, constraints.Qp[iq].data(), 1) : 0.0;
+            const double qn = (nn > 0) ? cblas_ddot(static_cast<int>(nn), rho_n, 1, constraints.Qn[iq].data(), 1) : 0.0;
+            const double dq = qp + qn - constraints.targets[iq];
+            penalty += 0.5 * constraint_strength * dq * dq;
+        }
+        return penalty;
+    };
+
+    auto apply_constraint_field = [&]()
+    {
+        if (!use_constraints) return;
+        for (size_t iq = 0; iq < constraints.names.size(); ++iq)
+        {
+            const double qp = (np > 0) ? cblas_ddot(static_cast<int>(np), rho_p, 1, constraints.Qp[iq].data(), 1) : 0.0;
+            const double qn = (nn > 0) ? cblas_ddot(static_cast<int>(nn), rho_n, 1, constraints.Qn[iq].data(), 1) : 0.0;
+            const double dq = qp + qn - constraints.targets[iq];
+            const double lambda = constraint_strength * dq;
+            if (np > 0) cblas_daxpy(static_cast<int>(np), lambda, constraints.Qp[iq].data(), 1, FockTerm_p, 1);
+            if (nn > 0) cblas_daxpy(static_cast<int>(nn), lambda, constraints.Qn[iq].data(), 1, FockTerm_n, 1);
+        }
+    };
+
+    auto rebuild_fields = [&]() -> double
     {
         UpdateDensityMatrix();
         UpdateF();
         CalcEHF();
+        const double obj = EHF + constraint_penalty();
+        apply_constraint_field();
+        return obj;
     };
 
     auto compute_displacement_residual = [&]() -> std::vector<double>
@@ -205,14 +391,14 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
                              const std::vector<double>& Vij_n_save,
                              double E_save, double e1_save, double e2_save)
     {
-        if (N_p > 0)
+        if (np > 0)
         {
             std::copy(U_p_save.begin(), U_p_save.end(), U_p);
             std::copy(rho_p_save.begin(), rho_p_save.end(), rho_p);
             std::copy(Fock_p_save.begin(), Fock_p_save.end(), FockTerm_p);
             std::copy(Vij_p_save.begin(), Vij_p_save.end(), Vij_p);
         }
-        if (N_n > 0)
+        if (nn > 0)
         {
             std::copy(U_n_save.begin(), U_n_save.end(), U_n);
             std::copy(rho_n_save.begin(), rho_n_save.end(), rho_n);
@@ -224,24 +410,22 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
         e2hf = e2_save;
     };
 
-    auto apply_step = [&](const std::vector<double>& step)
+    auto apply_step = [&](const std::vector<double>& step) -> double
     {
         std::vector<double> Zp(np, 0.0);
         std::vector<double> Zn(nn, 0.0);
-        if (N_p > 0) std::copy(step.begin(), step.begin() + np, Zp.begin());
-        if (N_n > 0) std::copy(step.begin() + np, step.end(), Zn.begin());
+        if (np > 0) std::copy(step.begin(), step.begin() + np, Zp.begin());
+        if (nn > 0) std::copy(step.begin() + np, step.end(), Zn.begin());
 
-        // The first-order Thouless update is used here deliberately.  It has the
-        // same convention as the existing gradient solver and avoids a possible
-        // left/right convention mismatch in the Padé update while debugging HF.
+        // Keep the same convention as the validated gradient solver.
         UpdateU_Thouless_1st(Zp.data(), Zn.data());
-        rebuild_fields();
+        return rebuild_fields();
     };
 
     // Start from a diagonalized HF field once, then solve by orbital rotations.
-    rebuild_fields();
+    double objective = rebuild_fields();
     Diagonalize();
-    rebuild_fields();
+    objective = rebuild_fields();
 
     std::vector<double> residual = compute_displacement_residual();
     double rms = vector_norm(residual) * inv_sqrt_nvec;
@@ -252,25 +436,26 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
     std::deque<std::vector<double>> u_history;
     std::deque<double> w_history;
 
-    std::cout << "  Modified Broyden HF debug: vector = Thouless displacement"
-              << "  history_size = " << history_size
-              << "  alpha = " << alpha
-              << "  w0 = " << w0
-              << "  tolerance = " << tolerance << std::endl;
+    std::cout << "  Modified Broyden HF: "
+              << (use_constraints ? "constrained " : "")
+              << "Thouless displacement, alpha=" << alpha
+              << ", history=" << history_size
+              << ", w0=" << w0;
+    if (use_constraints) std::cout << ", k=" << constraint_strength;
+    std::cout << std::endl;
 
     for (iterations = 0; iterations < maxiter; ++iterations)
     {
-        const double E_start = EHF;
-        const double l1 = l1_norm(residual);
+        const double objective_start = objective;
 
-        if (iterations < 10 || iterations % 10 == 0 || rms < tolerance)
+        if (iterations < 5 || iterations % 10 == 0 || rms < tolerance)
         {
-            std::cout << "  Broyden iter " << std::setw(5) << iterations
-                      << "  grad_l1 = " << std::scientific << std::setprecision(6) << l1
-                      << "  grad_rms = " << rms
-                      << "  E = " << EHF
-                      << "  hist = " << dF_history.size()
-                      << std::defaultfloat << std::endl;
+            std::cout << "    iter " << std::setw(4) << iterations
+                      << "  rms=" << std::scientific << std::setprecision(3) << rms
+                      << "  l1=" << l1_norm(residual)
+                      << "  E=" << EHF;
+            if (use_constraints) std::cout << "  Epen=" << objective;
+            std::cout << "  hist=" << dF_history.size() << std::defaultfloat << std::endl;
         }
 
         if (rms < tolerance) break;
@@ -365,12 +550,10 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
         const double e2_save = e2hf;
 
         double best_rms = std::numeric_limits<double>::infinity();
-        double best_E = std::numeric_limits<double>::infinity();
+        double best_objective = std::numeric_limits<double>::infinity();
         std::vector<double> best_step;
-        std::vector<double> best_residual;
         bool accepted = false;
 
-        // Backtracking over Broyden step, then a plain damped gradient step as a fallback.
         for (int family = 0; family < 2; ++family)
         {
             std::vector<double> base = step;
@@ -390,19 +573,20 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
 
                 std::vector<double> trial = base;
                 for (double& x : trial) x *= scale;
-                apply_step(trial);
+                const double obj_trial = apply_step(trial);
                 std::vector<double> r_trial = compute_displacement_residual();
                 const double rms_trial = vector_norm(r_trial) * inv_sqrt_nvec;
 
-                if (std::isfinite(rms_trial) && rms_trial < best_rms)
+                if (std::isfinite(rms_trial) && std::isfinite(obj_trial)
+                    && (rms_trial < best_rms || obj_trial < best_objective))
                 {
                     best_rms = rms_trial;
-                    best_E = EHF;
+                    best_objective = obj_trial;
                     best_step = trial;
-                    best_residual = std::move(r_trial);
                 }
 
-                if (std::isfinite(rms_trial) && (rms_trial < rms || EHF < E_start))
+                if (std::isfinite(rms_trial) && std::isfinite(obj_trial)
+                    && (rms_trial < 0.995 * rms || obj_trial < objective_start))
                 {
                     accepted = true;
                     break;
@@ -425,31 +609,21 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
         }
         else if (!accepted)
         {
-            // Keep progress if this is the best available trial, but discard memory.
             dF_history.clear();
             u_history.clear();
             w_history.clear();
         }
 
-        apply_step(best_step);
+        objective = apply_step(best_step);
         std::vector<double> new_residual = compute_displacement_residual();
         const double new_rms = vector_norm(new_residual) * inv_sqrt_nvec;
-
-        if (iterations < 10 || iterations % 10 == 0)
-        {
-            std::cout << "                 step = "
-                      << (proposed_broyden ? "Broyden-Thouless" : "linear-Thouless")
-                      << "  trial_rms = " << std::scientific << std::setprecision(6) << new_rms
-                      << "  dE = " << std::fabs(EHF - E_start)
-                      << std::defaultfloat << std::endl;
-        }
 
         residual_prev = residual;
         step_prev = best_step;
         residual = std::move(new_residual);
         rms = new_rms;
 
-        if (!accepted && best_rms > 1.2 * rms)
+        if (proposed_broyden && !accepted)
         {
             dF_history.clear();
             u_history.clear();
@@ -464,12 +638,32 @@ void HartreeFock::Solve_broyden(int history_size, double alpha, double w0)
     std::cout << std::setw(15) << std::setprecision(10);
     if (iterations < maxiter)
     {
-        std::cout << "  HF converged with Thouless-gradient modified Broyden after " << iterations << " iterations. " << std::endl;
+        std::cout << "  HF converged with " << (use_constraints ? "constrained " : "")
+                  << "Thouless-gradient modified Broyden after " << iterations << " iterations. " << std::endl;
     }
     else
     {
-        std::cout << "\033[31m!!!! Warning: Hartree-Fock calculation did not converge with Thouless-gradient modified Broyden after "
+        std::cout << "\033[31m!!!! Warning: Hartree-Fock calculation did not converge with "
+                  << (use_constraints ? "constrained " : "")
+                  << "Thouless-gradient modified Broyden after "
                   << iterations << " iterations.\033[0m" << std::endl << std::endl;
     }
+
+    if (use_constraints)
+    {
+        std::cout << "  Constraints:" << std::endl;
+        for (size_t iq = 0; iq < constraints.names.size(); ++iq)
+        {
+            const double qp = (np > 0) ? cblas_ddot(static_cast<int>(np), rho_p, 1, constraints.Qp[iq].data(), 1) : 0.0;
+            const double qn = (nn > 0) ? cblas_ddot(static_cast<int>(nn), rho_n, 1, constraints.Qn[iq].data(), 1) : 0.0;
+            const double q = qp + qn;
+            std::cout << "    " << std::setw(14) << constraints.names[iq]
+                      << "  <Q>=" << std::fixed << std::setprecision(6) << q
+                      << "  target=" << constraints.targets[iq]
+                      << "  dQ=" << (q - constraints.targets[iq])
+                      << std::defaultfloat << std::endl;
+        }
+    }
+
     PrintEHF();
 }
