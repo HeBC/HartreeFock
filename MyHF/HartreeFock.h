@@ -131,6 +131,8 @@ private:
     void gram_schmidt(double *vectors, int num_vectors, int vector_size);
     void generateCombinationsRecursive(const std::vector<int> &numbers, std::vector<int> &combination,
                                        int startIndex, int n, std::vector<std::vector<int>> &combinations);
+    void Solve_broyden_impl(int history_size, double alpha, double w0,
+                            bool use_constraints, double constraint_strength);
 };
 
 #endif
