@@ -93,7 +93,7 @@ class MSchemeMatrix // store information about M-scheme Matrix
 public:
     std::vector<int> j, m, j_index; // j * 2, m * 2 and retrun index of j orbit
     std::vector<int> SPj;           // starting point of each orbit in Matrix
-    ComplexNum *PairParity;         // for Parity projection
+    ComplexNum *PairParity = nullptr;         // for Parity projection
     std::vector<double> CGC_memory; // store the CG coefficient for M matrix
     std::map<std::array<int, 2>, int> CGC_lookup;
 

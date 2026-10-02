@@ -27,7 +27,7 @@ PYTHON_CFLAGS = $(shell $(PYTHON_CONFIG) --cflags )
 PYTHON_LDFLAGS = $(shell $(PYTHON_CONFIG) --ldflags )
 PYTHONFLAGS =  $(PYTHON_CFLAGS) -Wl,--no-as-needed
 PYTHON_COMMAND = python$(PYTHON_MAJOR_VERSION)
-PYTHON_LDFLAGS += -undefined dynamic_lookup # This avoids trouble with missing symbols (see pybind11.readthedocs.io/en/stable/compiling.html )
+# PYTHON_LDFLAGS += -undefined dynamic_lookup # This avoids trouble with missing symbols (see pybind11.readthedocs.io/en/stable/compiling.html )
 PYTHONFLAGS +=  $(shell $(PYTHON_CONFIG) --cflags | sed -e 's/-arch i386//')
 PYTHONFLAGS += -Wno-unused-value # suppress annoying warnings about stuff in the pybind11 library
 PYTHONFLAGS += -Wno-deprecated-declarations
@@ -55,7 +55,7 @@ clean:
 	/bin/rm -f *.o *.exe *.so
 
 OFILES = ModelSpace.o Hamiltonian.o AngMom.o ReadWriteFiles.o HFbasis.o Pfaffian_tools.o GCM_Tools.o
-HF_SOLVER_OFILES = HartreeFock.o HartreeFock_Broyden.o HartreeFock_Broyden_Constraint.o
+HF_SOLVER_OFILES = HartreeFock.o HartreeFock_Broyden.o
 #--------------------------------------------------
 #   executable files:
 # HF
@@ -74,7 +74,7 @@ HF_Projection.exe: $(OFILES) HF_Projection.o
 
 # pybind11
 pyHFAndHFB.so: pyHFAndHFB.o $(OFILES) $(HF_SOLVER_OFILES) 
-	$(FC) $(CFLAGS) $(PYTHONFLAGS) -I$(PYBIND11_INCLUDE_PATH) $(LIBS) -shared $(OFILES) $(HF_SOLVER_OFILES) pyHFAndHFB.o -o $@
+	$(FC) $(CFLAGS) $(PYTHONFLAGS) -I$(PYBIND11_INCLUDE_PATH) -shared $(OFILES) $(HF_SOLVER_OFILES) pyHFAndHFB.o -o $@ $(LIBS)
 
 
 #---- cpp file  ----
@@ -82,7 +82,7 @@ pyHFAndHFB.so: pyHFAndHFB.o $(OFILES) $(HF_SOLVER_OFILES)
 	$(FC) $(CFLAGS) -c $*.cpp
 
 pyHFAndHFB.o: pyHFandHFB.cpp
-	$(FC) -c  $(CFLAGS) $(LIBS) -I$(PYBIND11_INCLUDE_PATH) $(PYTHONFLAGS)  $^ -o $@
+	$(FC) -c  $(CFLAGS) $(LIBS) -I$(PYBIND11_INCLUDE_PATH) $(PYTHONFLAGS) pyHFandHFB.cpp -o $@
 
 
 # debug
@@ -97,3 +97,6 @@ HartreeFockBogoliubov.exe: $(OFILES) HartreeFockBogoliubov.o
 HartreeFockBogoliubov_Real.exe: $(OFILES) HartreeFockBogoliubov_Real.o 
 	$(FC) -o $@ HartreeFockBogoliubov_Real.o $(CFLAGS) $(OFILES) $(LIBS) 
 
+
+# Header changes must rebuild native objects, including the NumPy bridge.
+$(OFILES) $(HF_SOLVER_OFILES) pyHFAndHFB.o: $(wildcard *.h)

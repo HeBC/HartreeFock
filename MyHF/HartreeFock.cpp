@@ -1275,32 +1275,17 @@ void HartreeFock::RandomTransformationU(int RandomSeed)
 //*********************************************************************
 void HartreeFock::UpdateDensityMatrix()
 {
-    double *tmp_p = (double *)mkl_malloc((N_p * dim_p) * sizeof(double), 64);
-    double *tmp_p_copy = (double *)mkl_malloc((N_p * dim_p) * sizeof(double), 64);
-    double *tmp_n = (double *)mkl_malloc((N_n * dim_n) * sizeof(double), 64);
-    double *tmp_n_copy = (double *)mkl_malloc((N_n * dim_n) * sizeof(double), 64);
-#pragma omp parallel
-    {
-        for (size_t i = 0; i < N_p; i++)
-        {
-            cblas_dcopy(dim_p, U_p + holeorbs_p[i], dim_p, tmp_p + i, N_p);
-        }
-        for (size_t i = 0; i < N_n; i++)
-        {
-            cblas_dcopy(dim_n, U_n + holeorbs_n[i], dim_n, tmp_n + i, N_n);
-        }
-    }
-    cblas_dcopy(dim_p * N_p, tmp_p, 1, tmp_p_copy, 1);
-    cblas_dcopy(dim_n * N_n, tmp_n, 1, tmp_n_copy, 1);
-    if (N_p > 0)
-        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, dim_p, dim_p, N_p, 1., tmp_p, N_p, tmp_p_copy, N_p, 0, rho_p, dim_p);
-    if (N_n > 0)
-        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, dim_n, dim_n, N_n, 1., tmp_n, N_n, tmp_n_copy, N_n, 0, rho_n, dim_n);
-
-    mkl_free(tmp_p);
-    mkl_free(tmp_n);
-    mkl_free(tmp_p_copy);
-    mkl_free(tmp_n_copy);
+    auto density = [](int d, int n, const double *u, const int *holes, double *rho) {
+        std::fill(rho,rho+size_t(d)*d,0.0);
+        if (!n || !d) return;
+        std::vector<double> occupied(size_t(d)*n);
+        for (int i=0;i<n;++i)
+            cblas_dcopy(d,u+holes[i],d,occupied.data()+i,n);
+        cblas_dgemm(CblasRowMajor,CblasNoTrans,CblasTrans,d,d,n,1.,
+                    occupied.data(),n,occupied.data(),n,0.,rho,d);
+    };
+    density(dim_p,N_p,U_p,holeorbs_p,rho_p);
+    density(dim_n,N_n,U_n,holeorbs_n,rho_n);
 }
 
 // indicate orbits
@@ -1583,58 +1568,34 @@ void HartreeFock::UpdateDensityMatrix_DIIS()
 ///   H_{ij} = t_{ij}  + \sum_{b} \sum_{j_1 j_2}  \rho_{ab} \bar{V}^{(2)}_{iajb}
 ///   where (e_b < E_f)
 //*********************************************************************
-void HartreeFock::UpdateF()
+// Linear response Gamma[rho], also used by the matrix-free orbital Hessian.
+void HartreeFock::ContractDensity(const double *rp, const double *rn, double *fp, double *fn) const
 {
-    memset(FockTerm_p, 0, dim_p * dim_p * sizeof(double));
-    memset(FockTerm_n, 0, dim_n * dim_n * sizeof(double));
-    double *Vpp, *Vpn, *Vnn;
-    Vpp = Ham->MSMEs.GetVppPrt();
-    Vnn = Ham->MSMEs.GetVnnPrt();
-    Vpn = Ham->MSMEs.GetVpnPrt();
-// Proton subspace
-#pragma omp parallel for
-    for (size_t i = 0; i < dim_p; i++)
-    {
-        for (size_t j = i; j < dim_p; j++)
-        {
-            // add Vpp term
-            FockTerm_p[i * dim_p + j] += cblas_ddot(dim_p * dim_p, rho_p, 1, Vpp + (dim_p * dim_p * dim_p * i + dim_p * dim_p * j), 1);
-
-            // add Vpn term
-            FockTerm_p[i * dim_p + j] += cblas_ddot(dim_n * dim_n, rho_n, 1, Vpn + (dim_p * dim_n * dim_n * i + dim_n * dim_n * j), 1);
-            if (i != j)
-                FockTerm_p[j * dim_p + i] = FockTerm_p[i * dim_p + j];
-        }
+    const int pp=dim_p*dim_p, nn=dim_n*dim_n;
+    std::fill(fp,fp+pp,0.); std::fill(fn,fn+nn,0.);
+    // The transpose GEMV replaces cache-unfriendly strided pn dot products.
+    if (pp && nn) {
+        cblas_dgemv(CblasRowMajor,CblasNoTrans,pp,nn,1.,Ham->MSMEs.GetVpnPrt(),nn,rn,1,0.,fp,1);
+        cblas_dgemv(CblasRowMajor,CblasTrans,pp,nn,1.,Ham->MSMEs.GetVpnPrt(),nn,rp,1,0.,fn,1);
     }
-
-// Neutron subspace
-#pragma omp parallel for
-    for (size_t i = 0; i < dim_n; i++)
-    {
-        for (size_t j = i; j < dim_n; j++)
-        {
-            // add Vnn term
-            FockTerm_n[i * dim_n + j] += cblas_ddot(dim_n * dim_n, rho_n, 1, Vnn + dim_n * dim_n * dim_n * i + dim_n * dim_n * j, 1);
-
-            // add Vpn term
-            FockTerm_n[i * dim_n + j] += cblas_ddot(dim_p * dim_p, rho_p, 1, Vpn + dim_n * i + j, dim_n * dim_n);
-
-            if (i != j)
-                FockTerm_n[j * dim_n + i] = FockTerm_n[i * dim_n + j];
+    auto same = [](int d, const double *v, const double *rho, double *f) {
+        int dd=d*d;
+        for (int i=0;i<d;++i) for (int j=i;j<d;++j) {
+            f[i*d+j] += cblas_ddot(dd,v+size_t(i*d+j)*dd,1,rho,1);
+            f[j*d+i]=f[i*d+j];
         }
-    }
-    cblas_dcopy(dim_p * dim_p, FockTerm_p, 1, Vij_p, 1);
-    cblas_dcopy(dim_n * dim_n, FockTerm_n, 1, Vij_n, 1);
-
-    // add SP term
-    // add SP term
-    if (dim_p != 0)
-        cblas_daxpy(dim_p * dim_p, 1., T_term_p, 1, FockTerm_p, 1);
-
-    if (dim_n != 0)
-        cblas_daxpy(dim_n * dim_n, 1., T_term_n, 1, FockTerm_n, 1);
+    };
+    same(dim_p,Ham->MSMEs.GetVppPrt(),rp,fp);
+    same(dim_n,Ham->MSMEs.GetVnnPrt(),rn,fn);
 }
 
+void HartreeFock::UpdateF()
+{
+    ContractDensity(rho_p,rho_n,Vij_p,Vij_n);
+    const size_t pp=size_t(dim_p)*dim_p, nn=size_t(dim_n)*dim_n;
+    for (size_t i=0;i<pp;++i) FockTerm_p[i]=T_term_p[i]+Vij_p[i];
+    for (size_t i=0;i<nn;++i) FockTerm_n[i]=T_term_n[i]+Vij_n[i];
+}
 
 //*********************************************************************
 ///  [See Suhonen eq 4.72] page 80

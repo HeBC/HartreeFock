@@ -43,7 +43,7 @@ void ReadWriteFiles::Read_KShell_HF_input(string filename, ModelSpace &ms, Hamil
   ms.GetAZfromString(Ref, A, Z);
   ms.Set_RefString(Ref);
   inputH.snt_file = filename;
-  inputH.RemoveWhitespaceInFilename();
+  // Explicit filesystem paths may contain spaces; preserve them.
   //--------------------------------- Read Kshell interaction
   this->ReadTokyo(inputH.GetKshellSntFile(), ms, inputH);
   ms.SetProtonNum(Z - ms.GetCoreProtonNum());

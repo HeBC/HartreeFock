@@ -34,6 +34,8 @@ public:
     HartreeFock(Hamiltonian &H); /// Constructor
     ~HartreeFock();
 
+    void ContractDensity(const double *rp, const double *rn, double *fp, double *fn) const;
+
     // Solve functions
     void Solve_gradient();
     void Solve_gradient_Constraint();
@@ -105,6 +107,7 @@ public:
     void PrintOccupationHO();
 
 private:
+    friend struct HFHybridAccess;
     ModelSpace *modelspace;           /// Model Space
     Hamiltonian *Ham;                 /// Hamiltonian
     double *U_p, *U_n;                /// transformation coefficients, 1st index is ho basis, 2nd = HF basis

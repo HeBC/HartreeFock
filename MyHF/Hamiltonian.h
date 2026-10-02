@@ -167,6 +167,7 @@ public:
   MschemeHamiltonian& operator=(const MschemeHamiltonian& other); 
 
   void Initial(ModelSpace &ms);
+  double memory_limit_mb = 0; // 0: unlimited; dense interaction allocation budget
   double Vpp(int a, int b, int c, int d);
   double Vnn(int a, int b, int c, int d);
   double Vpn(int a, int b, int c, int d);
@@ -192,7 +193,7 @@ private:
   ModelSpace *ms;
   int dim_p;
   int dim_n;
-  double *ME_pp, *ME_nn, *ME_pn;
+  double *ME_pp = nullptr, *ME_nn = nullptr, *ME_pn = nullptr;
 };
 
 class Hamiltonian

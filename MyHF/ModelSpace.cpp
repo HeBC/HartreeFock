@@ -26,6 +26,8 @@
 #include "Hamiltonian.h"
 #include "mkl.h"
 #include <cmath>
+#include <regex>
+#include <stdexcept>
 
 MSchemeMatrix::~MSchemeMatrix()
 {
@@ -1144,29 +1146,14 @@ void ModelSpace::GetAZfromString(std::string str, double &A, double &Z)
                                                "Fr", "Ra", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr",
                                                "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og"};
 
-    int pos = 0;
-    while (!isdigit(str[pos]))
-        pos++;
-
-    std::stringstream(str.substr(pos, str.size() - pos)) >> A;
-    string strA = str.substr(pos, str.size() - pos);
-    std::string elem;
-    if (pos != std::string::npos)
-    {
-        // If subtractString is found, remove it from originalString
-        elem = str.substr(0, pos) + str.substr(pos + std::to_string(static_cast<int>(A)).length());
-        elem.erase(std::remove_if(elem.begin(), elem.end(), ::isspace), elem.end());
-        std::string::size_type EnterPos = elem.find('\n');
-        if (EnterPos != std::string::npos)
-        {
-            elem.erase(EnterPos);
-        }
-    }
-    else
-    {
-        std::cout << "ModelSpace::GetAZfromString :  Trouble geting ele " << str << std::endl;
-        exit(0);
-    }
+    std::smatch match;
+    const std::regex pattern("^([A-Za-z]+)([0-9]+)$|^([0-9]+)([A-Za-z]+)$");
+    if (!std::regex_match(str,match,pattern))
+        throw std::invalid_argument("isotope must be an element and mass, e.g. Mg24 or 24Mg");
+    std::string elem=match[1].matched?match[1].str():match[4].str();
+    A=std::stod(match[2].matched?match[2].str():match[3].str());
+    if (!std::isfinite(A) || A<1 || A>1000)
+        throw std::invalid_argument("invalid isotope mass");
     auto it_elem = find(periodic_table.begin(), periodic_table.end(), elem);
     if (it_elem != periodic_table.end())
     {
@@ -1174,8 +1161,6 @@ void ModelSpace::GetAZfromString(std::string str, double &A, double &Z)
     }
     else
     {
-        Z = -1;
-        std::cout << "ModelSpace::GetAZfromString :  Trouble parsing " << str << std::endl;
-        exit(0);
+        throw std::invalid_argument("unknown element in isotope: "+str);
     }
 }

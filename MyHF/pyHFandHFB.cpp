@@ -10,12 +10,14 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/operators.h>
 #include <pybind11/stl.h>
+#include "HFHybridBindings.h"
 
 
 namespace py = pybind11;
 
 PYBIND11_MODULE(pyHFAndHFB, m)
 {
+    bind_hybrid_backend(m);
     m.doc() = "Python bindings for HF code";
 
     py::class_<ModelSpace>(m, "ModelSpace")
@@ -64,14 +66,25 @@ PYBIND11_MODULE(pyHFAndHFB, m)
 
     py::class_<Hamiltonian>(m, "Hamiltonian")
         .def(py::init<>())
-        .def(py::init<ModelSpace &>())
-        .def(py::init<const Hamiltonian&>()) // Copy constructor
+        .def(py::init<ModelSpace &>(), py::keep_alive<1,2>())
+        .def(py::init<const Hamiltonian&>(), py::keep_alive<1,2>()) // Copy constructor
+        .def("SetMemoryLimitMB", [](Hamiltonian &h, double mb) {
+            if (!std::isfinite(mb) || mb < 0) throw std::invalid_argument("memory limit must be finite and nonnegative");
+            h.MSMEs.memory_limit_mb=mb;
+        })
         .def("Prepare_MschemeH_Unrestricted", &Hamiltonian::Prepare_MschemeH_Unrestricted)
         .def("PrintHamiltonianInfo_pn", &Hamiltonian::PrintHamiltonianInfo_pn);
 
 
     py::class_<HartreeFock>(m, "HartreeFock")
-        .def(py::init<Hamiltonian &>())
+        .def(py::init<Hamiltonian &>(), py::keep_alive<1,2>())
+        .def("hybrid_state", &HFHybridAccess::state)
+        .def("hybrid_evaluate", &HFHybridAccess::evaluate)
+        .def("hybrid_response", &HFHybridAccess::response)
+        .def("hybrid_operators", &HFHybridAccess::operators)
+        .def("hybrid_accept", &HFHybridAccess::accept)
+        .def("hybrid_reference", &HFHybridAccess::reference)
+        .def("UpdateTolerance", &HartreeFock::UpdateTolerance)
         .def("Solve_diag", &HartreeFock::Solve_diag)
         .def("Solve_hybrid", &HartreeFock::Solve_hybrid)
         .def("Solve_broyden", &HartreeFock::Solve_broyden,
@@ -97,7 +110,7 @@ PYBIND11_MODULE(pyHFAndHFB, m)
 
     py::class_<AngMomProjection>(m, "AngMomProjection")
         .def(py::init<>())
-        .def(py::init<ModelSpace &>())
+        .def(py::init<ModelSpace &>(), py::keep_alive<1,2>())
         .def("PrintInfo", &AngMomProjection::PrintInfo)
         .def("InitInt_HF_Projection", &AngMomProjection::InitInt_HF_Projection);
 

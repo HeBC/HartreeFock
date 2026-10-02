@@ -25,6 +25,9 @@
 #include "AngMom.h"
 #include "mkl.h"
 #include <cstring>
+#include <limits>
+#include <stdexcept>
+#include <memory>
 #include <algorithm>
 
 HamiltonianElements::HamiltonianElements(int Tz2, int j1, int j2, int j3, int j4, int J, double V)
@@ -86,18 +89,32 @@ void MschemeHamiltonian::Initial(ModelSpace &ms)
     this->ms = &ms;
     dim_p = ms.Get_MScheme_dim(Proton);
     dim_n = ms.Get_MScheme_dim(Neutron);
-    double alpha = 0.0;
-    int n = dim_p * dim_p * dim_p * dim_p;
-    ME_pp = (double *)mkl_malloc((n) * sizeof(double), 64);
-    memset(ME_pp, 0, sizeof(double) * n);
+    // Use checked size_t arithmetic; never overflow a 32-bit d^4 count.
+    auto square = [](size_t n) {
+        if (n && n > std::numeric_limits<size_t>::max()/n)
+            throw std::overflow_error("M-scheme dimension overflow");
+        return n*n;
+    };
+    size_t pp=square(dim_p), nn=square(dim_n);
+    size_t npp=square(pp), nnn=square(nn);
+    if (pp && nn > std::numeric_limits<size_t>::max()/pp)
+        throw std::overflow_error("M-scheme pn overflow");
+    size_t npn=pp*nn;
+    long double bytes=8.L*(static_cast<long double>(npp)+nnn+npn);
+    // Legacy indexing elsewhere is still int; refuse unsupported tensors.
+    if (std::max({npp,nnn,npn}) > static_cast<size_t>(std::numeric_limits<int>::max()))
+        throw std::overflow_error("M-scheme tensor exceeds legacy index range");
+    if (memory_limit_mb > 0 && bytes > memory_limit_mb*1048576.L)
+        throw std::runtime_error("Dense interaction exceeds memory_limit_mb; reduce model space or raise budget");
+    auto allocate = [](size_t n) {
+        double *q=static_cast<double*>(mkl_calloc(std::max(size_t(1),n),sizeof(double),64));
+        if (!q) throw std::bad_alloc();
+        return std::unique_ptr<double, decltype(&mkl_free)>(q,mkl_free);
+    };
+    auto new_pp=allocate(npp), new_nn=allocate(nnn), new_pn=allocate(npn);
+    mkl_free(ME_pp); mkl_free(ME_nn); mkl_free(ME_pn);
+    ME_pp=new_pp.release(); ME_nn=new_nn.release(); ME_pn=new_pn.release();
 
-    n = dim_n * dim_n * dim_n * dim_n;
-    ME_nn = (double *)mkl_malloc((n) * sizeof(double), 64);
-    memset(ME_nn, 0, sizeof(double) * n);
-
-    n = dim_p * dim_p * dim_n * dim_n;
-    ME_pn = (double *)mkl_malloc((n) * sizeof(double), 64);
-    memset(ME_pn, 0, sizeof(double) * n);
 }
 
 MschemeHamiltonian::~MschemeHamiltonian()
@@ -859,107 +876,35 @@ void Hamiltonian::CalNumberInitial() // count the number of terms need to calcul
 // in unit of b^2
 double Hamiltonian::Calculate_Q2(int a, int b, int tz)
 {
-    int phase;
-    double res;
-    double cc, dd;
-    if (tz == Proton)
-    {
-        phase = (ms->GetProtonOrbit_2j(a) - 1) / 2;
-        cc = 0.5 * ms->GetProtonOrbit_2j(a);
-        dd = 0.5 * ms->GetProtonOrbit_2j(b);
-        res = sgn(ms->GetProtonOrbit_n(a) + ms->GetProtonOrbit_n(b)) * (1 + sgn(ms->GetProtonOrbit_l(a) + ms->GetProtonOrbit_l(b))) / 2;
-        res *= sgn(phase) * sqrt(ms->GetProtonOrbit_2j(a) + 1) * sqrt(ms->GetProtonOrbit_2j(b) + 1) / sqrt(4 * 3.1415926535) * AngMom::cgc(2, 0, cc, 0.5, dd, -0.5);
-        if (fabs(res) < 1e-15)
-            return 0;
-        if (ms->GetProtonOrbit_l(a) == ms->GetProtonOrbit_l(b))
-        {
-            res *= ((double)(2 * ms->GetProtonOrbit_n(a) + ms->GetProtonOrbit_l(a)) + 1.5);
-        }
-        else if (ms->GetProtonOrbit_l(a) == ms->GetProtonOrbit_l(b) + 2)
-        {
-            res *= sqrt((2 * ms->GetProtonOrbit_n(b) + 2 * ms->GetProtonOrbit_l(b) + 3) * (2 * ms->GetProtonOrbit_n(b)));
-        }
-        else if (ms->GetProtonOrbit_l(a) == ms->GetProtonOrbit_l(b) - 2)
-        {
-            res *= sqrt((2 * ms->GetProtonOrbit_n(b) + 2 * ms->GetProtonOrbit_l(b) + 1) * (2 * ms->GetProtonOrbit_n(b) + 2));
-        }
-        else
-        {
-            printf("Qudruapole error!!!\n");
-        }
-        return res;
-    }
-    else // Neutron
-    {
-        phase = (ms->GetNeutronOrbit_2j(a) - 1) / 2;
-        cc = 0.5 * ms->GetNeutronOrbit_2j(a);
-        dd = 0.5 * ms->GetNeutronOrbit_2j(b);
-        res = sgn(ms->GetNeutronOrbit_n(a) + ms->GetNeutronOrbit_n(b)) * (1 + sgn(ms->GetNeutronOrbit_l(a) + ms->GetNeutronOrbit_l(b))) / 2.;
-        res *= sgn(phase) * sqrt(ms->GetNeutronOrbit_2j(a) + 1) * sqrt(ms->GetNeutronOrbit_2j(b) + 1) / sqrt(4 * 3.1415926535) * AngMom::cgc(2, 0, cc, 0.5, dd, -0.5);
-        if (fabs(res) < 1e-15)
-            return 0;
-        if (ms->GetNeutronOrbit_l(a) == ms->GetNeutronOrbit_l(b))
-        {
-            res *= ((double)(2 * ms->GetNeutronOrbit_n(a) + ms->GetNeutronOrbit_l(a)) + 1.5);
-        }
-        else if (ms->GetNeutronOrbit_l(a) == ms->GetNeutronOrbit_l(b) + 2)
-        {
-            res *= sqrt((2 * ms->GetNeutronOrbit_n(b) + 2 * ms->GetNeutronOrbit_l(b) + 3) * (2 * ms->GetNeutronOrbit_n(b)));
-        }
-        else if (ms->GetNeutronOrbit_l(a) == ms->GetNeutronOrbit_l(b) - 2)
-        {
-            res *= sqrt((2 * ms->GetNeutronOrbit_n(b) + 2 * ms->GetNeutronOrbit_l(b) + 1) * (2 * ms->GetNeutronOrbit_n(b) + 2));
-        }
-        else
-        {
-            printf("Qudruapole error!!!\n");
-        }
-        return res;
-    }
+    const auto &orbits = tz == Proton ? ms->Orbits_p : ms->Orbits_n;
+    const auto &oa=orbits.at(a), &ob=orbits.at(b);
+    if ((oa.l+ob.l)%2) return 0.;
+    double angular=sgn((oa.j2-1)/2)*std::sqrt((oa.j2+1.)*(ob.j2+1.)/(4.*M_PI))
+        *AngMom::cgc(2.,0.,oa.j2*.5,.5,ob.j2*.5,-.5);
+    if (std::abs(angular)<1.e-15) return 0.;
+    // The old single-shell formula is invalid for different radial shells.
+    // Signed Laguerre integrals preserve the existing sd-shell phase convention.
+    return angular*HarmonicRadialIntegral(tz,2,a,b);
 }
 
-// return < r ^ lamda > in unit of b^lamda
-// where b =  (b = 1.005 A^{1/6} fm)
 double Hamiltonian::HarmonicRadialIntegral(int isospin, int lamda, int orbit_a, int orbit_b)
-// return R_ab^lamda / b^lamda
 {
-    this->ms;
-    int na, nb, la, lb;
-    if (isospin == Proton)
-    {
-        int na = ms->GetProtonOrbit_n(orbit_a);
-        int nb = ms->GetProtonOrbit_n(orbit_b);
-        int la = ms->GetProtonOrbit_l(orbit_a);
-        int lb = ms->GetProtonOrbit_l(orbit_b);
-    }
-    else
-    {
-        int na = ms->GetNeutronOrbit_n(orbit_a);
-        int nb = ms->GetNeutronOrbit_n(orbit_b);
-        int la = ms->GetNeutronOrbit_l(orbit_a);
-        int lb = ms->GetNeutronOrbit_l(orbit_b);
-    }
-
-    double factor = sqrt(4 * gsl_sf_fact(na) * gsl_sf_fact(nb));
-    factor /= sqrt(gsl_sf_gamma(na + la + 1.5) * gsl_sf_gamma(nb + lb + 1.5));
-
-    int n = 50; // order of the quadrature rule
-    gsl_integration_fixed_workspace *table = gsl_integration_fixed_alloc(gsl_integration_fixed_legendre, n, 0, 20, 0., 0.);
-    // get the abscissae and weights from the table
-    const double *x = gsl_integration_fixed_nodes(table);   // pointer to the abscissae
-    const double *w = gsl_integration_fixed_weights(table); // pointer to the weights
-    double integral = 0.0;
-
-    for (int i = 0; i < n; i++)
-    {
-        double r = pow(x[i], la + lb + lamda + 2);
-        double x2 = x[i] * x[i];
-        double wf1 = gsl_sf_laguerre_n(na, la + 0.5, x2);
-        double wf2 = gsl_sf_laguerre_n(nb, lb + 0.5, x2);
-        integral += w[i] * wf1 * wf2 * r * exp(-x2);
-    }
+    const auto &orbits = isospin == Proton ? ms->Orbits_p : ms->Orbits_n;
+    const auto &a=orbits.at(orbit_a), &b=orbits.at(orbit_b);
+    if (lamda<0) throw std::invalid_argument("negative radial multipole");
+    // x=r^2/b^2: Gaussian quadrature exactly integrates the remaining polynomial.
+    double alpha=.5*(a.l+b.l+lamda+1);
+    auto *table=gsl_integration_fixed_alloc(gsl_integration_fixed_laguerre,
+        std::max(2,a.n+b.n+2),0.,1.,alpha,0.);
+    if (!table) throw std::bad_alloc();
+    const double *x=gsl_integration_fixed_nodes(table), *w=gsl_integration_fixed_weights(table);
+    double integral=0.;
+    for (size_t i=0;i<gsl_integration_fixed_n(table);++i)
+        integral+=w[i]*gsl_sf_laguerre_n(a.n,a.l+.5,x[i])*gsl_sf_laguerre_n(b.n,b.l+.5,x[i]);
     gsl_integration_fixed_free(table);
-    return integral * factor;
+    double lognorm=.5*(gsl_sf_lngamma(a.n+1.)+gsl_sf_lngamma(b.n+1.)
+                         -gsl_sf_lngamma(a.n+a.l+1.5)-gsl_sf_lngamma(b.n+b.l+1.5));
+    return integral*std::exp(lognorm);
 }
 
 double Hamiltonian::Calculate_Q3(int a, int b, int tz)
@@ -975,7 +920,7 @@ double Hamiltonian::Calculate_Q3(int a, int b, int tz)
         dd = 0.5 * ms->GetProtonOrbit_2j(b);
         res = (1 + sgn(ms->GetProtonOrbit_l(a) + ms->GetProtonOrbit_l(b) + lamda)) / 2;
         res *= sgn(phase) * sqrt(ms->GetProtonOrbit_2j(a) + 1) * sqrt(ms->GetProtonOrbit_2j(b) + 1) / sqrt(4 * 3.1415926535) * AngMom::cgc(lamda, 0, cc, 0.5, dd, -0.5);
-        return res * HarmonicRadialIntegral(Proton, lamda, a, b);
+        return res * HarmonicRadialIntegral(tz, lamda, a, b);
     }
     else // Neutron
     {
@@ -984,7 +929,7 @@ double Hamiltonian::Calculate_Q3(int a, int b, int tz)
         dd = 0.5 * ms->GetNeutronOrbit_2j(b);
         res = (1 + sgn(ms->GetNeutronOrbit_l(a) + ms->GetNeutronOrbit_l(b) + lamda)) / 2;
         res *= sgn(phase) * sqrt(ms->GetNeutronOrbit_2j(a) + 1) * sqrt(ms->GetNeutronOrbit_2j(b) + 1) / sqrt(4 * 3.1415926535) * AngMom::cgc(lamda, 0, cc, 0.5, dd, -0.5);
-        return res * HarmonicRadialIntegral(Proton, lamda, a, b);
+        return res * HarmonicRadialIntegral(tz, lamda, a, b);
     }
 }
 
@@ -1001,7 +946,7 @@ double Hamiltonian::Calculate_Qt(int lamda, int a, int b, int tz)
         dd = 0.5 * ms->GetProtonOrbit_2j(b);
         res = (1 + sgn(ms->GetProtonOrbit_l(a) + ms->GetProtonOrbit_l(b) + lamda)) / 2;
         res *= sgn(phase) * sqrt(ms->GetProtonOrbit_2j(a) + 1) * sqrt(ms->GetProtonOrbit_2j(b) + 1) / sqrt(4 * 3.1415926535) * AngMom::cgc(lamda, 0, cc, 0.5, dd, -0.5);
-        return res * HarmonicRadialIntegral(Proton, lamda, a, b);
+        return res * HarmonicRadialIntegral(tz, lamda, a, b);
     }
     else // Neutron
     {
@@ -1010,7 +955,7 @@ double Hamiltonian::Calculate_Qt(int lamda, int a, int b, int tz)
         dd = 0.5 * ms->GetNeutronOrbit_2j(b);
         res = (1 + sgn(ms->GetNeutronOrbit_l(a) + ms->GetNeutronOrbit_l(b) + lamda)) / 2;
         res *= sgn(phase) * sqrt(ms->GetNeutronOrbit_2j(a) + 1) * sqrt(ms->GetNeutronOrbit_2j(b) + 1) / sqrt(4 * 3.1415926535) * AngMom::cgc(lamda, 0, cc, 0.5, dd, -0.5);
-        return res * HarmonicRadialIntegral(Proton, lamda, a, b);
+        return res * HarmonicRadialIntegral(tz, lamda, a, b);
     }
 }
 
