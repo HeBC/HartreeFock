@@ -1,0 +1,17 @@
+{
+  "interaction": "../../Interaction/usda.snt",
+  "nucleus": "Mg24",
+  "hw_MeV": 16,
+  "basis_representation": "HO",
+  "memory_mb": 512,
+  "solver": {"max_iterations": 700},
+  "constraints": [
+    {"name": "Q20", "values": [1.0, 1.5]},
+    {"name": "Q22", "values": [0.5]},
+    {"name": "Q21", "values": [0.0]},
+    {"name": "Q10", "values": [0.0]},
+    {"name": "Q30", "values": [0.0]},
+    {"name": "Jx", "values": [0.0]},
+    {"name": "Jz", "values": [0.0]}
+  ]
+}

@@ -1,0 +1,27 @@
+# USDA Mg24: two triaxial HF states. All paths are relative to this file.
+
+[calculation]
+nucleus     = Mg24
+interaction = ../../Interaction/usda.snt
+hw          = 16                   # MeV
+basis       = HO
+memory_mb   = 512
+output      = ../../Output/mg24_gcm
+passes      = forward reverse
+
+[constraints]
+# One number fixes a moment; several numbers scan it. "off" leaves it free.
+Q20 = 1.0 1.5                     # fm^2; equivalent to 1.0:1.5:0.5
+Q22 = 0.5                         # fm^2; Q22 + Q2,-2
+Q21 = 0                           # fix the real principal-axis orientation
+Q10 = 0                           # fm; zero in the sd shell
+Q30 = 0                           # fm^3; zero in the sd shell
+Jx  = 0                           # <Jx>/hbar; a direct numerical target
+Jz  = 0                           # <Jz>/hbar
+
+[solver]
+# The default method is hybrid. Set method = gradient for a comparison.
+max_iterations = 700
+# gradient_tolerance   = 1e-6
+# constraint_tolerance = 1e-8
+# check_stability      = yes

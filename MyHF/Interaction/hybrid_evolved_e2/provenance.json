@@ -1,0 +1,13 @@
+{
+  "emax": 2,
+  "reference": "O16",
+  "valence": "sd-shell",
+  "hw_MeV": 16.0,
+  "interaction": "Minnesota + intrinsic kinetic energy",
+  "operator": "E2 + nE2 = mass quadrupole, unit proton and neutron weights",
+  "basis": "HO",
+  "normal_ordering": "core",
+  "purpose": "short-flow interface/derivative benchmark; not a fully decoupled production interaction",
+  "smax": 0.2,
+  "two_body_norm": 0.2108150113690213
+}

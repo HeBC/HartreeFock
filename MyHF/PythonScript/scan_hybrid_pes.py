@@ -14,8 +14,8 @@ NUCLEUS = "Mg24"
 HW_MEV = 16.
 Q0_VALUES = (0., 1., 2.)
 Q2_VALUES = (0., .5)
-BETA_VALUES = (.1, .2, .3, .4)  # use --native-grid for the Q0/Q2 grid
-GAMMA_DEGREES = (10., 20., 30., 40., 50.)
+BETA_VALUES = (.04, .08, .12)  # use --native-grid for the Q0/Q2 grid
+GAMMA_DEGREES = (10., 30., 50.)
 MEMORY_MB = 2048.  # estimated tensor + solver working-set admission budget
 THREADS = 1
 MAX_ITERATIONS = 500
@@ -137,7 +137,7 @@ def main(argv=None):
     p.add_argument('--beta',nargs='+',type=float,default=BETA_VALUES)
     p.add_argument('--native-grid',action='store_true',help='use native Q0/Q2 instead of beta/gamma')
     p.add_argument('--gamma',nargs='+',type=float,default=GAMMA_DEGREES)
-    p.add_argument('--jx',type=float,help='target <Jx> in hbar (not J(J+1))')
+    p.add_argument('--jx',type=float,help='target <Jx>/hbar; enter sqrt(J*(J+1)) explicitly if using that spin convention')
     p.add_argument('--jz',type=float,help='target <Jz> in hbar')
     p.add_argument('--free-axes',action='store_true',help='omit the real Q21=0 principal-axis constraint')
     p.add_argument('--memory-mb',type=float,default=MEMORY_MB)

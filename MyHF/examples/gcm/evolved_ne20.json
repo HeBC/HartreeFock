@@ -1,0 +1,23 @@
+{
+  "interaction": "../../Interaction/hybrid_evolved_e2/H_IMSRG2_HO.snt",
+  "nucleus": "Ne20",
+  "hw_MeV": 16,
+  "basis_representation": "HO",
+  "memory_mb": 512,
+  "solver": {"max_iterations": 700},
+  "constraints": [
+    {"name": "Q20", "values": [1.0, 1.5], "operator": {
+      "type": "tensor_snt", "path": "../../Interaction/hybrid_evolved_e2/Qmass_IMSRG2_HO.snt",
+      "rank": 2, "mu": 0, "parity": 0, "normal_ordering": "core", "units": "fm^2", "basis_representation": "HO"
+    }},
+    {"name": "Q22", "values": [0.5, 1.0], "operator": {
+      "type": "tensor_snt", "path": "../../Interaction/hybrid_evolved_e2/Qmass_IMSRG2_HO.snt",
+      "rank": 2, "mu": 2, "parity": 0, "normal_ordering": "core", "units": "fm^2", "basis_representation": "HO"
+    }},
+    {"name": "Q21", "values": [0.0]},
+    {"name": "Q10", "values": [0.0]},
+    {"name": "Q30", "values": [0.0]},
+    {"name": "Jx", "values": [0.0]},
+    {"name": "Jz", "values": [0.0]}
+  ]
+}

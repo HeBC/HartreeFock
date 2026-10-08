@@ -1,0 +1,48 @@
+{
+  "date": "2026-10-08",
+  "regression_tests": 26,
+  "skipped": 0,
+  "examples": [
+    {
+      "name": "usda_mg24",
+      "points": 2,
+      "accepted": 2,
+      "resume_unchanged": true,
+      "max_constraint_error": 2.6645352591003757e-15,
+      "max_gradient": 3.995064137098511e-07,
+      "matches_previous_json_energies": true
+    },
+    {
+      "name": "evolved_ne20",
+      "points": 4,
+      "accepted": 4,
+      "resume_unchanged": true,
+      "max_constraint_error": 4.499567385352066e-12,
+      "max_gradient": 2.464403304039566e-07,
+      "matches_previous_json_energies": true
+    },
+    {
+      "name": "multishell_o16",
+      "points": 1,
+      "accepted": 1,
+      "resume_unchanged": true,
+      "max_constraint_error": 5.437317263101704e-13,
+      "max_gradient": 7.793407784007099e-07,
+      "matches_previous_json_energies": true
+    },
+    {
+      "name": "mg24_path",
+      "points": 2,
+      "accepted": 2,
+      "resume_unchanged": true,
+      "max_constraint_error": 4.831690603168681e-12,
+      "max_gradient": 4.355446932323547e-08,
+      "matches_previous_json_energies": false
+    }
+  ],
+  "source_sha256": {
+    "PythonScript/hf_input.py": "83f35b0df11b40a3685eca1846c289a7e797057d6e2d3135a8ce72f209888f8b",
+    "PythonScript/scan_gcm_hf.py": "2f63119845ab2f417c30203a3f458b1597f7d28f239ad79b80ba6e4b36635b09",
+    "tests/test_hf_input.py": "806490ffb81f1c9031905dfa8e62768ab7f5e77f91be007f38aba65c053f2375"
+  }
+}

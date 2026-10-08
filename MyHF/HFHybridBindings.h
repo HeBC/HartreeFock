@@ -6,6 +6,53 @@
 // Copies across the Python boundary own their memory. No exposed native pointers.
 struct HFHybridAccess {
     using Array = pybind11::array_t<double, pybind11::array::c_style | pybind11::array::forcecast>;
+    static pybind11::tuple basis(HartreeFock &h) {
+        pybind11::list result;
+        for (int s=0;s<2;++s) {
+            int d=s?h.dim_n:h.dim_p, iso=s?Neutron:Proton;
+            pybind11::array_t<int> rows({d,5});
+            for (int i=0;i<d;++i) {
+                int o=s?h.modelspace->Get_NeutronOrbitIndexInMscheme(i):h.modelspace->Get_ProtonOrbitIndexInMscheme(i);
+                const auto &orb=s?h.modelspace->Orbits_n[o]:h.modelspace->Orbits_p[o];
+                rows.mutable_at(i,0)=orb.n; rows.mutable_at(i,1)=orb.l;
+                rows.mutable_at(i,2)=orb.j2;
+                rows.mutable_at(i,3)=h.modelspace->Get_MSmatrix_2m(iso,i);
+                rows.mutable_at(i,4)=s?1:-1;
+            }
+            result.append(rows);
+        }
+        return pybind11::make_tuple(result[0],result[1]);
+    }
+    // Standard spherical harmonics and Wigner-Eckart convention, in b^power.
+    // Positive mu returns Q_lmu + (-1)^mu Q_l,-mu (a real Hermitian component).
+    static pybind11::tuple multipole(HartreeFock &h,int rank,int mu,int power) {
+        if(rank<0 || rank>8 || mu<0 || mu>rank || power<0 || power>12)
+            throw std::invalid_argument("invalid multipole rank, component or radial power");
+        pybind11::list result;
+        auto phase=[](int k){return k%2 ? -1.:1.;};
+        for(int s=0;s<2;++s) {
+            int d=s?h.dim_n:h.dim_p, iso=s?Neutron:Proton;
+            const auto &orbits=s?h.modelspace->Orbits_n:h.modelspace->Orbits_p;
+            Array matrix({d,d}); std::fill(matrix.mutable_data(),matrix.mutable_data()+size_t(d)*d,0.);
+            for(int i=0;i<d;++i) for(int j=0;j<d;++j) {
+                int a=s?h.modelspace->Get_NeutronOrbitIndexInMscheme(i):h.modelspace->Get_ProtonOrbitIndexInMscheme(i);
+                int b=s?h.modelspace->Get_NeutronOrbitIndexInMscheme(j):h.modelspace->Get_ProtonOrbitIndexInMscheme(j);
+                const auto &oa=orbits[a], &ob=orbits[b];
+                int ma=h.modelspace->Get_MSmatrix_2m(iso,i), mb=h.modelspace->Get_MSmatrix_2m(iso,j);
+                int dm=ma-mb;
+                if ((oa.l+ob.l+rank)%2 || std::abs(dm)!=2*mu ||
+                    std::abs(oa.j2-ob.j2)>2*rank || oa.j2+ob.j2<2*rank) continue;
+                double reduced=phase((ob.j2-1)/2+rank)*std::sqrt((oa.j2+1.)*(ob.j2+1.)*(2*rank+1.)/(4.*M_PI))
+                    *AngMom::threej(.5*oa.j2,.5*ob.j2,rank,.5,-.5,0.)
+                    *h.Ham->HarmonicRadialIntegral(iso,power,a,b);
+                double value=phase((oa.j2-ma)/2)*AngMom::threej(.5*oa.j2,rank,.5*ob.j2,-.5*ma,.5*dm,.5*mb)*reduced;
+                if(mu>0 && dm<0) value*=phase(mu);
+                matrix.mutable_at(i,j)=value;
+            }
+            result.append(matrix);
+        }
+        return pybind11::make_tuple(result[0],result[1]);
+    }
     static Array copy(const double *p, int d, int n) {
         Array a({d,n});
         if (d*n) std::copy(p,p+size_t(d)*n,a.mutable_data());

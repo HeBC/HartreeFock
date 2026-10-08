@@ -1,0 +1,30 @@
+# Ne20: constrain an IMSRG-evolved mass quadrupole, including 1b + 2b terms.
+# The included emax=2 short-flow files are interface benchmarks.
+
+[calculation]
+nucleus     = Ne20
+interaction = ../../Interaction/hybrid_evolved_e2/H_IMSRG2_HO.snt
+hw          = 16                   # MeV
+basis       = HO
+memory_mb   = 512
+output      = ../../Output/ne20_evolved
+passes      = forward reverse
+
+[constraints]
+Q20 = 1.0 1.5                     # fm^2
+Q22 = 0.5 1.0                     # fm^2; the Cartesian grid has four points
+Q21 = 0
+Q10 = 0
+Q30 = 0
+Jx  = 0
+Jz  = 0
+
+[quadrupole]
+# One tensor file supplies both Q20 and Q22. Q21 remains the bare operator.
+file            = ../../Interaction/hybrid_evolved_e2/Qmass_IMSRG2_HO.snt
+units           = fm^2
+normal_ordering = core
+# The operator basis is inherited from [calculation]: HO.
+
+[solver]
+max_iterations = 700

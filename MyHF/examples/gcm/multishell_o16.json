@@ -1,0 +1,17 @@
+{
+  "interaction": "../../Interaction/hybrid_evolved_e2/H_IMSRG2_full_HO.snt",
+  "nucleus": "O16",
+  "hw_MeV": 16,
+  "basis_representation": "HO",
+  "memory_mb": 512,
+  "solver": {"max_iterations": 1000},
+  "constraints": [
+    {"name": "Q20", "values": [0.2]},
+    {"name": "Q22", "values": [0.1]},
+    {"name": "Q21", "values": [0.0]},
+    {"name": "Q10", "values": [0.03]},
+    {"name": "Q30", "values": [0.05]},
+    {"name": "Jx", "values": [0.02]},
+    {"name": "Jz", "values": [0.01]}
+  ]
+}

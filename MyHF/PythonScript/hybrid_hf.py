@@ -8,6 +8,7 @@ from dataclasses import dataclass
 import numpy as np
 from scipy import linalg
 from scipy.sparse.linalg import LinearOperator, eigsh, ArpackNoConvergence
+from hf_operators import HFOperator
 
 
 @dataclass
@@ -40,7 +41,7 @@ class Options:
 
 
 class Solver:
-    def __init__(self, hf, active=(0, 1), options=None):
+    def __init__(self, hf, active=(0, 1), options=None, constraints=None):
         self.hf, self.options = hf, options or Options()
         self.options.validate()
         self.initial = tuple(np.array(c) for c in hf.hybrid_state())
@@ -61,12 +62,23 @@ class Solver:
             q21 = 0.5 * (lower @ q22 - q22 @ lower)
             operators.append(np.concatenate((op, ((q21 + q21.T)*0.5)[None])))
         self.all_ops = tuple(operators)
-        self.active = tuple(active)
-        if len(set(active)) != len(active) or any(i not in range(5) for i in active):
+        self.named_constraints = constraints is not None
+        self.active = tuple(active) if constraints is None else tuple(range(len(constraints)))
+        if constraints is None and (len(set(active)) != len(active) or any(i not in range(5) for i in active)):
             raise ValueError("invalid or repeated constraint operator")
-        self.ops = tuple(op[list(active)] for op in self.all_ops)
-        self.scales = np.array([max(1., *(linalg.norm(op[k], 2) if op.shape[1] else 0.
-                                         for op in self.ops)) for k in range(len(active))])
+        if constraints is None:
+            names=('legacy_Q20','legacy_Q22sum','Jx','Jz','legacy_Q21real')
+            self.constraints=tuple(HFOperator(names[k],tuple(op[k] for op in self.all_ops)) for k in active)
+        else:
+            self.constraints=tuple(constraints)
+        if any(op.dims!=tuple(x.shape[0] for x in self.initial) for op in self.constraints):
+            raise ValueError('constraint dimensions differ from Hamiltonian')
+        self.constraint_names=tuple(op.name for op in self.constraints)
+        if len(set(self.constraint_names))!=len(self.constraint_names): raise ValueError('duplicate constraint names')
+        self.ops=tuple(np.stack([op.one_body[s] for op in self.constraints]) if self.constraints else np.zeros((0,x.shape[0],x.shape[0]))
+                       for s,x in enumerate(self.initial))
+        self.scales=np.array([op.scale for op in self.constraints])
+        self._constraint_cache=None
         self.fock_evaluations = self.hessian_evaluations = 0
 
     def pack(self, matrices):
@@ -90,13 +102,26 @@ class Solver:
         return tuple(out)
 
     def moments(self, c, all_ops=False):
-        ops = self.all_ops if all_ops else self.ops
-        return sum(np.einsum("ai,kab,bi->k", x, q, x, optimize=True) for x, q in zip(c, ops))
+        if all_ops and not self.named_constraints:
+            return sum(np.einsum("ai,kab,bi->k", x, q, x, optimize=True) for x, q in zip(c, self.all_ops))
+        return self.constraint_data(c)[0]
+
+    def constraint_data(self,c):
+        cached=self._constraint_cache
+        if cached is not None and all(np.array_equal(a,b) for a,b in zip(c,cached[0])):
+            return cached[1],cached[2]
+        rho=tuple(x@x.T for x in c)
+        results=[op.evaluate(rho) for op in self.constraints]
+        values=np.array([v for v,f in results])
+        fields=tuple(np.stack([f[s] for v,f in results]) if results else np.zeros((0,x.shape[0],x.shape[0])) for s,x in enumerate(c))
+        self._constraint_cache=(tuple(x.copy() for x in c),values,fields)
+        return values,fields
 
     def jacobian(self, c):
         if not self.active or not self.size:
             return np.empty((self.size, 0)), np.empty(0), np.empty((0, len(self.active)))
-        jac = np.column_stack([self.tangent(c, self.pack([2*q[k] @ x for q, x in zip(self.ops, c)]))
+        fields=self.constraint_data(c)[1]
+        jac = np.column_stack([self.tangent(c, self.pack([2*q[k] @ x for q, x in zip(fields, c)]))
                                / self.scales[k] for k in range(len(self.active))])
         u, s, vt = linalg.svd(jac, full_matrices=False, check_finite=False)
         keep = s > max(1e-13, 1e-11*s.max(initial=0.))
@@ -145,9 +170,13 @@ class Solver:
         v = self.tangent(c, v)
         matrices = self.unpack(v)
         delta_rho = [w @ x.T + x @ w.T for x, w in zip(c, matrices)]
-        response = self.hf.hybrid_response(*delta_rho)
+        response = [np.array(x,copy=True) for x in self.hf.hybrid_response(*delta_rho)]
+        for weight,operator in zip(lambdas,self.constraints):
+            if weight and not operator.linear:
+                for df,dq in zip(response,operator.response(delta_rho)): df+=weight*dq
+        fields=self.constraint_data(c)[1]
         out = []
-        for x, w, field, df, op in zip(c, matrices, f, response, self.ops):
+        for x, w, field, df, op in zip(c, matrices, f, response, fields):
             effective = field + np.einsum("k,kab->ab", lambdas, op)
             out.append(2*(df @ x + effective @ w - w @ (x.T @ effective @ x)))
         return self.tangent(c, self.pack(out))
@@ -203,6 +232,9 @@ class Solver:
 
     def solve(self, target, start=None, callback=None):
         opt = self.options
+        if isinstance(target,dict):
+            if set(target)!=set(self.constraint_names): raise ValueError('target names must match the configured constraints')
+            target=[target[name] for name in self.constraint_names]
         target = np.asarray(target, dtype=float)
         if target.shape != (len(self.active),) or not np.isfinite(target).all():
             raise ValueError("invalid constraint targets")
@@ -214,11 +246,8 @@ class Solver:
         self.smallest_curvature = None
         self.stability_checked = False
         # Necessary spectral feasibility bounds, including empty/full species.
-        for k, t in enumerate(target):
-            low = high = 0.
-            for x, op in zip(c, self.ops):
-                vals = linalg.eigvalsh(op[k]); occ = x.shape[1]
-                low += vals[:occ].sum(); high += vals[len(vals)-occ:].sum() if occ else 0.
+        for operator, t in zip(self.constraints,target):
+            low,high=operator.bounds([x.shape[1] for x in c])
             if t < low-opt.constraint_tolerance or t > high+opt.constraint_tolerance:
                 return self.result(c, target, "infeasible_target", 0, None, np.inf, 0.)
         c, ok = self.restore(c, target)
@@ -287,7 +316,7 @@ class Solver:
             direction = -g*min(step, radius/max(norm, 1e-30))
             if iteration < opt.diagonalization_steps:
                 trial = []
-                for x, field, op in zip(c, f, self.ops):
+                for x, field, op in zip(c, f, self.constraint_data(c)[1]):
                     effective = field+np.einsum("k,kab->ab", lambdas, op)
                     _, full = linalg.eigh(effective)
                     candidate = full[:, :x.shape[1]]
@@ -346,4 +375,5 @@ class Solver:
                     protons=float(np.sum(c[0]**2)), neutrons=float(np.sum(c[1]**2)),
                     fock_evaluations=self.fock_evaluations, hessian_evaluations=self.hessian_evaluations,
                     stability_checked=self.stability_checked, smallest_curvature=self.smallest_curvature,
-                    moments=self.moments(c, True).tolist(), occupied=c)
+                    moments=self.moments(c, True).tolist(),
+                    constraint_values=dict(zip(self.constraint_names,self.moments(c).tolist())),occupied=c)

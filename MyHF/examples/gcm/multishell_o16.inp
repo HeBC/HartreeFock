@@ -1,0 +1,22 @@
+# Multi-shell O16 benchmark: all six requested moments are nonzero.
+
+[calculation]
+nucleus     = O16
+interaction = ../../Interaction/hybrid_evolved_e2/H_IMSRG2_full_HO.snt
+hw          = 16                   # MeV
+basis       = HO
+memory_mb   = 512
+output      = ../../Output/o16_multishell
+passes      = forward reverse
+
+[constraints]
+Q20 = 0.2                         # fm^2
+Q22 = 0.1                         # fm^2
+Q21 = 0
+Q10 = 0.03                        # fm
+Q30 = 0.05                        # fm^3
+Jx  = 0.02                        # <Jx>/hbar
+Jz  = 0.01                        # <Jz>/hbar
+
+[solver]
+max_iterations = 1000

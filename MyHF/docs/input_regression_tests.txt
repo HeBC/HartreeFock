@@ -1,0 +1,31 @@
+test_grid_validation (test_evolved_constraints.EvolvedConstraints) ... ok
+test_imsrg_evolved_two_body_constraints (test_evolved_constraints.EvolvedConstraints) ... ok
+test_pair_normalization_exchange_and_pn (test_evolved_constraints.EvolvedConstraints) ... ok
+test_parity_odd_and_cranking_operators (test_evolved_constraints.EvolvedConstraints) ... ok
+test_shifted_reference_value_gradient_and_npz (test_evolved_constraints.EvolvedConstraints) ... ok
+test_standard_quadrupole_normalization (test_evolved_constraints.EvolvedConstraints) ... ok
+test_tensor_rank_two_pair_component (test_evolved_constraints.EvolvedConstraints) ... ok
+test_cli_preview_is_readable_and_does_not_create_output (test_hf_input.ReadableInputTests) ... ok
+test_comments_literal_windows_paths_and_solver (test_hf_input.ReadableInputTests) ... ok
+test_error_includes_file_and_typo_hint (test_hf_input.ReadableInputTests) ... ok
+test_existing_examples_preserve_json_physics (test_hf_input.ReadableInputTests) ... ok
+test_lists_ranges_and_fortran_exponents (test_hf_input.ReadableInputTests) ... ok
+test_operator_species_reference_and_cache_settings (test_hf_input.ReadableInputTests) ... ok
+test_path_pairs_and_free_constraints (test_hf_input.ReadableInputTests) ... ok
+test_unknown_duplicate_or_incomplete_settings (test_hf_input.ReadableInputTests) ... ok
+test_budget_and_input_validation (test_hybrid.PhysicsTests) ... ok
+test_empty_and_full_species (test_hybrid.PhysicsTests) ... ok
+test_failure_is_not_convergence (test_hybrid.PhysicsTests) ... ok
+test_feasible_hybrid_and_continuation (test_hybrid.PhysicsTests) ... ok
+test_hessian_escapes_mg24_saddle (test_hybrid.PhysicsTests) ... ok
+test_invalid_isotope_raises_without_terminating (test_hybrid.PhysicsTests) ... ok
+test_multishell_quadrupole_and_hessian (test_hybrid.PhysicsTests) ... ok
+test_native_contraction_and_variational_derivatives (test_hybrid.PhysicsTests) ... ok
+test_gamma_normalization (test_scan.ScanTests) ... ok
+test_memory_admission (test_scan.ScanTests) ... ok
+test_recover_partial_journal_excludes_failed_energy (test_scan.ScanTests) ... ok
+
+----------------------------------------------------------------------
+Ran 26 tests in 1.073s
+
+OK

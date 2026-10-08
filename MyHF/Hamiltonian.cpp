@@ -884,7 +884,9 @@ double Hamiltonian::Calculate_Q2(int a, int b, int tz)
     if (std::abs(angular)<1.e-15) return 0.;
     // The old single-shell formula is invalid for different radial shells.
     // Signed Laguerre integrals preserve the existing sd-shell phase convention.
-    return angular*HarmonicRadialIntegral(tz,2,a,b);
+    // Initial_Q2 multiplies by a rank-2 CG coefficient, whereas the
+    // Wigner-Eckart expansion uses a 3j coefficient. Remove its sqrt(5).
+    return angular*HarmonicRadialIntegral(tz,2,a,b)/std::sqrt(5.);
 }
 
 double Hamiltonian::HarmonicRadialIntegral(int isospin, int lamda, int orbit_a, int orbit_b)

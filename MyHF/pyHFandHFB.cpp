@@ -18,6 +18,14 @@ namespace py = pybind11;
 PYBIND11_MODULE(pyHFAndHFB, m)
 {
     bind_hybrid_backend(m);
+    m.def("hybrid_cg", [](int j1,int m1,int j2,int m2,int j,int mm) {
+        if(j1<0 || j2<0 || j<0 || j1>100 || j2>100 || j>100)
+            throw std::invalid_argument("invalid doubled angular momentum");
+        if(std::abs(m1)>j1 || std::abs(m2)>j2 || std::abs(mm)>j ||
+           (j1-m1)%2 || (j2-m2)%2 || (j-mm)%2 || m1+m2!=mm ||
+           j>j1+j2 || j<std::abs(j1-j2) || (j1+j2+j)%2) return 0.;
+        return AngMom::cgc(.5*j,.5*mm,.5*j1,.5*m1,.5*j2,.5*m2);
+    }, "Clebsch-Gordan coefficient; every argument is doubled.");
     m.doc() = "Python bindings for HF code";
 
     py::class_<ModelSpace>(m, "ModelSpace")
@@ -82,6 +90,8 @@ PYBIND11_MODULE(pyHFAndHFB, m)
         .def("hybrid_evaluate", &HFHybridAccess::evaluate)
         .def("hybrid_response", &HFHybridAccess::response)
         .def("hybrid_operators", &HFHybridAccess::operators)
+        .def("hybrid_basis", &HFHybridAccess::basis)
+        .def("hybrid_multipole", &HFHybridAccess::multipole, py::arg("rank"), py::arg("mu"), py::arg("power"))
         .def("hybrid_accept", &HFHybridAccess::accept)
         .def("hybrid_reference", &HFHybridAccess::reference)
         .def("UpdateTolerance", &HartreeFock::UpdateTolerance)

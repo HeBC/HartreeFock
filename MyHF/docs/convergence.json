@@ -1,0 +1,329 @@
+{
+  "date": "2026-10-08",
+  "source": "clean copy of tracked and explicitly included project files; rebuilt native module",
+  "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+  "python": "3.10.12",
+  "numpy": "1.26.4",
+  "scipy": "1.15.3",
+  "threads": 1,
+  "regression_tests": 18,
+  "regression_skipped": 0,
+  "examples": [
+    {
+      "name": "usda_mg24",
+      "points": 2,
+      "planned": 2,
+      "accepted": 2,
+      "failed": 0,
+      "minimum_MeV": -72.42685864486637,
+      "completed_attempts": 4,
+      "iteration_range": [
+        14,
+        63
+      ],
+      "max_gradient": 3.995064137098511e-07,
+      "max_constraint_error": 2.6645352591003757e-15,
+      "min_curvature": 0.0032044996070731335,
+      "history_phases": {
+        "initial": 4,
+        "diagonalization": 12,
+        "gradient": 24,
+        "newton_cg": 102,
+        "negative_curvature": 2
+      },
+      "resume_unchanged": true
+    },
+    {
+      "name": "evolved_ne20",
+      "points": 4,
+      "planned": 4,
+      "accepted": 4,
+      "failed": 0,
+      "minimum_MeV": -171.40299299321026,
+      "completed_attempts": 8,
+      "iteration_range": [
+        9,
+        18
+      ],
+      "max_gradient": 2.464403304039566e-07,
+      "max_constraint_error": 4.499567385352066e-12,
+      "min_curvature": 0.03885769890784202,
+      "history_phases": {
+        "initial": 8,
+        "diagonalization": 12,
+        "gradient": 48,
+        "newton_cg": 37
+      },
+      "resume_unchanged": true
+    },
+    {
+      "name": "multishell_o16",
+      "points": 1,
+      "planned": 1,
+      "accepted": 1,
+      "failed": 0,
+      "minimum_MeV": -186.44452370322279,
+      "completed_attempts": 2,
+      "iteration_range": [
+        85,
+        85
+      ],
+      "max_gradient": 7.793407784007099e-07,
+      "max_constraint_error": 5.437317263101704e-13,
+      "min_curvature": 0.0022769568005762963,
+      "history_phases": {
+        "initial": 2,
+        "diagonalization": 12,
+        "gradient": 12,
+        "newton_cg": 146
+      },
+      "resume_unchanged": true
+    }
+  ],
+  "bare_beta_gamma": {
+    "points": 9,
+    "planned_points": 9,
+    "converged": 9,
+    "failed": 0,
+    "scan_complete": true,
+    "minimum_converged_energy_MeV": -75.39339088219687,
+    "fock_evaluations": 220,
+    "hessian_evaluations": 885
+  },
+  "benchmark": [
+    {
+      "isotope": "Mg24",
+      "interaction": "usda.snt",
+      "method": "gradient",
+      "seconds": 2.1406139340033405,
+      "process_peak_rss_mb": 79.12890625,
+      "converged": false,
+      "status": "iteration_limit",
+      "energy_MeV": -72.63057068245473,
+      "iterations": 1200,
+      "gradient_norm": 5.71509075666184e-05,
+      "energy_change_MeV": -1.823394768507569e-10,
+      "max_constraint_error": 2.4061863612701018e-12,
+      "orthogonality_error": 1.1102230246251565e-15,
+      "idempotency_error": 7.771561172376096e-16,
+      "protons": 4.0000000000000036,
+      "neutrons": 4.000000000000002,
+      "fock_evaluations": 2057,
+      "hessian_evaluations": 31,
+      "stability_checked": false,
+      "smallest_curvature": -0.13215178965759006,
+      "moments": [
+        0.9999999999975937,
+        0.4999999999978858,
+        4.829470157119431e-15,
+        -2.363387263670802e-14,
+        6.962321344450295e-13
+      ],
+      "constraint_values": {
+        "legacy_Q20": 0.9999999999975938,
+        "legacy_Q22sum": 0.4999999999978858,
+        "legacy_Q21real": 6.961722864851083e-13
+      }
+    },
+    {
+      "isotope": "Mg24",
+      "interaction": "usda.snt",
+      "method": "hybrid",
+      "seconds": 0.1468798789937864,
+      "process_peak_rss_mb": 80.30078125,
+      "converged": true,
+      "status": "converged",
+      "energy_MeV": -72.63057078144136,
+      "iterations": 45,
+      "gradient_norm": 9.04419795642072e-07,
+      "energy_change_MeV": -2.69650968220958e-09,
+      "max_constraint_error": 1.7763568394002505e-15,
+      "orthogonality_error": 4.440892098500626e-16,
+      "idempotency_error": 3.3306690738754696e-16,
+      "protons": 3.9999999999999996,
+      "neutrons": 4.0,
+      "fock_evaluations": 71,
+      "hessian_evaluations": 182,
+      "stability_checked": true,
+      "smallest_curvature": 0.016355468413240426,
+      "moments": [
+        0.9999999999999984,
+        0.5000000000000017,
+        -2.0678141393615235e-07,
+        1.4243202681174516e-07,
+        -7.602425633468357e-16
+      ],
+      "constraint_values": {
+        "legacy_Q20": 0.9999999999999984,
+        "legacy_Q22sum": 0.5000000000000018,
+        "legacy_Q21real": -7.424616477180734e-16
+      }
+    },
+    {
+      "isotope": "Mg24",
+      "interaction": "usdb.snt",
+      "method": "gradient",
+      "seconds": 0.649822082996252,
+      "process_peak_rss_mb": 80.42578125,
+      "converged": true,
+      "status": "converged",
+      "energy_MeV": -73.73510248243502,
+      "iterations": 325,
+      "gradient_norm": 7.779787379829976e-07,
+      "energy_change_MeV": -5.684341886080802e-14,
+      "max_constraint_error": 1.580957587066223e-12,
+      "orthogonality_error": 6.661338147750939e-16,
+      "idempotency_error": 6.167417603947408e-16,
+      "protons": 4.000000000000002,
+      "neutrons": 4.0,
+      "fock_evaluations": 549,
+      "hessian_evaluations": 62,
+      "stability_checked": true,
+      "smallest_curvature": 0.19433238351785445,
+      "moments": [
+        1.9999999999986715,
+        0.4999999999984191,
+        -3.6637359812630166e-15,
+        -4.884981308350689e-15,
+        -2.9178829491494085e-13
+      ],
+      "constraint_values": {
+        "legacy_Q20": 1.9999999999986713,
+        "legacy_Q22sum": 0.49999999999841904,
+        "legacy_Q21real": -2.917926317236308e-13
+      }
+    },
+    {
+      "isotope": "Mg24",
+      "interaction": "usdb.snt",
+      "method": "hybrid",
+      "seconds": 0.144667168999149,
+      "process_peak_rss_mb": 80.42578125,
+      "converged": true,
+      "status": "converged",
+      "energy_MeV": -73.73510248242674,
+      "iterations": 38,
+      "gradient_norm": 1.4282294820095103e-07,
+      "energy_change_MeV": -3.164757345075486e-11,
+      "max_constraint_error": 9.051870364373826e-12,
+      "orthogonality_error": 2.220446049250313e-15,
+      "idempotency_error": 1.7763568394002505e-15,
+      "protons": 4.000000000000003,
+      "neutrons": 4.000000000000006,
+      "fock_evaluations": 59,
+      "hessian_evaluations": 152,
+      "stability_checked": true,
+      "smallest_curvature": 0.19433370035712674,
+      "moments": [
+        1.999999999990948,
+        0.49999999999938494,
+        2.9792700861897004e-08,
+        -2.8238318350304326e-08,
+        3.1463946031928813e-12
+      ],
+      "constraint_values": {
+        "legacy_Q20": 1.9999999999909481,
+        "legacy_Q22sum": 0.4999999999993848,
+        "legacy_Q21real": 3.1463876642989774e-12
+      }
+    },
+    {
+      "isotope": "O17",
+      "interaction": "FCI_HF_FCI_O17_e3_hw16_E39.snt",
+      "method": "gradient",
+      "seconds": 14.698152957003913,
+      "process_peak_rss_mb": 139.67578125,
+      "converged": false,
+      "status": "iteration_limit",
+      "energy_MeV": -99.25571446579386,
+      "iterations": 1200,
+      "gradient_norm": 4.224523302598139e-06,
+      "energy_change_MeV": -1.3642420526593924e-12,
+      "max_constraint_error": 8.841594123509822e-12,
+      "orthogonality_error": 8.881784197001252e-16,
+      "idempotency_error": 9.992007221626409e-16,
+      "protons": 8.0,
+      "neutrons": 9.000000000000002,
+      "fock_evaluations": 2536,
+      "hessian_evaluations": 0,
+      "stability_checked": false,
+      "smallest_curvature": null,
+      "moments": [
+        0.999999999999343,
+        0.5000000000088415,
+        -0.842989377522344,
+        0.0001473205654560772,
+        -7.770064973378066e-14
+      ],
+      "constraint_values": {
+        "legacy_Q20": 0.9999999999993432,
+        "legacy_Q22sum": 0.5000000000088416,
+        "legacy_Q21real": -7.7712142276809e-14
+      }
+    },
+    {
+      "isotope": "O17",
+      "interaction": "FCI_HF_FCI_O17_e3_hw16_E39.snt",
+      "method": "hybrid",
+      "seconds": 1.1250252000027103,
+      "process_peak_rss_mb": 198.92578125,
+      "converged": true,
+      "status": "converged",
+      "energy_MeV": -99.25571446611349,
+      "iterations": 17,
+      "gradient_norm": 2.6958494340836728e-08,
+      "energy_change_MeV": -6.394884621840902e-13,
+      "max_constraint_error": 1.4144241333724494e-13,
+      "orthogonality_error": 1.2212453270876722e-15,
+      "idempotency_error": 8.881784197001252e-16,
+      "protons": 8.000000000000002,
+      "neutrons": 9.0,
+      "fock_evaluations": 26,
+      "hessian_evaluations": 151,
+      "stability_checked": true,
+      "smallest_curvature": 0.01851217042195382,
+      "moments": [
+        0.999999999999858,
+        0.49999999999990163,
+        -0.8429894355683062,
+        -1.5542267811641253e-07,
+        -1.60811034627395e-14
+      ],
+      "constraint_values": {
+        "legacy_Q20": 0.9999999999998586,
+        "legacy_Q22sum": 0.49999999999990163,
+        "legacy_Q21real": -1.6073947728401095e-14
+      }
+    }
+  ],
+  "source_sha256": {
+    "HFHybridBindings.h": "7ac3529b98071da86e5175bf6a265b23186c4a1d05c54b95442de0e0a497d57a",
+    "Hamiltonian.cpp": "7fd511d57dba655016f8430c9cb2e3b3abc4423df5f97fa306f712e1a7242071",
+    "pyHFandHFB.cpp": "f93e0556abb8d776e8459bc3ee85f5fedfd2081a901bd09b4448fd98208c5a02",
+    "PythonScript/hybrid_hf.py": "a12e6f6f23f1a6027dd0e8f4d96289b2618781804bed69b7587adfda6af6d527",
+    "PythonScript/hf_operators.py": "3f66e0e9296a88074b4f017c73d0c0584a751c11e3cabd49ba324bee57c6e3a4",
+    "PythonScript/scan_gcm_hf.py": "531647f57663a72ba70f338a5f8ed672db3fa9c6004b434670f34563a20b378d",
+    "PythonScript/scan_hybrid_pes.py": "5421c9973743f5aa6352aefad7283c6e8256d87edbb170fb56dfb32040b40654"
+  },
+  "default_beta_gamma": {
+    "beta": [
+      0.04,
+      0.08,
+      0.12
+    ],
+    "gamma_degrees": [
+      10,
+      30,
+      50
+    ],
+    "points": 9,
+    "planned_points": 9,
+    "converged": 9,
+    "failed": 0,
+    "scan_complete": true,
+    "minimum_converged_energy_MeV": -75.39339088219687,
+    "fock_evaluations": 220,
+    "hessian_evaluations": 885
+  },
+  "cli_check_without_output": "passed; scan without output rejected"
+}

@@ -1,0 +1,24 @@
+# Paired targets for a GCM path, without a Cartesian product.
+
+[calculation]
+nucleus     = Mg24
+interaction = ../../Interaction/usda.snt
+hw          = 16
+memory_mb   = 512
+output      = ../../Output/mg24_path
+
+[constraints]
+Q20 = 0                           # replaced by each row in [path]
+Q22 = 0                           # replaced by each row in [path]
+Q21 = 0                           # fixed for all rows
+Jx  = off                         # unconstrained, unlike Jx = 0
+Jz  = off
+
+[path]
+columns = Q20 Q22
+points =
+    1.0   0.5
+    1.5   1.0
+
+[solver]
+max_iterations = 700

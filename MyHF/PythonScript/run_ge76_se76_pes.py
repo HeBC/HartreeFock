@@ -46,6 +46,10 @@ def run(nucleus,pass_name,method='IMSRG3f2',memory_mb=512.):
         previous=json.loads((dest/'settings.json').read_text())
         if previous['snt_sha256']!=digest or previous['nucleus']!=nucleus:
             raise ValueError('Existing results belong to a different interaction or nucleus')
+        for key,source in (('solver_sha256',MYHF/'PythonScript/hybrid_hf.py'),
+                           ('native_module_sha256',MYHF/'pyHFAndHFB.so')):
+            if previous.get(key)!=hashlib.sha256(source.read_bytes()).hexdigest():
+                raise ValueError('Existing PES uses a different solver/operator convention; use a new --job-root with copied input/ files')
     native.set_hybrid_threads(1)
     text=SNT.read_text()
     offset=float(re.search(r'Zero body term:\s*([+-]?[\d.]+)',text).group(1))

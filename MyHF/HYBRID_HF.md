@@ -3,8 +3,8 @@
 The new production entry point is `PythonScript/scan_hybrid_pes.py`. It uses the
 existing C++ Hamiltonian through a checked NumPy interface in `pyHFAndHFB.so`.
 `PythonScript/hybrid_hf.py` also provides `Solver` and `Options` for other scripts.
-The default case is **USDA Mg24**, beta = 0.1, 0.2, 0.3, 0.4 and gamma = 10, 20,
-30, 40, 50 degrees. Settings at the top of the scan script are editable.
+The default case is **USDA Mg24**, beta = 0.04, 0.08, 0.12 and gamma = 10, 30, 50 degrees, a
+nine-point grid tested with the corrected quadrupole normalization. Settings at the top of the scan script are editable.
 
 ## Build and run
 
@@ -100,7 +100,9 @@ spherical core contributes no quadrupole moment. This convention is explicitly
 saved in `settings.json` and need not match the legacy shape-printing routine.
 Real Q21 = 0 fixes the remaining real principal-axis orientation by default;
 `--free-axes` omits it. `--jx` and `--jz` are direct expectation values in hbar,
-not the legacy J(J+1) input used for Jx.
+not the legacy J(J+1) input used for Jx. A semiclassical spin label J can
+be mapped to a target sqrt(J(J+1)); pass that numerical value directly.
+The constraint does not make the intrinsic determinant an exact spin-J state.
 
 ## Correctness and memory changes
 
@@ -117,7 +119,8 @@ not the legacy J(J+1) input used for Jx.
 * Multi-shell quadrupole radial matrix elements now use Gauss-Laguerre
   integration instead of a single-shell-only formula. The old generic radial
   routine also had shadowed, uninitialized quantum numbers and hardcoded proton
-  indices in neutron callers. The sd-shell convention is preserved to roundoff.
+  indices in neutron callers. The radial integration preserves sd-shell radial values; the separate
+  angular normalization correction below changes the old Q2 matrices by 1/sqrt(5).
 * Dense interaction sizes use checked size arithmetic, fail before unsupported
   legacy indexing or budget overflow, and check allocation failure. Previously
   uninitialized owning pointers are null-initialized for safe error cleanup.
@@ -164,7 +167,9 @@ so that projected-energy Hessian is not interchangeable with the action above.
 The Ge76/Se76 workflow is installed in `PythonScript/run_ge76_se76_pes.py`.
 Both supplied SNT files and the validated calculation outputs are in
 `Output/ge76_se76_pes/outputs`; iteration logs and orbital checkpoints are
-in `Output/ge76_se76_pes/work`. The IMSRG2 results and checkpoints occupy a
+in `Output/ge76_se76_pes/work` in the original research workspace. These
+external production inputs and outputs are not included in a fresh clone.
+The IMSRG2 results and checkpoints occupy a
 separate `IMSRG2` subdirectory. Original research inputs remain unchanged.
 
 From MyHF in WSL, run each requested nucleus/method combination:
@@ -207,3 +212,14 @@ Numerical validation checks both complete passes, lower-branch selection,
 particle counts, energy offsets, gradient, energy change, quadrupole constraints,
 orthogonality, idempotency and constrained curvature. Details and sampled minima
 are saved in `outputs/comparison_validation.json` and `outputs/README.txt`.
+
+
+## Evolved operators and normalization update (2026-10-08)
+
+See [EVOLVED_GCM.md](EVOLVED_GCM.md) for the named GCM interface, tensor-SNT
+1b+2b operators, normal-ordering conventions, examples and tests.
+The bare Q2 matrix elements now use standard spherical-harmonic normalization:
+the older implementation was larger by sqrt(5). Old PES files are preserved;
+their standard beta values are beta_old/sqrt(5), with unchanged energies/gamma.
+New scans use the corrected operator, and old checkpoints are rejected when
+the solver/native-module hashes differ.
