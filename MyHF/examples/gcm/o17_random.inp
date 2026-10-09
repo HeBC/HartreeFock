@@ -1,0 +1,21 @@
+# O17 emax=3 regression target for the independent random-start benchmark.
+[calculation]
+nucleus = O17
+interaction = ../../Interaction/FCI_HF_FCI_O17_e3_hw16_E39.snt
+hw = 16
+memory_mb = 512
+
+[constraints]
+Q20 = 1
+Q22 = 0.5
+Q21 = 0
+
+[operator Q20]
+units = oscillator
+[operator Q22]
+units = oscillator
+[operator Q21]
+units = oscillator
+
+[solver]
+max_iterations = 1200

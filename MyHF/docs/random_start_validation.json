@@ -1,0 +1,3559 @@
+{
+  "date": "2026-10-08",
+  "random_starts": 40,
+  "random_converged": 40,
+  "reference_starts": 4,
+  "method": "hybrid",
+  "random_seed_range": [
+    1001,
+    1010
+  ],
+  "solver_seed": 520,
+  "threads": 1,
+  "continuation": false,
+  "cases": [
+    {
+      "case": "usda_mg24",
+      "settings": {
+        "config": {
+          "nucleus": "Mg24",
+          "interaction": "/mnt/d/Code/HF and HFB/MyHF/Interaction/usda.snt",
+          "hw_MeV": 16.0,
+          "basis_representation": "HO",
+          "memory_mb": 512.0,
+          "solver": {
+            "max_iterations": 700
+          },
+          "constraints": [
+            {
+              "name": "Q20",
+              "values": [
+                1.0,
+                1.5
+              ]
+            },
+            {
+              "name": "Q22",
+              "values": [
+                0.5
+              ]
+            },
+            {
+              "name": "Q21",
+              "values": [
+                0.0
+              ]
+            },
+            {
+              "name": "Q10",
+              "values": [
+                0.0
+              ]
+            },
+            {
+              "name": "Q30",
+              "values": [
+                0.0
+              ]
+            },
+            {
+              "name": "Jx",
+              "values": [
+                0.0
+              ]
+            },
+            {
+              "name": "Jz",
+              "values": [
+                0.0
+              ]
+            }
+          ]
+        },
+        "point_index": 0,
+        "targets": {
+          "Q20": 1.0,
+          "Q22": 0.5,
+          "Q21": 0.0,
+          "Q10": 0.0,
+          "Q30": 0.0,
+          "Jx": 0.0,
+          "Jz": 0.0
+        },
+        "resources": {
+          "estimated_resident_MiB": 64.73281478881836,
+          "budget_MiB": 512.0,
+          "threads": 1,
+          "zero_body_MeV": 0.0,
+          "operator_metadata": [
+            {
+              "kind": "bare",
+              "units": "fm^2",
+              "weights": [
+                1.0,
+                1.0
+              ],
+              "basis_representation": "HO",
+              "component": "real",
+              "normal_ordering": "valence_vacuum",
+              "name": "Q20",
+              "zero_body": 0.0,
+              "two_body_nnz": 0
+            },
+            {
+              "kind": "bare",
+              "units": "fm^2",
+              "weights": [
+                1.0,
+                1.0
+              ],
+              "basis_representation": "HO",
+              "component": "cosine_sum",
+              "normal_ordering": "valence_vacuum",
+              "name": "Q22",
+              "zero_body": 0.0,
+              "two_body_nnz": 0
+            },
+            {
+              "kind": "bare",
+              "units": "fm^2",
+              "weights": [
+                1.0,
+                1.0
+              ],
+              "basis_representation": "HO",
+              "component": "real",
+              "normal_ordering": "valence_vacuum",
+              "name": "Q21",
+              "zero_body": 0.0,
+              "two_body_nnz": 0
+            },
+            {
+              "kind": "bare",
+              "units": "fm^1",
+              "weights": [
+                1.0,
+                1.0
+              ],
+              "basis_representation": "HO",
+              "component": "real",
+              "normal_ordering": "valence_vacuum",
+              "name": "Q10",
+              "zero_body": 0.0,
+              "two_body_nnz": 0
+            },
+            {
+              "kind": "bare",
+              "units": "fm^3",
+              "weights": [
+                1.0,
+                1.0
+              ],
+              "basis_representation": "HO",
+              "component": "real",
+              "normal_ordering": "valence_vacuum",
+              "name": "Q30",
+              "zero_body": 0.0,
+              "two_body_nnz": 0
+            },
+            {
+              "kind": "bare",
+              "units": "hbar",
+              "weights": [
+                1.0,
+                1.0
+              ],
+              "basis_representation": "HO",
+              "component": "real",
+              "normal_ordering": "valence_vacuum",
+              "name": "Jx",
+              "zero_body": 0.0,
+              "two_body_nnz": 0
+            },
+            {
+              "kind": "bare",
+              "units": "hbar",
+              "weights": [
+                1.0,
+                1.0
+              ],
+              "basis_representation": "HO",
+              "component": "real",
+              "normal_ordering": "valence_vacuum",
+              "name": "Jz",
+              "zero_body": 0.0,
+              "two_body_nnz": 0
+            }
+          ]
+        },
+        "randomization": "independent Gaussian/QR real occupied subspaces for proton and neutron species",
+        "seeds": [
+          1001,
+          1002,
+          1003,
+          1004,
+          1005,
+          1006,
+          1007,
+          1008,
+          1009,
+          1010
+        ],
+        "solver_options": {
+          "max_iterations": 700,
+          "diagonalization_steps": 6,
+          "gradient_steps": 6,
+          "gradient_tolerance": 1e-06,
+          "constraint_tolerance": 1e-08,
+          "energy_tolerance": 1e-08,
+          "trust_radius": 0.3,
+          "max_cg": 35,
+          "method": "hybrid",
+          "seed": 520,
+          "check_stability": true,
+          "curvature_tolerance": 1e-05
+        },
+        "continuation": false,
+        "source_sha256": {
+          "pyHFAndHFB.so": "6b622430c892bce2603918118441e75bca055e6bf18f7967784507330ad54232",
+          "PythonScript/hybrid_hf.py": "a12e6f6f23f1a6027dd0e8f4d96289b2618781804bed69b7587adfda6af6d527",
+          "PythonScript/hf_operators.py": "3f66e0e9296a88074b4f017c73d0c0584a751c11e3cabd49ba324bee57c6e3a4",
+          "PythonScript/hf_input.py": "83f35b0df11b40a3685eca1846c289a7e797057d6e2d3135a8ce72f209888f8b",
+          "PythonScript/scan_gcm_hf.py": "2f63119845ab2f417c30203a3f458b1597f7d28f239ad79b80ba6e4b36635b09",
+          "tests/benchmark_random_starts.py": "114673d5dd6bc790987aef71eda65fab0b21569fd45e988b7aef891676d3e17b"
+        }
+      },
+      "summary": {
+        "case": "usda_mg24",
+        "nucleus": "Mg24",
+        "targets": {
+          "Q20": 1.0,
+          "Q22": 0.5,
+          "Q21": 0.0,
+          "Q10": 0.0,
+          "Q30": 0.0,
+          "Jx": 0.0,
+          "Jz": 0.0
+        },
+        "reference": {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -72.37598028084112,
+          "iterations": 63,
+          "gradient_norm": 5.261223880343882e-08,
+          "energy_change_MeV": -9.990230864787009e-12,
+          "max_constraint_error": 2.6645352591003757e-15,
+          "orthogonality_error": 5.551115123125783e-16,
+          "idempotency_error": 2.220446049250313e-16,
+          "protons": 4.0,
+          "neutrons": 4.0,
+          "fock_evaluations": 86,
+          "hessian_evaluations": 264,
+          "stability_checked": true,
+          "smallest_curvature": 0.0032044996070731335,
+          "moments": [
+            0.9999999999999999,
+            0.49999999999999745,
+            -1.0408340855860843e-15,
+            0.0,
+            0.0,
+            -2.6645352591003757e-15,
+            1.609823385706477e-15
+          ],
+          "constraint_values": {
+            "Q20": 0.9999999999999999,
+            "Q22": 0.49999999999999745,
+            "Q21": -1.0408340855860843e-15,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": -2.6645352591003757e-15,
+            "Jz": 1.609823385706477e-15
+          },
+          "label": "reference",
+          "random_seed": null,
+          "seconds": 0.22217362799710827,
+          "initial_energy_MeV": -72.47323397512235,
+          "initial_moments": {
+            "Q20": 6.539811263040588,
+            "Q22": 0.0,
+            "Q21": 0.0,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 0.0,
+            "Jz": 0.0
+          },
+          "initial_projector_distance": 0.0,
+          "initial_orthogonality_error": 0.0,
+          "initial_idempotency_error": 0.0,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 50,
+            "negative_curvature": 1
+          }
+        },
+        "random_attempts": 10,
+        "random_converged": 10,
+        "failures": [],
+        "iterations": [
+          19,
+          52
+        ],
+        "median_iterations": 29.0,
+        "accepted_energy_range_MeV": [
+          -72.37598028084116,
+          -69.42981522333517
+        ],
+        "max_gradient": 4.61048033635349e-07,
+        "max_constraint_error": 2.2297719226571644e-12,
+        "minimum_curvature": 0.003204500950909822,
+        "source_sha256": {
+          "pyHFAndHFB.so": "6b622430c892bce2603918118441e75bca055e6bf18f7967784507330ad54232",
+          "PythonScript/hybrid_hf.py": "a12e6f6f23f1a6027dd0e8f4d96289b2618781804bed69b7587adfda6af6d527",
+          "PythonScript/hf_operators.py": "3f66e0e9296a88074b4f017c73d0c0584a751c11e3cabd49ba324bee57c6e3a4",
+          "PythonScript/hf_input.py": "83f35b0df11b40a3685eca1846c289a7e797057d6e2d3135a8ce72f209888f8b",
+          "PythonScript/scan_gcm_hf.py": "2f63119845ab2f417c30203a3f458b1597f7d28f239ad79b80ba6e4b36635b09",
+          "tests/benchmark_random_starts.py": "114673d5dd6bc790987aef71eda65fab0b21569fd45e988b7aef891676d3e17b"
+        }
+      },
+      "results": [
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -72.37598028084112,
+          "iterations": 63,
+          "gradient_norm": 5.261223880343882e-08,
+          "energy_change_MeV": -9.990230864787009e-12,
+          "max_constraint_error": 2.6645352591003757e-15,
+          "orthogonality_error": 5.551115123125783e-16,
+          "idempotency_error": 2.220446049250313e-16,
+          "protons": 4.0,
+          "neutrons": 4.0,
+          "fock_evaluations": 86,
+          "hessian_evaluations": 264,
+          "stability_checked": true,
+          "smallest_curvature": 0.0032044996070731335,
+          "moments": [
+            0.9999999999999999,
+            0.49999999999999745,
+            -1.0408340855860843e-15,
+            0.0,
+            0.0,
+            -2.6645352591003757e-15,
+            1.609823385706477e-15
+          ],
+          "constraint_values": {
+            "Q20": 0.9999999999999999,
+            "Q22": 0.49999999999999745,
+            "Q21": -1.0408340855860843e-15,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": -2.6645352591003757e-15,
+            "Jz": 1.609823385706477e-15
+          },
+          "label": "reference",
+          "random_seed": null,
+          "seconds": 0.22217362799710827,
+          "initial_energy_MeV": -72.47323397512235,
+          "initial_moments": {
+            "Q20": 6.539811263040588,
+            "Q22": 0.0,
+            "Q21": 0.0,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 0.0,
+            "Jz": 0.0
+          },
+          "initial_projector_distance": 0.0,
+          "initial_orthogonality_error": 0.0,
+          "initial_idempotency_error": 0.0,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 50,
+            "negative_curvature": 1
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -72.35642511772133,
+          "iterations": 52,
+          "gradient_norm": 1.5020961099638255e-07,
+          "energy_change_MeV": -3.781082114073797e-10,
+          "max_constraint_error": 2.55351295663786e-15,
+          "orthogonality_error": 6.661338147750939e-16,
+          "idempotency_error": 4.440892098500626e-16,
+          "protons": 3.999999999999999,
+          "neutrons": 4.000000000000002,
+          "fock_evaluations": 78,
+          "hessian_evaluations": 202,
+          "stability_checked": true,
+          "smallest_curvature": 0.01395820647053224,
+          "moments": [
+            0.9999999999999976,
+            0.49999999999999745,
+            2.36862469602378e-15,
+            0.0,
+            0.0,
+            -1.2532783661473761e-15,
+            8.881784197001252e-16
+          ],
+          "constraint_values": {
+            "Q20": 0.9999999999999976,
+            "Q22": 0.49999999999999745,
+            "Q21": 2.36862469602378e-15,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": -1.2532783661473761e-15,
+            "Jz": 8.881784197001252e-16
+          },
+          "label": "random_1001",
+          "random_seed": 1001,
+          "seconds": 0.1867174029976013,
+          "initial_energy_MeV": -37.76972334513302,
+          "initial_moments": {
+            "Q20": -1.7143143378320325,
+            "Q22": -0.43741626878501516,
+            "Q21": 0.3717080945584692,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": -0.007910365476583282,
+            "Jz": 1.7942090636660935
+          },
+          "initial_projector_distance": 3.488097056840724,
+          "initial_orthogonality_error": 8.881784197001252e-16,
+          "initial_idempotency_error": 4.440892098500626e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 40
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -72.37598028084079,
+          "iterations": 39,
+          "gradient_norm": 7.404102487292206e-08,
+          "energy_change_MeV": -1.411137873219559e-11,
+          "max_constraint_error": 2.2297719226571644e-12,
+          "orthogonality_error": 1.1102230246251565e-15,
+          "idempotency_error": 4.996003610813204e-16,
+          "protons": 4.000000000000002,
+          "neutrons": 4.000000000000002,
+          "fock_evaluations": 56,
+          "hessian_evaluations": 164,
+          "stability_checked": true,
+          "smallest_curvature": 0.0032046215625886063,
+          "moments": [
+            1.0000000000022298,
+            0.5000000000016467,
+            -7.580602812140569e-13,
+            0.0,
+            0.0,
+            -4.6129766673175254e-14,
+            -1.5526468999382814e-13
+          ],
+          "constraint_values": {
+            "Q20": 1.0000000000022298,
+            "Q22": 0.5000000000016467,
+            "Q21": -7.580602812140569e-13,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": -4.6129766673175254e-14,
+            "Jz": -1.5526468999382814e-13
+          },
+          "label": "random_1002",
+          "random_seed": 1002,
+          "seconds": 0.13913207800214877,
+          "initial_energy_MeV": -45.75853279221752,
+          "initial_moments": {
+            "Q20": 1.601226104779058,
+            "Q22": 1.6240488484539273,
+            "Q21": -1.716371543498835,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": -0.3133021884289883,
+            "Jz": -0.5938725907117703
+          },
+          "initial_projector_distance": 3.1899115806771494,
+          "initial_orthogonality_error": 5.551115123125783e-16,
+          "initial_idempotency_error": 2.220446049250313e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 27
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -72.37598028083735,
+          "iterations": 19,
+          "gradient_norm": 1.8186131168052203e-07,
+          "energy_change_MeV": -9.036682513396954e-11,
+          "max_constraint_error": 2.55351295663786e-15,
+          "orthogonality_error": 7.771561172376096e-16,
+          "idempotency_error": 3.3306690738754696e-16,
+          "protons": 4.0,
+          "neutrons": 3.999999999999999,
+          "fock_evaluations": 26,
+          "hessian_evaluations": 73,
+          "stability_checked": true,
+          "smallest_curvature": 0.003204808297299669,
+          "moments": [
+            1.0,
+            0.49999999999999745,
+            1.429412144204889e-15,
+            0.0,
+            0.0,
+            -1.1657341758564144e-15,
+            8.881784197001252e-16
+          ],
+          "constraint_values": {
+            "Q20": 1.0,
+            "Q22": 0.49999999999999745,
+            "Q21": 1.429412144204889e-15,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": -1.1657341758564144e-15,
+            "Jz": 8.881784197001252e-16
+          },
+          "label": "random_1003",
+          "random_seed": 1003,
+          "seconds": 0.06424254599551205,
+          "initial_energy_MeV": -41.27506091360554,
+          "initial_moments": {
+            "Q20": -0.579007098692526,
+            "Q22": -0.6850552015767686,
+            "Q21": 1.3179601925083875,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 0.13270986879385227,
+            "Jz": 1.5657400118875895
+          },
+          "initial_projector_distance": 3.250768774162597,
+          "initial_orthogonality_error": 4.440892098500626e-16,
+          "initial_idempotency_error": 3.3306690738754696e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 7
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -72.37598028084116,
+          "iterations": 28,
+          "gradient_norm": 3.934840501063887e-09,
+          "energy_change_MeV": -4.405364961712621e-13,
+          "max_constraint_error": 3.816946758661288e-13,
+          "orthogonality_error": 6.661338147750939e-16,
+          "idempotency_error": 4.85722573273506e-16,
+          "protons": 4.0,
+          "neutrons": 4.000000000000002,
+          "fock_evaluations": 36,
+          "hessian_evaluations": 128,
+          "stability_checked": true,
+          "smallest_curvature": 0.003204500950909822,
+          "moments": [
+            1.0000000000003817,
+            0.5000000000000937,
+            2.8131663665220685e-13,
+            0.0,
+            0.0,
+            -2.5868196473766147e-14,
+            6.283862319378386e-14
+          ],
+          "constraint_values": {
+            "Q20": 1.0000000000003817,
+            "Q22": 0.5000000000000937,
+            "Q21": 2.8131663665220685e-13,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": -2.5868196473766147e-14,
+            "Jz": 6.283862319378386e-14
+          },
+          "label": "random_1004",
+          "random_seed": 1004,
+          "seconds": 0.09864152299996931,
+          "initial_energy_MeV": -45.69866140429953,
+          "initial_moments": {
+            "Q20": 2.765561967756618,
+            "Q22": -3.2280392888624414,
+            "Q21": -0.8959533647266587,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 1.9873650625722177,
+            "Jz": 0.8012670633073513
+          },
+          "initial_projector_distance": 3.270742384370377,
+          "initial_orthogonality_error": 4.440892098500626e-16,
+          "initial_idempotency_error": 2.220446049250313e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 16
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -72.35642511772124,
+          "iterations": 28,
+          "gradient_norm": 4.61048033635349e-07,
+          "energy_change_MeV": -1.1260397059231764e-09,
+          "max_constraint_error": 1.9984014443252818e-15,
+          "orthogonality_error": 6.661338147750939e-16,
+          "idempotency_error": 3.3306690738754696e-16,
+          "protons": 3.999999999999999,
+          "neutrons": 4.0,
+          "fock_evaluations": 38,
+          "hessian_evaluations": 110,
+          "stability_checked": true,
+          "smallest_curvature": 0.013958384648795605,
+          "moments": [
+            0.9999999999999994,
+            0.499999999999998,
+            -3.8142243015951887e-16,
+            0.0,
+            0.0,
+            9.307369416253173e-16,
+            1.9984014443252818e-15
+          ],
+          "constraint_values": {
+            "Q20": 0.9999999999999994,
+            "Q22": 0.499999999999998,
+            "Q21": -3.8142243015951887e-16,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 9.307369416253173e-16,
+            "Jz": 1.9984014443252818e-15
+          },
+          "label": "random_1005",
+          "random_seed": 1005,
+          "seconds": 0.08888280399696669,
+          "initial_energy_MeV": -47.078275112361894,
+          "initial_moments": {
+            "Q20": 2.1175628962665654,
+            "Q22": 2.1837282306900563,
+            "Q21": 2.6709349113303444,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": -0.07622481681323895,
+            "Jz": 0.8407137638384579
+          },
+          "initial_projector_distance": 3.0711979468035624,
+          "initial_orthogonality_error": 3.3306690738754696e-16,
+          "initial_idempotency_error": 1.1102230246251565e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 16
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -72.35642511772137,
+          "iterations": 30,
+          "gradient_norm": 5.528072712172853e-10,
+          "energy_change_MeV": -1.4210854715202004e-14,
+          "max_constraint_error": 3.1086244689504383e-15,
+          "orthogonality_error": 5.173566258735106e-16,
+          "idempotency_error": 4.440892098500626e-16,
+          "protons": 4.000000000000001,
+          "neutrons": 4.0,
+          "fock_evaluations": 41,
+          "hessian_evaluations": 119,
+          "stability_checked": true,
+          "smallest_curvature": 0.013958131074339955,
+          "moments": [
+            0.9999999999999983,
+            0.4999999999999969,
+            -5.362780498861923e-16,
+            0.0,
+            0.0,
+            1.1431591166119193e-15,
+            -6.661338147750939e-16
+          ],
+          "constraint_values": {
+            "Q20": 0.9999999999999983,
+            "Q22": 0.4999999999999969,
+            "Q21": -5.362780498861923e-16,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 1.1431591166119193e-15,
+            "Jz": -6.661338147750939e-16
+          },
+          "label": "random_1006",
+          "random_seed": 1006,
+          "seconds": 0.09772239800076932,
+          "initial_energy_MeV": -37.68962070803145,
+          "initial_moments": {
+            "Q20": 1.0335273068288386,
+            "Q22": 1.0923259204185203,
+            "Q21": 0.6441727542229272,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 1.436722776381694,
+            "Jz": -0.32108078358602476
+          },
+          "initial_projector_distance": 3.32329395699174,
+          "initial_orthogonality_error": 6.661338147750939e-16,
+          "initial_idempotency_error": 2.220446049250313e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 18
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -72.37598028083767,
+          "iterations": 20,
+          "gradient_norm": 1.8101479772901496e-07,
+          "energy_change_MeV": -3.7749714465462603e-10,
+          "max_constraint_error": 1.6653345369377348e-15,
+          "orthogonality_error": 6.661338147750939e-16,
+          "idempotency_error": 5.551115123125783e-16,
+          "protons": 4.000000000000002,
+          "neutrons": 4.0,
+          "fock_evaluations": 25,
+          "hessian_evaluations": 68,
+          "stability_checked": true,
+          "smallest_curvature": 0.0032047961760809296,
+          "moments": [
+            1.0000000000000002,
+            0.49999999999999833,
+            -2.498001805406602e-16,
+            0.0,
+            0.0,
+            4.440892098500626e-16,
+            -4.440892098500626e-16
+          ],
+          "constraint_values": {
+            "Q20": 1.0000000000000002,
+            "Q22": 0.49999999999999833,
+            "Q21": -2.498001805406602e-16,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 4.440892098500626e-16,
+            "Jz": -4.440892098500626e-16
+          },
+          "label": "random_1007",
+          "random_seed": 1007,
+          "seconds": 0.06196465500397608,
+          "initial_energy_MeV": -44.54117426616206,
+          "initial_moments": {
+            "Q20": 0.3841529426597764,
+            "Q22": -3.2818836264093827,
+            "Q21": -0.641144740249342,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 1.6149063979762226,
+            "Jz": -1.8827094557035065
+          },
+          "initial_projector_distance": 3.341014364583569,
+          "initial_orthogonality_error": 4.440892098500626e-16,
+          "initial_idempotency_error": 1.6653345369377348e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 8
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -69.42981522333517,
+          "iterations": 19,
+          "gradient_norm": 2.980233318335893e-07,
+          "energy_change_MeV": -2.3375434921035776e-10,
+          "max_constraint_error": 1.9984014443252818e-15,
+          "orthogonality_error": 9.992007221626409e-16,
+          "idempotency_error": 5.551115123125783e-16,
+          "protons": 3.999999999999999,
+          "neutrons": 4.0,
+          "fock_evaluations": 27,
+          "hessian_evaluations": 127,
+          "stability_checked": true,
+          "smallest_curvature": 0.025023480516048274,
+          "moments": [
+            0.9999999999999984,
+            0.5,
+            -2.0816681711721685e-16,
+            0.0,
+            0.0,
+            1.9984014443252818e-15,
+            2.220446049250313e-16
+          ],
+          "constraint_values": {
+            "Q20": 0.9999999999999984,
+            "Q22": 0.5,
+            "Q21": -2.0816681711721685e-16,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 1.9984014443252818e-15,
+            "Jz": 2.220446049250313e-16
+          },
+          "label": "random_1008",
+          "random_seed": 1008,
+          "seconds": 0.08831092000036733,
+          "initial_energy_MeV": -44.21745884773884,
+          "initial_moments": {
+            "Q20": -0.6880848261017001,
+            "Q22": -0.11119487474595702,
+            "Q21": -0.6802983836355303,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 2.3321196820691013,
+            "Jz": 1.590543740817808
+          },
+          "initial_projector_distance": 3.1768864321386805,
+          "initial_orthogonality_error": 6.661338147750939e-16,
+          "initial_idempotency_error": 2.220446049250313e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 7
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -72.37598028083795,
+          "iterations": 48,
+          "gradient_norm": 1.840862606625547e-07,
+          "energy_change_MeV": -6.825473519711522e-11,
+          "max_constraint_error": 9.43689570931383e-16,
+          "orthogonality_error": 8.881784197001252e-16,
+          "idempotency_error": 4.440892098500626e-16,
+          "protons": 4.000000000000002,
+          "neutrons": 4.0,
+          "fock_evaluations": 63,
+          "hessian_evaluations": 182,
+          "stability_checked": true,
+          "smallest_curvature": 0.003204782789061947,
+          "moments": [
+            1.0000000000000007,
+            0.49999999999999967,
+            -3.608224830031759e-16,
+            0.0,
+            0.0,
+            -9.43689570931383e-16,
+            -4.440892098500626e-16
+          ],
+          "constraint_values": {
+            "Q20": 1.0000000000000007,
+            "Q22": 0.49999999999999967,
+            "Q21": -3.608224830031759e-16,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": -9.43689570931383e-16,
+            "Jz": -4.440892098500626e-16
+          },
+          "label": "random_1009",
+          "random_seed": 1009,
+          "seconds": 0.15855563399964012,
+          "initial_energy_MeV": -48.02806573737648,
+          "initial_moments": {
+            "Q20": -0.6218797524987454,
+            "Q22": -1.255155878105463,
+            "Q21": 1.6290815414916469,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 2.148179081589544,
+            "Jz": -0.9288163142892345
+          },
+          "initial_projector_distance": 3.284855520350881,
+          "initial_orthogonality_error": 2.220446049250313e-16,
+          "initial_idempotency_error": 1.1102230246251565e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 36
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -72.37598028083934,
+          "iterations": 41,
+          "gradient_norm": 1.299323329621352e-07,
+          "energy_change_MeV": -1.81572090696136e-10,
+          "max_constraint_error": 8.881784197001252e-16,
+          "orthogonality_error": 4.440892098500626e-16,
+          "idempotency_error": 2.220446049250313e-16,
+          "protons": 4.0,
+          "neutrons": 3.9999999999999996,
+          "fock_evaluations": 57,
+          "hessian_evaluations": 164,
+          "stability_checked": true,
+          "smallest_curvature": 0.0032047134005333093,
+          "moments": [
+            0.9999999999999999,
+            0.49999999999999944,
+            -2.0816681711721685e-16,
+            0.0,
+            0.0,
+            -8.881784197001252e-16,
+            8.881784197001252e-16
+          ],
+          "constraint_values": {
+            "Q20": 0.9999999999999999,
+            "Q22": 0.49999999999999944,
+            "Q21": -2.0816681711721685e-16,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": -8.881784197001252e-16,
+            "Jz": 8.881784197001252e-16
+          },
+          "label": "random_1010",
+          "random_seed": 1010,
+          "seconds": 0.13643240799865453,
+          "initial_energy_MeV": -45.89787091396804,
+          "initial_moments": {
+            "Q20": -1.2344388187009496,
+            "Q22": -2.468373009246247,
+            "Q21": 1.865836812662233,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 0.5675252541173308,
+            "Jz": 2.094008064122332
+          },
+          "initial_projector_distance": 3.1692945037608684,
+          "initial_orthogonality_error": 4.440892098500626e-16,
+          "initial_idempotency_error": 1.6653345369377348e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 29
+          }
+        }
+      ]
+    },
+    {
+      "case": "evolved_ne20",
+      "settings": {
+        "config": {
+          "nucleus": "Ne20",
+          "interaction": "/mnt/d/Code/HF and HFB/MyHF/Interaction/hybrid_evolved_e2/H_IMSRG2_HO.snt",
+          "hw_MeV": 16.0,
+          "basis_representation": "HO",
+          "memory_mb": 512.0,
+          "solver": {
+            "max_iterations": 700
+          },
+          "constraints": [
+            {
+              "name": "Q20",
+              "values": [
+                1.0,
+                1.5
+              ],
+              "operator": {
+                "type": "tensor_snt",
+                "path": "/mnt/d/Code/HF and HFB/MyHF/Interaction/hybrid_evolved_e2/Qmass_IMSRG2_HO.snt",
+                "rank": 2,
+                "mu": 0,
+                "parity": 0,
+                "units": "fm^2",
+                "normal_ordering": "core",
+                "basis_representation": "HO"
+              }
+            },
+            {
+              "name": "Q22",
+              "values": [
+                0.5,
+                1.0
+              ],
+              "operator": {
+                "type": "tensor_snt",
+                "path": "/mnt/d/Code/HF and HFB/MyHF/Interaction/hybrid_evolved_e2/Qmass_IMSRG2_HO.snt",
+                "rank": 2,
+                "mu": 2,
+                "parity": 0,
+                "units": "fm^2",
+                "normal_ordering": "core",
+                "basis_representation": "HO"
+              }
+            },
+            {
+              "name": "Q21",
+              "values": [
+                0.0
+              ]
+            },
+            {
+              "name": "Q10",
+              "values": [
+                0.0
+              ]
+            },
+            {
+              "name": "Q30",
+              "values": [
+                0.0
+              ]
+            },
+            {
+              "name": "Jx",
+              "values": [
+                0.0
+              ]
+            },
+            {
+              "name": "Jz",
+              "values": [
+                0.0
+              ]
+            }
+          ]
+        },
+        "point_index": 0,
+        "targets": {
+          "Q20": 1.0,
+          "Q22": 0.5,
+          "Q21": 0.0,
+          "Q10": 0.0,
+          "Q30": 0.0,
+          "Jx": 0.0,
+          "Jz": 0.0
+        },
+        "resources": {
+          "estimated_resident_MiB": 65.25805282592773,
+          "budget_MiB": 512.0,
+          "threads": 1,
+          "zero_body_MeV": -94.8392338,
+          "operator_metadata": [
+            {
+              "kind": "tensor_snt",
+              "rank": 2,
+              "mu": 0,
+              "parity": 0,
+              "units": "fm^2",
+              "normal_ordering": "core",
+              "basis_representation": "HO",
+              "core_protons": 8,
+              "core_neutrons": 8,
+              "source": "/mnt/d/Code/HF and HFB/MyHF/Interaction/hybrid_evolved_e2/Qmass_IMSRG2_HO.snt",
+              "source_sha256": "cb923d18fabd246dfcd6f10d6022170f1dc016ea91de9c94d0dec8d2fab3c7ce",
+              "component": "mu0",
+              "name": "Q20",
+              "zero_body": 0.0,
+              "two_body_nnz": 18624
+            },
+            {
+              "kind": "tensor_snt",
+              "rank": 2,
+              "mu": 2,
+              "parity": 0,
+              "units": "fm^2",
+              "normal_ordering": "core",
+              "basis_representation": "HO",
+              "core_protons": 8,
+              "core_neutrons": 8,
+              "source": "/mnt/d/Code/HF and HFB/MyHF/Interaction/hybrid_evolved_e2/Qmass_IMSRG2_HO.snt",
+              "source_sha256": "cb923d18fabd246dfcd6f10d6022170f1dc016ea91de9c94d0dec8d2fab3c7ce",
+              "component": "cosine_sum",
+              "name": "Q22",
+              "zero_body": 0.0,
+              "two_body_nnz": 27272
+            },
+            {
+              "kind": "bare",
+              "units": "fm^2",
+              "weights": [
+                1.0,
+                1.0
+              ],
+              "basis_representation": "HO",
+              "component": "real",
+              "normal_ordering": "valence_vacuum",
+              "name": "Q21",
+              "zero_body": 0.0,
+              "two_body_nnz": 0
+            },
+            {
+              "kind": "bare",
+              "units": "fm^1",
+              "weights": [
+                1.0,
+                1.0
+              ],
+              "basis_representation": "HO",
+              "component": "real",
+              "normal_ordering": "valence_vacuum",
+              "name": "Q10",
+              "zero_body": 0.0,
+              "two_body_nnz": 0
+            },
+            {
+              "kind": "bare",
+              "units": "fm^3",
+              "weights": [
+                1.0,
+                1.0
+              ],
+              "basis_representation": "HO",
+              "component": "real",
+              "normal_ordering": "valence_vacuum",
+              "name": "Q30",
+              "zero_body": 0.0,
+              "two_body_nnz": 0
+            },
+            {
+              "kind": "bare",
+              "units": "hbar",
+              "weights": [
+                1.0,
+                1.0
+              ],
+              "basis_representation": "HO",
+              "component": "real",
+              "normal_ordering": "valence_vacuum",
+              "name": "Jx",
+              "zero_body": 0.0,
+              "two_body_nnz": 0
+            },
+            {
+              "kind": "bare",
+              "units": "hbar",
+              "weights": [
+                1.0,
+                1.0
+              ],
+              "basis_representation": "HO",
+              "component": "real",
+              "normal_ordering": "valence_vacuum",
+              "name": "Jz",
+              "zero_body": 0.0,
+              "two_body_nnz": 0
+            }
+          ]
+        },
+        "randomization": "independent Gaussian/QR real occupied subspaces for proton and neutron species",
+        "seeds": [
+          1001,
+          1002,
+          1003,
+          1004,
+          1005,
+          1006,
+          1007,
+          1008,
+          1009,
+          1010
+        ],
+        "solver_options": {
+          "max_iterations": 700,
+          "diagonalization_steps": 6,
+          "gradient_steps": 6,
+          "gradient_tolerance": 1e-06,
+          "constraint_tolerance": 1e-08,
+          "energy_tolerance": 1e-08,
+          "trust_radius": 0.3,
+          "max_cg": 35,
+          "method": "hybrid",
+          "seed": 520,
+          "check_stability": true,
+          "curvature_tolerance": 1e-05
+        },
+        "continuation": false,
+        "source_sha256": {
+          "pyHFAndHFB.so": "6b622430c892bce2603918118441e75bca055e6bf18f7967784507330ad54232",
+          "PythonScript/hybrid_hf.py": "a12e6f6f23f1a6027dd0e8f4d96289b2618781804bed69b7587adfda6af6d527",
+          "PythonScript/hf_operators.py": "3f66e0e9296a88074b4f017c73d0c0584a751c11e3cabd49ba324bee57c6e3a4",
+          "PythonScript/hf_input.py": "83f35b0df11b40a3685eca1846c289a7e797057d6e2d3135a8ce72f209888f8b",
+          "PythonScript/scan_gcm_hf.py": "2f63119845ab2f417c30203a3f458b1597f7d28f239ad79b80ba6e4b36635b09",
+          "tests/benchmark_random_starts.py": "114673d5dd6bc790987aef71eda65fab0b21569fd45e988b7aef891676d3e17b"
+        }
+      },
+      "summary": {
+        "case": "evolved_ne20",
+        "nucleus": "Ne20",
+        "targets": {
+          "Q20": 1.0,
+          "Q22": 0.5,
+          "Q21": 0.0,
+          "Q10": 0.0,
+          "Q30": 0.0,
+          "Jx": 0.0,
+          "Jz": 0.0
+        },
+        "reference": {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -76.41112525222837,
+          "iterations": 20,
+          "gradient_norm": 2.04305442467598e-08,
+          "energy_change_MeV": -6.792788553866558e-12,
+          "max_constraint_error": 6.146083642022404e-12,
+          "orthogonality_error": 2.220446049250313e-16,
+          "idempotency_error": 2.220446049250313e-16,
+          "protons": 1.9999999999999996,
+          "neutrons": 2.0,
+          "fock_evaluations": 31,
+          "hessian_evaluations": 81,
+          "stability_checked": true,
+          "smallest_curvature": 0.08056967818110218,
+          "moments": [
+            0.9999999999938539,
+            0.4999999999942341,
+            -9.07379162102537e-15,
+            0.0,
+            0.0,
+            -5.035902987579274e-17,
+            -1.2212453270876722e-15
+          ],
+          "constraint_values": {
+            "Q20": 0.9999999999938539,
+            "Q22": 0.4999999999942341,
+            "Q21": -9.07379162102537e-15,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": -5.035902987579274e-17,
+            "Jz": -1.2212453270876722e-15
+          },
+          "label": "reference",
+          "random_seed": null,
+          "seconds": 0.09479662399826339,
+          "initial_energy_MeV": -60.832899469655814,
+          "initial_moments": {
+            "Q20": 4.574640490365838,
+            "Q22": 0.0,
+            "Q21": 0.0,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 0.0,
+            "Jz": 0.0
+          },
+          "initial_projector_distance": 0.0,
+          "initial_orthogonality_error": 0.0,
+          "initial_idempotency_error": 0.0,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 8
+          }
+        },
+        "random_attempts": 10,
+        "random_converged": 10,
+        "failures": [],
+        "iterations": [
+          23,
+          35
+        ],
+        "median_iterations": 27.5,
+        "accepted_energy_range_MeV": [
+          -77.25588740616394,
+          -76.54777037718193
+        ],
+        "max_gradient": 5.479020976917449e-07,
+        "max_constraint_error": 8.176515020608122e-13,
+        "minimum_curvature": 0.015514885375458268,
+        "source_sha256": {
+          "pyHFAndHFB.so": "6b622430c892bce2603918118441e75bca055e6bf18f7967784507330ad54232",
+          "PythonScript/hybrid_hf.py": "a12e6f6f23f1a6027dd0e8f4d96289b2618781804bed69b7587adfda6af6d527",
+          "PythonScript/hf_operators.py": "3f66e0e9296a88074b4f017c73d0c0584a751c11e3cabd49ba324bee57c6e3a4",
+          "PythonScript/hf_input.py": "83f35b0df11b40a3685eca1846c289a7e797057d6e2d3135a8ce72f209888f8b",
+          "PythonScript/scan_gcm_hf.py": "2f63119845ab2f417c30203a3f458b1597f7d28f239ad79b80ba6e4b36635b09",
+          "tests/benchmark_random_starts.py": "114673d5dd6bc790987aef71eda65fab0b21569fd45e988b7aef891676d3e17b"
+        }
+      },
+      "results": [
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -76.41112525222837,
+          "iterations": 20,
+          "gradient_norm": 2.04305442467598e-08,
+          "energy_change_MeV": -6.792788553866558e-12,
+          "max_constraint_error": 6.146083642022404e-12,
+          "orthogonality_error": 2.220446049250313e-16,
+          "idempotency_error": 2.220446049250313e-16,
+          "protons": 1.9999999999999996,
+          "neutrons": 2.0,
+          "fock_evaluations": 31,
+          "hessian_evaluations": 81,
+          "stability_checked": true,
+          "smallest_curvature": 0.08056967818110218,
+          "moments": [
+            0.9999999999938539,
+            0.4999999999942341,
+            -9.07379162102537e-15,
+            0.0,
+            0.0,
+            -5.035902987579274e-17,
+            -1.2212453270876722e-15
+          ],
+          "constraint_values": {
+            "Q20": 0.9999999999938539,
+            "Q22": 0.4999999999942341,
+            "Q21": -9.07379162102537e-15,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": -5.035902987579274e-17,
+            "Jz": -1.2212453270876722e-15
+          },
+          "label": "reference",
+          "random_seed": null,
+          "seconds": 0.09479662399826339,
+          "initial_energy_MeV": -60.832899469655814,
+          "initial_moments": {
+            "Q20": 4.574640490365838,
+            "Q22": 0.0,
+            "Q21": 0.0,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 0.0,
+            "Jz": 0.0
+          },
+          "initial_projector_distance": 0.0,
+          "initial_orthogonality_error": 0.0,
+          "initial_idempotency_error": 0.0,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 8
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -76.58561697084768,
+          "iterations": 25,
+          "gradient_norm": 7.540673251741595e-08,
+          "energy_change_MeV": -6.866258672744152e-10,
+          "max_constraint_error": 7.806255641895632e-16,
+          "orthogonality_error": 4.440892098500626e-16,
+          "idempotency_error": 2.220446049250313e-16,
+          "protons": 2.0,
+          "neutrons": 1.9999999999999996,
+          "fock_evaluations": 33,
+          "hessian_evaluations": 147,
+          "stability_checked": true,
+          "smallest_curvature": 0.06617802586524878,
+          "moments": [
+            1.0000000000000002,
+            0.5000000000000002,
+            3.885780586188048e-16,
+            0.0,
+            0.0,
+            -7.806255641895632e-16,
+            3.3306690738754696e-16
+          ],
+          "constraint_values": {
+            "Q20": 1.0000000000000002,
+            "Q22": 0.5000000000000002,
+            "Q21": 3.885780586188048e-16,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": -7.806255641895632e-16,
+            "Jz": 3.3306690738754696e-16
+          },
+          "label": "random_1001",
+          "random_seed": 1001,
+          "seconds": 0.12155425400123931,
+          "initial_energy_MeV": -63.994114611313854,
+          "initial_moments": {
+            "Q20": 1.378716404218245,
+            "Q22": 1.0512991476951217,
+            "Q21": -0.09810255185553812,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 1.786634301406064,
+            "Jz": -0.7751050693761276
+          },
+          "initial_projector_distance": 2.4520155330779945,
+          "initial_orthogonality_error": 4.440892098500626e-16,
+          "initial_idempotency_error": 1.1102230246251565e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 13
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -76.5635999542947,
+          "iterations": 28,
+          "gradient_norm": 1.857484171425281e-07,
+          "energy_change_MeV": -1.0345360124119907e-09,
+          "max_constraint_error": 9.992007221626409e-16,
+          "orthogonality_error": 1.1102230246251565e-16,
+          "idempotency_error": 5.551115123125783e-17,
+          "protons": 2.0,
+          "neutrons": 2.0,
+          "fock_evaluations": 41,
+          "hessian_evaluations": 205,
+          "stability_checked": true,
+          "smallest_curvature": 0.015514885375458268,
+          "moments": [
+            1.0,
+            0.500000000000001,
+            -7.201492315529538e-19,
+            0.0,
+            0.0,
+            -6.206751959679297e-17,
+            -1.1102230246251565e-16
+          ],
+          "constraint_values": {
+            "Q20": 1.0,
+            "Q22": 0.500000000000001,
+            "Q21": -7.201492315529538e-19,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": -6.206751959679297e-17,
+            "Jz": -1.1102230246251565e-16
+          },
+          "label": "random_1002",
+          "random_seed": 1002,
+          "seconds": 0.1487436349998461,
+          "initial_energy_MeV": -61.5403201293227,
+          "initial_moments": {
+            "Q20": 0.054929001370517025,
+            "Q22": 0.984566554876522,
+            "Q21": -1.5914983188943663,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": -1.1554694429159813,
+            "Jz": 1.4588912963636858
+          },
+          "initial_projector_distance": 2.6657432428300907,
+          "initial_orthogonality_error": 4.440892098500626e-16,
+          "initial_idempotency_error": 1.6653345369377348e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 16
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -76.56359995429467,
+          "iterations": 29,
+          "gradient_norm": 3.629456039879948e-07,
+          "energy_change_MeV": -1.8047643379759393e-09,
+          "max_constraint_error": 1.2553165445533808e-15,
+          "orthogonality_error": 2.220446049250313e-16,
+          "idempotency_error": 1.442973565206904e-16,
+          "protons": 2.0,
+          "neutrons": 1.9999999999999998,
+          "fock_evaluations": 42,
+          "hessian_evaluations": 213,
+          "stability_checked": true,
+          "smallest_curvature": 0.015514938004485869,
+          "moments": [
+            1.0000000000000009,
+            0.5000000000000001,
+            -5.739039771862643e-16,
+            0.0,
+            0.0,
+            1.2553165445533808e-15,
+            -8.881784197001252e-16
+          ],
+          "constraint_values": {
+            "Q20": 1.0000000000000009,
+            "Q22": 0.5000000000000001,
+            "Q21": -5.739039771862643e-16,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 1.2553165445533808e-15,
+            "Jz": -8.881784197001252e-16
+          },
+          "label": "random_1003",
+          "random_seed": 1003,
+          "seconds": 0.1735198680034955,
+          "initial_energy_MeV": -61.82260749760765,
+          "initial_moments": {
+            "Q20": -0.6140624074625586,
+            "Q22": -4.082160524261109,
+            "Q21": -1.7625860121515702,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 0.6799766967350118,
+            "Jz": 1.3402758493793516
+          },
+          "initial_projector_distance": 2.576495333248836,
+          "initial_orthogonality_error": 6.661338147750939e-16,
+          "initial_idempotency_error": 2.220446049250313e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 17
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -76.54777037718232,
+          "iterations": 29,
+          "gradient_norm": 2.6504140677370695e-08,
+          "energy_change_MeV": -2.5484325760771753e-10,
+          "max_constraint_error": 7.771561172376096e-16,
+          "orthogonality_error": 5.551115123125783e-16,
+          "idempotency_error": 4.440892098500626e-16,
+          "protons": 2.000000000000001,
+          "neutrons": 1.9999999999999993,
+          "fock_evaluations": 42,
+          "hessian_evaluations": 189,
+          "stability_checked": true,
+          "smallest_curvature": 0.028636354865231323,
+          "moments": [
+            0.9999999999999998,
+            0.5000000000000006,
+            5.828670879282072e-16,
+            0.0,
+            0.0,
+            -1.8041124150158794e-16,
+            7.771561172376096e-16
+          ],
+          "constraint_values": {
+            "Q20": 0.9999999999999998,
+            "Q22": 0.5000000000000006,
+            "Q21": 5.828670879282072e-16,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": -1.8041124150158794e-16,
+            "Jz": 7.771561172376096e-16
+          },
+          "label": "random_1004",
+          "random_seed": 1004,
+          "seconds": 0.15622435299883364,
+          "initial_energy_MeV": -61.27810664848307,
+          "initial_moments": {
+            "Q20": 0.5282412032603954,
+            "Q22": 3.3651924234611674,
+            "Q21": -1.217892329624374,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 0.45654663041535637,
+            "Jz": -1.0068416261344875
+          },
+          "initial_projector_distance": 2.634434805686497,
+          "initial_orthogonality_error": 6.661338147750939e-16,
+          "initial_idempotency_error": 1.6653345369377348e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 17
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -77.25588740616394,
+          "iterations": 35,
+          "gradient_norm": 3.0066606962047724e-07,
+          "energy_change_MeV": -3.2586910947429715e-10,
+          "max_constraint_error": 4.440892098500626e-16,
+          "orthogonality_error": 4.440892098500626e-16,
+          "idempotency_error": 4.440892098500626e-16,
+          "protons": 2.0,
+          "neutrons": 1.9999999999999996,
+          "fock_evaluations": 53,
+          "hessian_evaluations": 168,
+          "stability_checked": true,
+          "smallest_curvature": 0.022613862306236927,
+          "moments": [
+            1.0000000000000002,
+            0.5000000000000004,
+            -1.233274677246341e-16,
+            0.0,
+            0.0,
+            -1.4004779222431558e-16,
+            2.220446049250313e-16
+          ],
+          "constraint_values": {
+            "Q20": 1.0000000000000002,
+            "Q22": 0.5000000000000004,
+            "Q21": -1.233274677246341e-16,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": -1.4004779222431558e-16,
+            "Jz": 2.220446049250313e-16
+          },
+          "label": "random_1005",
+          "random_seed": 1005,
+          "seconds": 0.17112898000050336,
+          "initial_energy_MeV": -64.71487688847417,
+          "initial_moments": {
+            "Q20": 1.118031086880226,
+            "Q22": 0.2701632770612026,
+            "Q21": 0.96548995706044,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": -1.2551846797680346,
+            "Jz": 0.4652634599567271
+          },
+          "initial_projector_distance": 2.370634721332975,
+          "initial_orthogonality_error": 4.440892098500626e-16,
+          "initial_idempotency_error": 2.220446049250313e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 23
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -76.54777037718193,
+          "iterations": 23,
+          "gradient_norm": 9.063106393621709e-09,
+          "energy_change_MeV": -1.3358203432289883e-12,
+          "max_constraint_error": 8.176515020608122e-13,
+          "orthogonality_error": 5.551115123125783e-16,
+          "idempotency_error": 2.7755575615628914e-16,
+          "protons": 1.9999999999999996,
+          "neutrons": 1.9999999999999993,
+          "fock_evaluations": 34,
+          "hessian_evaluations": 140,
+          "stability_checked": true,
+          "smallest_curvature": 0.02863635015599893,
+          "moments": [
+            1.0000000000002942,
+            0.5000000000000803,
+            -3.610584053959087e-13,
+            0.0,
+            0.0,
+            8.176515020608122e-13,
+            -5.950795411990839e-13
+          ],
+          "constraint_values": {
+            "Q20": 1.0000000000002942,
+            "Q22": 0.5000000000000803,
+            "Q21": -3.610584053959087e-13,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 8.176515020608122e-13,
+            "Jz": -5.950795411990839e-13
+          },
+          "label": "random_1006",
+          "random_seed": 1006,
+          "seconds": 0.12781913299841108,
+          "initial_energy_MeV": -63.29413479137378,
+          "initial_moments": {
+            "Q20": 0.4970913418051949,
+            "Q22": 0.4453070275644532,
+            "Q21": 0.9736856961355416,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 0.895194659957461,
+            "Jz": -0.6933308220123151
+          },
+          "initial_projector_distance": 2.707440656698785,
+          "initial_orthogonality_error": 4.440892098500626e-16,
+          "initial_idempotency_error": 5.551115123125783e-17,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 11
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -77.25588740616392,
+          "iterations": 24,
+          "gradient_norm": 2.23313786989914e-07,
+          "energy_change_MeV": -2.2998989379630075e-09,
+          "max_constraint_error": 2.9976021664879227e-15,
+          "orthogonality_error": 8.881784197001252e-16,
+          "idempotency_error": 3.3306690738754696e-16,
+          "protons": 2.0000000000000004,
+          "neutrons": 2.0000000000000004,
+          "fock_evaluations": 37,
+          "hessian_evaluations": 107,
+          "stability_checked": true,
+          "smallest_curvature": 0.02261391547358955,
+          "moments": [
+            0.999999999999997,
+            0.4999999999999981,
+            4.646622240056609e-17,
+            0.0,
+            0.0,
+            4.978486477291521e-16,
+            1.9984014443252818e-15
+          ],
+          "constraint_values": {
+            "Q20": 0.999999999999997,
+            "Q22": 0.4999999999999981,
+            "Q21": 4.646622240056609e-17,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 4.978486477291521e-16,
+            "Jz": 1.9984014443252818e-15
+          },
+          "label": "random_1007",
+          "random_seed": 1007,
+          "seconds": 0.11452378599642543,
+          "initial_energy_MeV": -64.21083941253487,
+          "initial_moments": {
+            "Q20": -0.22906691212520944,
+            "Q22": -0.3723033142592103,
+            "Q21": -0.07527121800667064,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 0.13015223116500413,
+            "Jz": -2.0975138531676034
+          },
+          "initial_projector_distance": 2.428342021216184,
+          "initial_orthogonality_error": 7.771561172376096e-16,
+          "initial_idempotency_error": 2.7755575615628914e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 12
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -76.58561697084777,
+          "iterations": 27,
+          "gradient_norm": 5.479020976917449e-07,
+          "energy_change_MeV": -1.905917201838747e-09,
+          "max_constraint_error": 1.7763568394002505e-15,
+          "orthogonality_error": 2.220446049250313e-16,
+          "idempotency_error": 1.1102230246251565e-16,
+          "protons": 2.0000000000000004,
+          "neutrons": 1.9999999999999998,
+          "fock_evaluations": 38,
+          "hessian_evaluations": 179,
+          "stability_checked": true,
+          "smallest_curvature": 0.06617805417763695,
+          "moments": [
+            0.9999999999999982,
+            0.5000000000000002,
+            -2.7582103268031233e-16,
+            0.0,
+            0.0,
+            -3.191891195797325e-16,
+            5.551115123125783e-16
+          ],
+          "constraint_values": {
+            "Q20": 0.9999999999999982,
+            "Q22": 0.5000000000000002,
+            "Q21": -2.7582103268031233e-16,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": -3.191891195797325e-16,
+            "Jz": 5.551115123125783e-16
+          },
+          "label": "random_1008",
+          "random_seed": 1008,
+          "seconds": 0.1395182339983876,
+          "initial_energy_MeV": -63.04649475586366,
+          "initial_moments": {
+            "Q20": -1.2615057724650935,
+            "Q22": -2.1402478766758732,
+            "Q21": -0.21643195615961242,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 0.3030633307184224,
+            "Jz": 0.14799601316422528
+          },
+          "initial_projector_distance": 2.6936185460009257,
+          "initial_orthogonality_error": 4.440892098500626e-16,
+          "initial_idempotency_error": 1.6653345369377348e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 15
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -76.58561697084775,
+          "iterations": 23,
+          "gradient_norm": 4.957423336812851e-07,
+          "energy_change_MeV": -2.5771385026018834e-10,
+          "max_constraint_error": 4.996003610813204e-16,
+          "orthogonality_error": 4.440892098500626e-16,
+          "idempotency_error": 2.220446049250313e-16,
+          "protons": 2.0,
+          "neutrons": 2.0,
+          "fock_evaluations": 35,
+          "hessian_evaluations": 150,
+          "stability_checked": true,
+          "smallest_curvature": 0.06617807843712908,
+          "moments": [
+            0.9999999999999996,
+            0.4999999999999995,
+            -3.400058012914542e-16,
+            0.0,
+            0.0,
+            2.914335439641036e-16,
+            2.220446049250313e-16
+          ],
+          "constraint_values": {
+            "Q20": 0.9999999999999996,
+            "Q22": 0.4999999999999995,
+            "Q21": -3.400058012914542e-16,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 2.914335439641036e-16,
+            "Jz": 2.220446049250313e-16
+          },
+          "label": "random_1009",
+          "random_seed": 1009,
+          "seconds": 0.12745566400553798,
+          "initial_energy_MeV": -64.27871326891348,
+          "initial_moments": {
+            "Q20": 1.4161632030463125,
+            "Q22": 0.07453894274282744,
+            "Q21": 1.3857855104840895,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 1.3988070741484253,
+            "Jz": -0.9331285562166345
+          },
+          "initial_projector_distance": 2.5764751272793065,
+          "initial_orthogonality_error": 4.440892098500626e-16,
+          "initial_idempotency_error": 1.3877787807814457e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 11
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -76.5477703771821,
+          "iterations": 35,
+          "gradient_norm": 4.919341745867248e-07,
+          "energy_change_MeV": -2.7782220968219917e-10,
+          "max_constraint_error": 1.2212453270876722e-15,
+          "orthogonality_error": 4.440892098500626e-16,
+          "idempotency_error": 1.1102230246251565e-16,
+          "protons": 1.9999999999999996,
+          "neutrons": 1.9999999999999998,
+          "fock_evaluations": 52,
+          "hessian_evaluations": 220,
+          "stability_checked": true,
+          "smallest_curvature": 0.02863633864529461,
+          "moments": [
+            0.9999999999999991,
+            0.5000000000000007,
+            7.91033905045424e-16,
+            0.0,
+            0.0,
+            9.71445146547012e-16,
+            -1.2212453270876722e-15
+          ],
+          "constraint_values": {
+            "Q20": 0.9999999999999991,
+            "Q22": 0.5000000000000007,
+            "Q21": 7.91033905045424e-16,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 9.71445146547012e-16,
+            "Jz": -1.2212453270876722e-15
+          },
+          "label": "random_1010",
+          "random_seed": 1010,
+          "seconds": 0.2070388149950304,
+          "initial_energy_MeV": -60.60245107507036,
+          "initial_moments": {
+            "Q20": -0.9587902741316509,
+            "Q22": 4.325340910703917,
+            "Q21": -0.33682542075025196,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": -1.130682780680714,
+            "Jz": -0.07492827616400666
+          },
+          "initial_projector_distance": 2.692480658919251,
+          "initial_orthogonality_error": 3.3306690738754696e-16,
+          "initial_idempotency_error": 8.326672684688674e-17,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 23
+          }
+        }
+      ]
+    },
+    {
+      "case": "multishell_o16",
+      "settings": {
+        "config": {
+          "nucleus": "O16",
+          "interaction": "/mnt/d/Code/HF and HFB/MyHF/Interaction/hybrid_evolved_e2/H_IMSRG2_full_HO.snt",
+          "hw_MeV": 16.0,
+          "basis_representation": "HO",
+          "memory_mb": 512.0,
+          "solver": {
+            "max_iterations": 1000
+          },
+          "constraints": [
+            {
+              "name": "Q20",
+              "values": [
+                0.2
+              ]
+            },
+            {
+              "name": "Q22",
+              "values": [
+                0.1
+              ]
+            },
+            {
+              "name": "Q21",
+              "values": [
+                0.0
+              ]
+            },
+            {
+              "name": "Q10",
+              "values": [
+                0.03
+              ]
+            },
+            {
+              "name": "Q30",
+              "values": [
+                0.05
+              ]
+            },
+            {
+              "name": "Jx",
+              "values": [
+                0.02
+              ]
+            },
+            {
+              "name": "Jz",
+              "values": [
+                0.01
+              ]
+            }
+          ]
+        },
+        "point_index": 0,
+        "targets": {
+          "Q20": 0.2,
+          "Q22": 0.1,
+          "Q21": 0.0,
+          "Q10": 0.03,
+          "Q30": 0.05,
+          "Jx": 0.02,
+          "Jz": 0.01
+        },
+        "resources": {
+          "estimated_resident_MiB": 68.37929916381836,
+          "budget_MiB": 512.0,
+          "threads": 1,
+          "zero_body_MeV": -2.05429185e-09,
+          "operator_metadata": [
+            {
+              "kind": "bare",
+              "units": "fm^2",
+              "weights": [
+                1.0,
+                1.0
+              ],
+              "basis_representation": "HO",
+              "component": "real",
+              "normal_ordering": "valence_vacuum",
+              "name": "Q20",
+              "zero_body": 0.0,
+              "two_body_nnz": 0
+            },
+            {
+              "kind": "bare",
+              "units": "fm^2",
+              "weights": [
+                1.0,
+                1.0
+              ],
+              "basis_representation": "HO",
+              "component": "cosine_sum",
+              "normal_ordering": "valence_vacuum",
+              "name": "Q22",
+              "zero_body": 0.0,
+              "two_body_nnz": 0
+            },
+            {
+              "kind": "bare",
+              "units": "fm^2",
+              "weights": [
+                1.0,
+                1.0
+              ],
+              "basis_representation": "HO",
+              "component": "real",
+              "normal_ordering": "valence_vacuum",
+              "name": "Q21",
+              "zero_body": 0.0,
+              "two_body_nnz": 0
+            },
+            {
+              "kind": "bare",
+              "units": "fm^1",
+              "weights": [
+                1.0,
+                1.0
+              ],
+              "basis_representation": "HO",
+              "component": "real",
+              "normal_ordering": "valence_vacuum",
+              "name": "Q10",
+              "zero_body": 0.0,
+              "two_body_nnz": 0
+            },
+            {
+              "kind": "bare",
+              "units": "fm^3",
+              "weights": [
+                1.0,
+                1.0
+              ],
+              "basis_representation": "HO",
+              "component": "real",
+              "normal_ordering": "valence_vacuum",
+              "name": "Q30",
+              "zero_body": 0.0,
+              "two_body_nnz": 0
+            },
+            {
+              "kind": "bare",
+              "units": "hbar",
+              "weights": [
+                1.0,
+                1.0
+              ],
+              "basis_representation": "HO",
+              "component": "real",
+              "normal_ordering": "valence_vacuum",
+              "name": "Jx",
+              "zero_body": 0.0,
+              "two_body_nnz": 0
+            },
+            {
+              "kind": "bare",
+              "units": "hbar",
+              "weights": [
+                1.0,
+                1.0
+              ],
+              "basis_representation": "HO",
+              "component": "real",
+              "normal_ordering": "valence_vacuum",
+              "name": "Jz",
+              "zero_body": 0.0,
+              "two_body_nnz": 0
+            }
+          ]
+        },
+        "randomization": "independent Gaussian/QR real occupied subspaces for proton and neutron species",
+        "seeds": [
+          1001,
+          1002,
+          1003,
+          1004,
+          1005,
+          1006,
+          1007,
+          1008,
+          1009,
+          1010
+        ],
+        "solver_options": {
+          "max_iterations": 1000,
+          "diagonalization_steps": 6,
+          "gradient_steps": 6,
+          "gradient_tolerance": 1e-06,
+          "constraint_tolerance": 1e-08,
+          "energy_tolerance": 1e-08,
+          "trust_radius": 0.3,
+          "max_cg": 35,
+          "method": "hybrid",
+          "seed": 520,
+          "check_stability": true,
+          "curvature_tolerance": 1e-05
+        },
+        "continuation": false,
+        "source_sha256": {
+          "pyHFAndHFB.so": "6b622430c892bce2603918118441e75bca055e6bf18f7967784507330ad54232",
+          "PythonScript/hybrid_hf.py": "a12e6f6f23f1a6027dd0e8f4d96289b2618781804bed69b7587adfda6af6d527",
+          "PythonScript/hf_operators.py": "3f66e0e9296a88074b4f017c73d0c0584a751c11e3cabd49ba324bee57c6e3a4",
+          "PythonScript/hf_input.py": "83f35b0df11b40a3685eca1846c289a7e797057d6e2d3135a8ce72f209888f8b",
+          "PythonScript/scan_gcm_hf.py": "2f63119845ab2f417c30203a3f458b1597f7d28f239ad79b80ba6e4b36635b09",
+          "tests/benchmark_random_starts.py": "114673d5dd6bc790987aef71eda65fab0b21569fd45e988b7aef891676d3e17b"
+        }
+      },
+      "summary": {
+        "case": "multishell_o16",
+        "nucleus": "O16",
+        "targets": {
+          "Q20": 0.2,
+          "Q22": 0.1,
+          "Q21": 0.0,
+          "Q10": 0.03,
+          "Q30": 0.05,
+          "Jx": 0.02,
+          "Jz": 0.01
+        },
+        "reference": {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -186.4445237011685,
+          "iterations": 85,
+          "gradient_norm": 7.793407784007099e-07,
+          "energy_change_MeV": -3.979039320256561e-13,
+          "max_constraint_error": 5.437317263101704e-13,
+          "orthogonality_error": 8.881784197001252e-16,
+          "idempotency_error": 7.771561172376096e-16,
+          "protons": 8.000000000000002,
+          "neutrons": 8.0,
+          "fock_evaluations": 113,
+          "hessian_evaluations": 1834,
+          "stability_checked": true,
+          "smallest_curvature": 0.0022769568005762963,
+          "moments": [
+            0.19999999999998552,
+            0.09999999999974438,
+            -5.437317263101704e-13,
+            0.029999999999989098,
+            0.050000000000019515,
+            0.019999999999485624,
+            0.009999999999841691
+          ],
+          "constraint_values": {
+            "Q20": 0.19999999999998552,
+            "Q22": 0.09999999999974438,
+            "Q21": -5.437317263101704e-13,
+            "Q10": 0.029999999999989098,
+            "Q30": 0.050000000000019515,
+            "Jx": 0.019999999999485624,
+            "Jz": 0.009999999999841691
+          },
+          "label": "reference",
+          "random_seed": null,
+          "seconds": 0.6960499010019703,
+          "initial_energy_MeV": -131.88506686385085,
+          "initial_moments": {
+            "Q20": 4.440892098500626e-16,
+            "Q22": 0.0,
+            "Q21": 0.0,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 0.0,
+            "Jz": 0.0
+          },
+          "initial_projector_distance": 0.0,
+          "initial_orthogonality_error": 0.0,
+          "initial_idempotency_error": 0.0,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 73
+          }
+        },
+        "random_attempts": 10,
+        "random_converged": 10,
+        "failures": [],
+        "iterations": [
+          33,
+          863
+        ],
+        "median_iterations": 245.5,
+        "accepted_energy_range_MeV": [
+          -186.53269880562254,
+          -186.44452370116852
+        ],
+        "max_gradient": 9.93256887645202e-07,
+        "max_constraint_error": 7.439587140778414e-12,
+        "minimum_curvature": 7.847163538653556e-05,
+        "source_sha256": {
+          "pyHFAndHFB.so": "6b622430c892bce2603918118441e75bca055e6bf18f7967784507330ad54232",
+          "PythonScript/hybrid_hf.py": "a12e6f6f23f1a6027dd0e8f4d96289b2618781804bed69b7587adfda6af6d527",
+          "PythonScript/hf_operators.py": "3f66e0e9296a88074b4f017c73d0c0584a751c11e3cabd49ba324bee57c6e3a4",
+          "PythonScript/hf_input.py": "83f35b0df11b40a3685eca1846c289a7e797057d6e2d3135a8ce72f209888f8b",
+          "PythonScript/scan_gcm_hf.py": "2f63119845ab2f417c30203a3f458b1597f7d28f239ad79b80ba6e4b36635b09",
+          "tests/benchmark_random_starts.py": "114673d5dd6bc790987aef71eda65fab0b21569fd45e988b7aef891676d3e17b"
+        }
+      },
+      "results": [
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -186.4445237011685,
+          "iterations": 85,
+          "gradient_norm": 7.793407784007099e-07,
+          "energy_change_MeV": -3.979039320256561e-13,
+          "max_constraint_error": 5.437317263101704e-13,
+          "orthogonality_error": 8.881784197001252e-16,
+          "idempotency_error": 7.771561172376096e-16,
+          "protons": 8.000000000000002,
+          "neutrons": 8.0,
+          "fock_evaluations": 113,
+          "hessian_evaluations": 1834,
+          "stability_checked": true,
+          "smallest_curvature": 0.0022769568005762963,
+          "moments": [
+            0.19999999999998552,
+            0.09999999999974438,
+            -5.437317263101704e-13,
+            0.029999999999989098,
+            0.050000000000019515,
+            0.019999999999485624,
+            0.009999999999841691
+          ],
+          "constraint_values": {
+            "Q20": 0.19999999999998552,
+            "Q22": 0.09999999999974438,
+            "Q21": -5.437317263101704e-13,
+            "Q10": 0.029999999999989098,
+            "Q30": 0.050000000000019515,
+            "Jx": 0.019999999999485624,
+            "Jz": 0.009999999999841691
+          },
+          "label": "reference",
+          "random_seed": null,
+          "seconds": 0.6960499010019703,
+          "initial_energy_MeV": -131.88506686385085,
+          "initial_moments": {
+            "Q20": 4.440892098500626e-16,
+            "Q22": 0.0,
+            "Q21": 0.0,
+            "Q10": 0.0,
+            "Q30": 0.0,
+            "Jx": 0.0,
+            "Jz": 0.0
+          },
+          "initial_projector_distance": 0.0,
+          "initial_orthogonality_error": 0.0,
+          "initial_idempotency_error": 0.0,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 73
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -186.44452370116852,
+          "iterations": 41,
+          "gradient_norm": 1.5150136639144964e-07,
+          "energy_change_MeV": -3.1036506698001176e-11,
+          "max_constraint_error": 2.7478019859472624e-15,
+          "orthogonality_error": 8.881784197001252e-16,
+          "idempotency_error": 6.661338147750939e-16,
+          "protons": 8.000000000000002,
+          "neutrons": 8.000000000000002,
+          "fock_evaluations": 61,
+          "hessian_evaluations": 675,
+          "stability_checked": true,
+          "smallest_curvature": 0.0022769563721910667,
+          "moments": [
+            0.19999999999999976,
+            0.09999999999999912,
+            -1.4988010832439613e-15,
+            0.02999999999999957,
+            0.049999999999997255,
+            0.02000000000000199,
+            0.00999999999999801
+          ],
+          "constraint_values": {
+            "Q20": 0.19999999999999976,
+            "Q22": 0.09999999999999912,
+            "Q21": -1.4988010832439613e-15,
+            "Q10": 0.02999999999999957,
+            "Q30": 0.049999999999997255,
+            "Jx": 0.02000000000000199,
+            "Jz": 0.00999999999999801
+          },
+          "label": "random_1001",
+          "random_seed": 1001,
+          "seconds": 0.2963257279989193,
+          "initial_energy_MeV": 42.933275704980524,
+          "initial_moments": {
+            "Q20": -2.605530462485813,
+            "Q22": 1.3239086865898306,
+            "Q21": -1.0870410680043787,
+            "Q10": -0.5660241930137488,
+            "Q30": -0.9062874273860226,
+            "Jx": -1.8093904909312024,
+            "Jz": -2.284746952499535
+          },
+          "initial_projector_distance": 4.458550695254023,
+          "initial_orthogonality_error": 4.440892098500626e-16,
+          "initial_idempotency_error": 3.3306690738754696e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 29
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -186.4445237011693,
+          "iterations": 33,
+          "gradient_norm": 9.968703814296013e-08,
+          "energy_change_MeV": -1.1340262062731199e-11,
+          "max_constraint_error": 4.013067655961322e-12,
+          "orthogonality_error": 1.5543122344752192e-15,
+          "idempotency_error": 1.3140936906338996e-15,
+          "protons": 8.000000000000002,
+          "neutrons": 8.000000000000004,
+          "fock_evaluations": 47,
+          "hessian_evaluations": 546,
+          "stability_checked": true,
+          "smallest_curvature": 0.002276956321620086,
+          "moments": [
+            0.2000000000025777,
+            0.10000000000236825,
+            -4.013067655961322e-12,
+            0.03000000000010566,
+            0.04999999999993916,
+            0.019999999997451612,
+            0.01000000000140755
+          ],
+          "constraint_values": {
+            "Q20": 0.2000000000025777,
+            "Q22": 0.10000000000236825,
+            "Q21": -4.013067655961322e-12,
+            "Q10": 0.03000000000010566,
+            "Q30": 0.04999999999993916,
+            "Jx": 0.019999999997451612,
+            "Jz": 0.01000000000140755
+          },
+          "label": "random_1002",
+          "random_seed": 1002,
+          "seconds": 0.2597427489963593,
+          "initial_energy_MeV": 37.6983735391375,
+          "initial_moments": {
+            "Q20": 0.016228057944769225,
+            "Q22": -0.29243206096755964,
+            "Q21": -1.6070662351019251,
+            "Q10": 0.029997085221594957,
+            "Q30": 2.3551843461817206,
+            "Jx": -0.9375072795464701,
+            "Jz": 2.2198167965599174
+          },
+          "initial_projector_distance": 4.446381943894764,
+          "initial_orthogonality_error": 6.661338147750939e-16,
+          "initial_idempotency_error": 3.3306690738754696e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 21
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -186.44452370116852,
+          "iterations": 74,
+          "gradient_norm": 9.542867301964257e-07,
+          "energy_change_MeV": 5.115907697472721e-13,
+          "max_constraint_error": 1.3283922573048557e-12,
+          "orthogonality_error": 8.881784197001252e-16,
+          "idempotency_error": 1.2212453270876722e-15,
+          "protons": 8.000000000000004,
+          "neutrons": 8.000000000000004,
+          "fock_evaluations": 97,
+          "hessian_evaluations": 1824,
+          "stability_checked": true,
+          "smallest_curvature": 0.0022769602514856055,
+          "moments": [
+            0.20000000000005877,
+            0.10000000000046923,
+            5.601352714990071e-13,
+            0.029999999999994448,
+            0.049999999999978784,
+            0.019999999998671608,
+            0.009999999998957954
+          ],
+          "constraint_values": {
+            "Q20": 0.20000000000005877,
+            "Q22": 0.10000000000046923,
+            "Q21": 5.601352714990071e-13,
+            "Q10": 0.029999999999994448,
+            "Q30": 0.049999999999978784,
+            "Jx": 0.019999999998671608,
+            "Jz": 0.009999999998957954
+          },
+          "label": "random_1003",
+          "random_seed": 1003,
+          "seconds": 0.6428681379984482,
+          "initial_energy_MeV": 28.25544622149476,
+          "initial_moments": {
+            "Q20": 1.7463967515956589,
+            "Q22": 3.635509311707325,
+            "Q21": -0.7675334521062507,
+            "Q10": 0.21713115162588756,
+            "Q30": -0.42477509407179126,
+            "Jx": 0.405609257105871,
+            "Jz": -0.8037475463397339
+          },
+          "initial_projector_distance": 4.254524347977796,
+          "initial_orthogonality_error": 5.551115123125783e-16,
+          "initial_idempotency_error": 2.220446049250313e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 62
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -186.53269880562254,
+          "iterations": 466,
+          "gradient_norm": 9.907048740446003e-07,
+          "energy_change_MeV": 8.526512829121202e-14,
+          "max_constraint_error": 1.0984997633745053e-12,
+          "orthogonality_error": 8.881784197001252e-16,
+          "idempotency_error": 1.2212453270876722e-15,
+          "protons": 7.999999999999998,
+          "neutrons": 8.0,
+          "fock_evaluations": 518,
+          "hessian_evaluations": 14954,
+          "stability_checked": true,
+          "smallest_curvature": 0.00010003022759784525,
+          "moments": [
+            0.20000000000010504,
+            0.10000000000100157,
+            -1.4091245531533403e-13,
+            0.030000000000027387,
+            0.05000000000020494,
+            0.0199999999989015,
+            0.010000000000161435
+          ],
+          "constraint_values": {
+            "Q20": 0.20000000000010504,
+            "Q22": 0.10000000000100157,
+            "Q21": -1.4091245531533403e-13,
+            "Q10": 0.030000000000027387,
+            "Q30": 0.05000000000020494,
+            "Jx": 0.0199999999989015,
+            "Jz": 0.010000000000161435
+          },
+          "label": "random_1004",
+          "random_seed": 1004,
+          "seconds": 4.354559741994308,
+          "initial_energy_MeV": 76.46645927049669,
+          "initial_moments": {
+            "Q20": -1.8349524954431211,
+            "Q22": 0.18950586731921282,
+            "Q21": 0.5441363824035931,
+            "Q10": 0.05048584909067513,
+            "Q30": 0.06930164084875862,
+            "Jx": 1.845010407273337,
+            "Jz": -1.0306123556350282
+          },
+          "initial_projector_distance": 4.458105367206998,
+          "initial_orthogonality_error": 4.440892098500626e-16,
+          "initial_idempotency_error": 2.220446049250313e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 454
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -186.5326634558646,
+          "iterations": 418,
+          "gradient_norm": 9.801260746754119e-07,
+          "energy_change_MeV": -1.1368683772161603e-12,
+          "max_constraint_error": 7.122601120013172e-13,
+          "orthogonality_error": 1.7763568394002505e-15,
+          "idempotency_error": 1.3322676295501878e-15,
+          "protons": 8.000000000000004,
+          "neutrons": 7.9999999999999964,
+          "fock_evaluations": 438,
+          "hessian_evaluations": 13835,
+          "stability_checked": true,
+          "smallest_curvature": 0.00010964094249087881,
+          "moments": [
+            0.20000000000031093,
+            0.10000000000024394,
+            -3.398843706481358e-13,
+            0.02999999999999997,
+            0.05000000000013528,
+            0.02000000000071226,
+            0.009999999999966036
+          ],
+          "constraint_values": {
+            "Q20": 0.20000000000031093,
+            "Q22": 0.10000000000024394,
+            "Q21": -3.398843706481358e-13,
+            "Q10": 0.02999999999999997,
+            "Q30": 0.05000000000013528,
+            "Jx": 0.02000000000071226,
+            "Jz": 0.009999999999966036
+          },
+          "label": "random_1005",
+          "random_seed": 1005,
+          "seconds": 3.9339718100018217,
+          "initial_energy_MeV": 49.252958963339196,
+          "initial_moments": {
+            "Q20": 1.747606204852348,
+            "Q22": -2.497401178968957,
+            "Q21": 0.33795989901295326,
+            "Q10": 0.23654199068119325,
+            "Q30": -2.3554506496969143,
+            "Jx": -1.191450040183441,
+            "Jz": 0.7705932754889369
+          },
+          "initial_projector_distance": 4.394795758102186,
+          "initial_orthogonality_error": 6.661338147750939e-16,
+          "initial_idempotency_error": 2.7755575615628914e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 406
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -186.53196418251926,
+          "iterations": 352,
+          "gradient_norm": 9.726166570643245e-07,
+          "energy_change_MeV": -1.1084466677857563e-12,
+          "max_constraint_error": 1.7113532813084475e-12,
+          "orthogonality_error": 1.1102230246251565e-15,
+          "idempotency_error": 8.265806998137736e-16,
+          "protons": 7.999999999999999,
+          "neutrons": 8.000000000000004,
+          "fock_evaluations": 492,
+          "hessian_evaluations": 9280,
+          "stability_checked": true,
+          "smallest_curvature": 7.847163538653556e-05,
+          "moments": [
+            0.20000000000077148,
+            0.10000000000171136,
+            5.544176229221875e-13,
+            0.029999999999994094,
+            0.04999999999974189,
+            0.020000000000730767,
+            0.010000000001090026
+          ],
+          "constraint_values": {
+            "Q20": 0.20000000000077148,
+            "Q22": 0.10000000000171136,
+            "Q21": 5.544176229221875e-13,
+            "Q10": 0.029999999999994094,
+            "Q30": 0.04999999999974189,
+            "Jx": 0.020000000000730767,
+            "Jz": 0.010000000001090026
+          },
+          "label": "random_1006",
+          "random_seed": 1006,
+          "seconds": 3.038599097999395,
+          "initial_energy_MeV": 50.70744196180028,
+          "initial_moments": {
+            "Q20": 0.3163433772519846,
+            "Q22": 0.8524069386215141,
+            "Q21": -0.6884571143241053,
+            "Q10": 1.1979386659702365,
+            "Q30": 3.6943682077728752,
+            "Jx": 2.761573227759917,
+            "Jz": -0.6656936325844427
+          },
+          "initial_projector_distance": 4.392372564592248,
+          "initial_orthogonality_error": 4.440892098500626e-16,
+          "initial_idempotency_error": 2.7755575615628914e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 340
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -186.44687916733244,
+          "iterations": 85,
+          "gradient_norm": 5.510418521846507e-08,
+          "energy_change_MeV": -1.716671249596402e-11,
+          "max_constraint_error": 1.1789180742738381e-14,
+          "orthogonality_error": 1.1102230246251565e-15,
+          "idempotency_error": 1.3322676295501878e-15,
+          "protons": 8.000000000000005,
+          "neutrons": 8.0,
+          "fock_evaluations": 131,
+          "hessian_evaluations": 1379,
+          "stability_checked": true,
+          "smallest_curvature": 0.0026736524513635822,
+          "moments": [
+            0.19999999999999776,
+            0.0999999999999941,
+            1.915134717478395e-15,
+            0.030000000000000245,
+            0.05000000000001179,
+            0.020000000000004098,
+            0.010000000000002451
+          ],
+          "constraint_values": {
+            "Q20": 0.19999999999999776,
+            "Q22": 0.0999999999999941,
+            "Q21": 1.915134717478395e-15,
+            "Q10": 0.030000000000000245,
+            "Q30": 0.05000000000001179,
+            "Jx": 0.020000000000004098,
+            "Jz": 0.010000000000002451
+          },
+          "label": "random_1007",
+          "random_seed": 1007,
+          "seconds": 0.6250806059979368,
+          "initial_energy_MeV": 29.223237138426413,
+          "initial_moments": {
+            "Q20": 0.05487826380983807,
+            "Q22": -0.5976976977994605,
+            "Q21": 1.5974764870808915,
+            "Q10": 0.2435735651388153,
+            "Q30": 1.9462381981333547,
+            "Jx": 0.21825472916130817,
+            "Jz": -0.45104526752725516
+          },
+          "initial_projector_distance": 4.36228687703609,
+          "initial_orthogonality_error": 8.881784197001252e-16,
+          "initial_idempotency_error": 2.7755575615628914e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 73
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -186.53266345586084,
+          "iterations": 378,
+          "gradient_norm": 9.824540838402708e-07,
+          "energy_change_MeV": -1.1368683772161603e-12,
+          "max_constraint_error": 1.2441124519479985e-12,
+          "orthogonality_error": 1.1102230246251565e-15,
+          "idempotency_error": 8.881784197001252e-16,
+          "protons": 8.000000000000002,
+          "neutrons": 8.000000000000004,
+          "fock_evaluations": 426,
+          "hessian_evaluations": 12123,
+          "stability_checked": true,
+          "smallest_curvature": 0.00010954379623186677,
+          "moments": [
+            0.20000000000016327,
+            0.1000000000012071,
+            9.239050496878676e-14,
+            0.02999999999996464,
+            0.049999999999763144,
+            0.020000000001244113,
+            0.010000000000289333
+          ],
+          "constraint_values": {
+            "Q20": 0.20000000000016327,
+            "Q22": 0.1000000000012071,
+            "Q21": 9.239050496878676e-14,
+            "Q10": 0.02999999999996464,
+            "Q30": 0.049999999999763144,
+            "Jx": 0.020000000001244113,
+            "Jz": 0.010000000000289333
+          },
+          "label": "random_1008",
+          "random_seed": 1008,
+          "seconds": 3.562929678002547,
+          "initial_energy_MeV": 19.804434359293555,
+          "initial_moments": {
+            "Q20": -1.6079883371142922,
+            "Q22": 3.49302948491005,
+            "Q21": -0.8875183797556865,
+            "Q10": 0.2337449028924466,
+            "Q30": 0.16362588811169498,
+            "Jx": -0.4489072567875315,
+            "Jz": 1.7451463817512272
+          },
+          "initial_projector_distance": 4.230057619456428,
+          "initial_orthogonality_error": 6.661338147750939e-16,
+          "initial_idempotency_error": 2.220446049250313e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 366
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -186.53266345587394,
+          "iterations": 863,
+          "gradient_norm": 9.93256887645202e-07,
+          "energy_change_MeV": 2.5579538487363607e-13,
+          "max_constraint_error": 1.6310772177341448e-12,
+          "orthogonality_error": 6.661338147750939e-16,
+          "idempotency_error": 5.551115123125783e-16,
+          "protons": 8.0,
+          "neutrons": 8.000000000000002,
+          "fock_evaluations": 892,
+          "hessian_evaluations": 29379,
+          "stability_checked": true,
+          "smallest_curvature": 0.00010956535684436504,
+          "moments": [
+            0.2000000000009829,
+            0.09999999999992487,
+            -1.1995092419336828e-13,
+            0.030000000000004867,
+            0.05000000000001378,
+            0.020000000001631078,
+            0.010000000000140119
+          ],
+          "constraint_values": {
+            "Q20": 0.2000000000009829,
+            "Q22": 0.09999999999992487,
+            "Q21": -1.1995092419336828e-13,
+            "Q10": 0.030000000000004867,
+            "Q30": 0.05000000000001378,
+            "Jx": 0.020000000001631078,
+            "Jz": 0.010000000000140119
+          },
+          "label": "random_1009",
+          "random_seed": 1009,
+          "seconds": 8.246271133997652,
+          "initial_energy_MeV": 55.39628437088787,
+          "initial_moments": {
+            "Q20": -2.2049691136381533,
+            "Q22": 0.11591291635691892,
+            "Q21": -0.4062648463302574,
+            "Q10": 0.1274763828832409,
+            "Q30": 1.6054777488322203,
+            "Jx": -0.4833211107972842,
+            "Jz": 1.8750504613180916
+          },
+          "initial_projector_distance": 4.388026634298221,
+          "initial_orthogonality_error": 7.771561172376096e-16,
+          "initial_idempotency_error": 3.3306690738754696e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 851
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -186.4445237011692,
+          "iterations": 139,
+          "gradient_norm": 8.314398792953793e-07,
+          "energy_change_MeV": 2.2737367544323206e-13,
+          "max_constraint_error": 7.439587140778414e-12,
+          "orthogonality_error": 1.2212453270876722e-15,
+          "idempotency_error": 7.905458734471014e-16,
+          "protons": 8.000000000000002,
+          "neutrons": 8.0,
+          "fock_evaluations": 181,
+          "hessian_evaluations": 3531,
+          "stability_checked": true,
+          "smallest_curvature": 0.002276950633865223,
+          "moments": [
+            0.2000000000026301,
+            0.10000000000572128,
+            1.4444001550373287e-13,
+            0.029999999999965447,
+            0.05000000000002211,
+            0.019999999992560413,
+            0.009999999999857678
+          ],
+          "constraint_values": {
+            "Q20": 0.2000000000026301,
+            "Q22": 0.10000000000572128,
+            "Q21": 1.4444001550373287e-13,
+            "Q10": 0.029999999999965447,
+            "Q30": 0.05000000000002211,
+            "Jx": 0.019999999992560413,
+            "Jz": 0.009999999999857678
+          },
+          "label": "random_1010",
+          "random_seed": 1010,
+          "seconds": 1.2230144179993658,
+          "initial_energy_MeV": 48.61167183519235,
+          "initial_moments": {
+            "Q20": 0.06683419050001782,
+            "Q22": 2.4768677962706,
+            "Q21": -1.1106085574469386,
+            "Q10": 0.4260538845455534,
+            "Q30": -0.733887380863961,
+            "Jx": -0.3160288703605867,
+            "Jz": 0.6589727895360316
+          },
+          "initial_projector_distance": 4.28987522133726,
+          "initial_orthogonality_error": 8.881784197001252e-16,
+          "initial_idempotency_error": 2.7755575615628914e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 127
+          }
+        }
+      ]
+    },
+    {
+      "case": "o17_emax3",
+      "settings": {
+        "config": {
+          "nucleus": "O17",
+          "interaction": "/mnt/d/Code/HF and HFB/MyHF/Interaction/FCI_HF_FCI_O17_e3_hw16_E39.snt",
+          "hw_MeV": 16.0,
+          "basis_representation": "HO",
+          "memory_mb": 512.0,
+          "solver": {
+            "max_iterations": 1200
+          },
+          "constraints": [
+            {
+              "name": "Q20",
+              "values": [
+                1.0
+              ],
+              "operator": {
+                "type": "builtin",
+                "units": "oscillator"
+              }
+            },
+            {
+              "name": "Q22",
+              "values": [
+                0.5
+              ],
+              "operator": {
+                "type": "builtin",
+                "units": "oscillator"
+              }
+            },
+            {
+              "name": "Q21",
+              "values": [
+                0.0
+              ],
+              "operator": {
+                "type": "builtin",
+                "units": "oscillator"
+              }
+            }
+          ]
+        },
+        "point_index": 0,
+        "targets": {
+          "Q20": 1.0,
+          "Q22": 0.5,
+          "Q21": 0.0
+        },
+        "resources": {
+          "estimated_resident_MiB": 125.2182731628418,
+          "budget_MiB": 512.0,
+          "threads": 1,
+          "zero_body_MeV": 42.6856505,
+          "operator_metadata": [
+            {
+              "kind": "bare",
+              "units": "b^2",
+              "weights": [
+                1.0,
+                1.0
+              ],
+              "basis_representation": "HO",
+              "component": "real",
+              "normal_ordering": "valence_vacuum",
+              "name": "Q20",
+              "zero_body": 0.0,
+              "two_body_nnz": 0
+            },
+            {
+              "kind": "bare",
+              "units": "b^2",
+              "weights": [
+                1.0,
+                1.0
+              ],
+              "basis_representation": "HO",
+              "component": "cosine_sum",
+              "normal_ordering": "valence_vacuum",
+              "name": "Q22",
+              "zero_body": 0.0,
+              "two_body_nnz": 0
+            },
+            {
+              "kind": "bare",
+              "units": "b^2",
+              "weights": [
+                1.0,
+                1.0
+              ],
+              "basis_representation": "HO",
+              "component": "real",
+              "normal_ordering": "valence_vacuum",
+              "name": "Q21",
+              "zero_body": 0.0,
+              "two_body_nnz": 0
+            }
+          ]
+        },
+        "randomization": "independent Gaussian/QR real occupied subspaces for proton and neutron species",
+        "seeds": [
+          1001,
+          1002,
+          1003,
+          1004,
+          1005,
+          1006,
+          1007,
+          1008,
+          1009,
+          1010
+        ],
+        "solver_options": {
+          "max_iterations": 1200,
+          "diagonalization_steps": 6,
+          "gradient_steps": 6,
+          "gradient_tolerance": 1e-06,
+          "constraint_tolerance": 1e-08,
+          "energy_tolerance": 1e-08,
+          "trust_radius": 0.3,
+          "max_cg": 35,
+          "method": "hybrid",
+          "seed": 520,
+          "check_stability": true,
+          "curvature_tolerance": 1e-05
+        },
+        "continuation": false,
+        "source_sha256": {
+          "pyHFAndHFB.so": "6b622430c892bce2603918118441e75bca055e6bf18f7967784507330ad54232",
+          "PythonScript/hybrid_hf.py": "a12e6f6f23f1a6027dd0e8f4d96289b2618781804bed69b7587adfda6af6d527",
+          "PythonScript/hf_operators.py": "3f66e0e9296a88074b4f017c73d0c0584a751c11e3cabd49ba324bee57c6e3a4",
+          "PythonScript/hf_input.py": "83f35b0df11b40a3685eca1846c289a7e797057d6e2d3135a8ce72f209888f8b",
+          "PythonScript/scan_gcm_hf.py": "2f63119845ab2f417c30203a3f458b1597f7d28f239ad79b80ba6e4b36635b09",
+          "tests/benchmark_random_starts.py": "114673d5dd6bc790987aef71eda65fab0b21569fd45e988b7aef891676d3e17b"
+        }
+      },
+      "summary": {
+        "case": "o17_emax3",
+        "nucleus": "O17",
+        "targets": {
+          "Q20": 1.0,
+          "Q22": 0.5,
+          "Q21": 0.0
+        },
+        "reference": {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -99.25571446611347,
+          "iterations": 17,
+          "gradient_norm": 2.684012284795856e-08,
+          "energy_change_MeV": -1.0942358130705543e-12,
+          "max_constraint_error": 1.4277468096679513e-13,
+          "orthogonality_error": 1.5543122344752192e-15,
+          "idempotency_error": 1.3322676295501878e-15,
+          "protons": 8.0,
+          "neutrons": 8.999999999999998,
+          "fock_evaluations": 26,
+          "hessian_evaluations": 151,
+          "stability_checked": true,
+          "smallest_curvature": 0.01851217041817528,
+          "moments": [
+            0.9999999999998572,
+            0.4999999999999029,
+            -1.5362711103250604e-14
+          ],
+          "constraint_values": {
+            "Q20": 0.9999999999998572,
+            "Q22": 0.4999999999999029,
+            "Q21": -1.5362711103250604e-14
+          },
+          "label": "reference",
+          "random_seed": null,
+          "seconds": 0.6124322600007872,
+          "initial_energy_MeV": -66.658985960525,
+          "initial_moments": {
+            "Q20": 0.4415481913535284,
+            "Q22": 0.0,
+            "Q21": 0.0
+          },
+          "initial_projector_distance": 0.0,
+          "initial_orthogonality_error": 0.0,
+          "initial_idempotency_error": 0.0,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 5
+          }
+        },
+        "random_attempts": 10,
+        "random_converged": 10,
+        "failures": [],
+        "iterations": [
+          19,
+          25
+        ],
+        "median_iterations": 21.0,
+        "accepted_energy_range_MeV": [
+          -99.25571446611846,
+          -99.25571446611312
+        ],
+        "max_gradient": 7.578857515493852e-07,
+        "max_constraint_error": 6.706357691399489e-12,
+        "minimum_curvature": 0.01851216875316359,
+        "source_sha256": {
+          "pyHFAndHFB.so": "6b622430c892bce2603918118441e75bca055e6bf18f7967784507330ad54232",
+          "PythonScript/hybrid_hf.py": "a12e6f6f23f1a6027dd0e8f4d96289b2618781804bed69b7587adfda6af6d527",
+          "PythonScript/hf_operators.py": "3f66e0e9296a88074b4f017c73d0c0584a751c11e3cabd49ba324bee57c6e3a4",
+          "PythonScript/hf_input.py": "83f35b0df11b40a3685eca1846c289a7e797057d6e2d3135a8ce72f209888f8b",
+          "PythonScript/scan_gcm_hf.py": "2f63119845ab2f417c30203a3f458b1597f7d28f239ad79b80ba6e4b36635b09",
+          "tests/benchmark_random_starts.py": "114673d5dd6bc790987aef71eda65fab0b21569fd45e988b7aef891676d3e17b"
+        }
+      },
+      "results": [
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -99.25571446611347,
+          "iterations": 17,
+          "gradient_norm": 2.684012284795856e-08,
+          "energy_change_MeV": -1.0942358130705543e-12,
+          "max_constraint_error": 1.4277468096679513e-13,
+          "orthogonality_error": 1.5543122344752192e-15,
+          "idempotency_error": 1.3322676295501878e-15,
+          "protons": 8.0,
+          "neutrons": 8.999999999999998,
+          "fock_evaluations": 26,
+          "hessian_evaluations": 151,
+          "stability_checked": true,
+          "smallest_curvature": 0.01851217041817528,
+          "moments": [
+            0.9999999999998572,
+            0.4999999999999029,
+            -1.5362711103250604e-14
+          ],
+          "constraint_values": {
+            "Q20": 0.9999999999998572,
+            "Q22": 0.4999999999999029,
+            "Q21": -1.5362711103250604e-14
+          },
+          "label": "reference",
+          "random_seed": null,
+          "seconds": 0.6124322600007872,
+          "initial_energy_MeV": -66.658985960525,
+          "initial_moments": {
+            "Q20": 0.4415481913535284,
+            "Q22": 0.0,
+            "Q21": 0.0
+          },
+          "initial_projector_distance": 0.0,
+          "initial_orthogonality_error": 0.0,
+          "initial_idempotency_error": 0.0,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 5
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -99.25571446611399,
+          "iterations": 24,
+          "gradient_norm": 2.0595104721084445e-07,
+          "energy_change_MeV": -2.525268882891396e-11,
+          "max_constraint_error": 9.801048861390882e-13,
+          "orthogonality_error": 1.1102230246251565e-15,
+          "idempotency_error": 7.771561172376096e-16,
+          "protons": 8.0,
+          "neutrons": 9.000000000000002,
+          "fock_evaluations": 31,
+          "hessian_evaluations": 245,
+          "stability_checked": true,
+          "smallest_curvature": 0.018512170367517036,
+          "moments": [
+            0.9999999999990199,
+            0.4999999999991062,
+            1.9876461587742256e-14
+          ],
+          "constraint_values": {
+            "Q20": 0.9999999999990199,
+            "Q22": 0.4999999999991062,
+            "Q21": 1.9876461587742256e-14
+          },
+          "label": "random_1001",
+          "random_seed": 1001,
+          "seconds": 0.9117746179981623,
+          "initial_energy_MeV": 322.25966862885065,
+          "initial_moments": {
+            "Q20": -0.16125198460692916,
+            "Q22": 0.4062604312383751,
+            "Q21": -0.08875447063849674
+          },
+          "initial_projector_distance": 5.1951883852708285,
+          "initial_orthogonality_error": 4.440892098500626e-16,
+          "initial_idempotency_error": 1.6653345369377348e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 12
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -99.25571446611451,
+          "iterations": 19,
+          "gradient_norm": 1.6811447759082504e-07,
+          "energy_change_MeV": -1.7834622667578515e-11,
+          "max_constraint_error": 2.3688828676426965e-12,
+          "orthogonality_error": 1.5543122344752192e-15,
+          "idempotency_error": 1.4432899320127035e-15,
+          "protons": 8.000000000000004,
+          "neutrons": 9.000000000000004,
+          "fock_evaluations": 24,
+          "hessian_evaluations": 200,
+          "stability_checked": true,
+          "smallest_curvature": 0.018512171503733965,
+          "moments": [
+            0.9999999999981709,
+            0.4999999999976311,
+            -2.9205804441545524e-14
+          ],
+          "constraint_values": {
+            "Q20": 0.9999999999981709,
+            "Q22": 0.4999999999976311,
+            "Q21": -2.9205804441545524e-14
+          },
+          "label": "random_1002",
+          "random_seed": 1002,
+          "seconds": 0.7437304370032507,
+          "initial_energy_MeV": 297.9765961984164,
+          "initial_moments": {
+            "Q20": -0.24515582680947315,
+            "Q22": 0.5170705756516422,
+            "Q21": -0.27263855355561484
+          },
+          "initial_projector_distance": 5.1078128047315,
+          "initial_orthogonality_error": 7.771561172376096e-16,
+          "initial_idempotency_error": 1.6653345369377348e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 7
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -99.2557144661133,
+          "iterations": 22,
+          "gradient_norm": 5.255820069259652e-07,
+          "energy_change_MeV": -8.10146616458951e-10,
+          "max_constraint_error": 2.4424906541753444e-15,
+          "orthogonality_error": 1.1102230246251565e-15,
+          "idempotency_error": 8.881784197001252e-16,
+          "protons": 8.0,
+          "neutrons": 9.000000000000004,
+          "fock_evaluations": 29,
+          "hessian_evaluations": 238,
+          "stability_checked": true,
+          "smallest_curvature": 0.018512174840727945,
+          "moments": [
+            1.0000000000000024,
+            0.5000000000000002,
+            5.620504062164855e-16
+          ],
+          "constraint_values": {
+            "Q20": 1.0000000000000024,
+            "Q22": 0.5000000000000002,
+            "Q21": 5.620504062164855e-16
+          },
+          "label": "random_1003",
+          "random_seed": 1003,
+          "seconds": 0.9080828189980821,
+          "initial_energy_MeV": 308.9787725709866,
+          "initial_moments": {
+            "Q20": -0.5678329648184681,
+            "Q22": 0.03002424747457344,
+            "Q21": -0.07734112008520118
+          },
+          "initial_projector_distance": 5.1097906754931826,
+          "initial_orthogonality_error": 7.771561172376096e-16,
+          "initial_idempotency_error": 1.6653345369377348e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 10
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -99.25571446611329,
+          "iterations": 21,
+          "gradient_norm": 3.3730614383446063e-07,
+          "energy_change_MeV": -3.410605131648481e-11,
+          "max_constraint_error": 8.000267115448878e-13,
+          "orthogonality_error": 1.3322676295501878e-15,
+          "idempotency_error": 1.2212453270876722e-15,
+          "protons": 7.999999999999999,
+          "neutrons": 9.000000000000005,
+          "fock_evaluations": 26,
+          "hessian_evaluations": 219,
+          "stability_checked": true,
+          "smallest_curvature": 0.018512171900208374,
+          "moments": [
+            1.0000000000001277,
+            0.5000000000008,
+            1.380492942182343e-13
+          ],
+          "constraint_values": {
+            "Q20": 1.0000000000001277,
+            "Q22": 0.5000000000008,
+            "Q21": 1.380492942182343e-13
+          },
+          "label": "random_1004",
+          "random_seed": 1004,
+          "seconds": 0.815658491999784,
+          "initial_energy_MeV": 320.47305160031937,
+          "initial_moments": {
+            "Q20": 0.2621322801075812,
+            "Q22": -0.5299819057891934,
+            "Q21": -0.012993168665198451
+          },
+          "initial_projector_distance": 5.228830726670627,
+          "initial_orthogonality_error": 7.771561172376096e-16,
+          "initial_idempotency_error": 2.220446049250313e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 9
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -99.25571446611355,
+          "iterations": 20,
+          "gradient_norm": 9.928749091697134e-08,
+          "energy_change_MeV": -4.149569576838985e-12,
+          "max_constraint_error": 7.771561172376096e-16,
+          "orthogonality_error": 1.1102230246251565e-15,
+          "idempotency_error": 7.771561172376096e-16,
+          "protons": 8.0,
+          "neutrons": 9.000000000000005,
+          "fock_evaluations": 25,
+          "hessian_evaluations": 222,
+          "stability_checked": true,
+          "smallest_curvature": 0.018512170580161687,
+          "moments": [
+            0.9999999999999999,
+            0.5000000000000008,
+            -5.134781488891349e-16
+          ],
+          "constraint_values": {
+            "Q20": 0.9999999999999999,
+            "Q22": 0.5000000000000008,
+            "Q21": -5.134781488891349e-16
+          },
+          "label": "random_1005",
+          "random_seed": 1005,
+          "seconds": 0.8204985519987531,
+          "initial_energy_MeV": 309.7646621625084,
+          "initial_moments": {
+            "Q20": 0.6397068021716941,
+            "Q22": -1.3069927810616484,
+            "Q21": -0.26672716663770013
+          },
+          "initial_projector_distance": 5.126695932136917,
+          "initial_orthogonality_error": 6.661338147750939e-16,
+          "initial_idempotency_error": 2.220446049250313e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 8
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -99.25571446611445,
+          "iterations": 22,
+          "gradient_norm": 2.7588618597360944e-08,
+          "energy_change_MeV": -3.609557097661309e-12,
+          "max_constraint_error": 1.2487233469471448e-12,
+          "orthogonality_error": 1.1102230246251565e-15,
+          "idempotency_error": 1.5543122344752192e-15,
+          "protons": 7.999999999999998,
+          "neutrons": 8.999999999999996,
+          "fock_evaluations": 27,
+          "hessian_evaluations": 234,
+          "stability_checked": true,
+          "smallest_curvature": 0.018512170480915392,
+          "moments": [
+            0.9999999999988118,
+            0.4999999999987513,
+            7.816317038056297e-14
+          ],
+          "constraint_values": {
+            "Q20": 0.9999999999988118,
+            "Q22": 0.4999999999987513,
+            "Q21": 7.816317038056297e-14
+          },
+          "label": "random_1006",
+          "random_seed": 1006,
+          "seconds": 0.8579668590027723,
+          "initial_energy_MeV": 312.87551901162544,
+          "initial_moments": {
+            "Q20": -1.1079846869712044,
+            "Q22": -0.5441753792380012,
+            "Q21": 0.14417213928713019
+          },
+          "initial_projector_distance": 5.190897733285095,
+          "initial_orthogonality_error": 6.661338147750939e-16,
+          "initial_idempotency_error": 2.220446049250313e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 10
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -99.25571446611312,
+          "iterations": 25,
+          "gradient_norm": 6.064751058887299e-07,
+          "energy_change_MeV": -2.3959501049830578e-11,
+          "max_constraint_error": 5.551115123125783e-16,
+          "orthogonality_error": 8.881784197001252e-16,
+          "idempotency_error": 7.771561172376096e-16,
+          "protons": 8.0,
+          "neutrons": 9.0,
+          "fock_evaluations": 33,
+          "hessian_evaluations": 283,
+          "stability_checked": true,
+          "smallest_curvature": 0.01851216875316359,
+          "moments": [
+            0.9999999999999994,
+            0.5000000000000002,
+            -1.5612511283791264e-16
+          ],
+          "constraint_values": {
+            "Q20": 0.9999999999999994,
+            "Q22": 0.5000000000000002,
+            "Q21": -1.5612511283791264e-16
+          },
+          "label": "random_1007",
+          "random_seed": 1007,
+          "seconds": 1.0633011580066523,
+          "initial_energy_MeV": 303.86702606094843,
+          "initial_moments": {
+            "Q20": -0.13571708000522864,
+            "Q22": -0.6016194020519128,
+            "Q21": -0.46995540372006234
+          },
+          "initial_projector_distance": 5.0480724151554695,
+          "initial_orthogonality_error": 4.440892098500626e-16,
+          "initial_idempotency_error": 1.1102230246251565e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 13
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -99.25571446611846,
+          "iterations": 21,
+          "gradient_norm": 4.407394581928997e-07,
+          "energy_change_MeV": -6.374989425239619e-11,
+          "max_constraint_error": 6.3866689714586755e-12,
+          "orthogonality_error": 2.6645352591003757e-15,
+          "idempotency_error": 2.9976021664879227e-15,
+          "protons": 7.999999999999997,
+          "neutrons": 9.000000000000009,
+          "fock_evaluations": 28,
+          "hessian_evaluations": 218,
+          "stability_checked": true,
+          "smallest_curvature": 0.018512170358858913,
+          "moments": [
+            0.9999999999936133,
+            0.4999999999956819,
+            4.690657584571767e-13
+          ],
+          "constraint_values": {
+            "Q20": 0.9999999999936133,
+            "Q22": 0.4999999999956819,
+            "Q21": 4.690657584571767e-13
+          },
+          "label": "random_1008",
+          "random_seed": 1008,
+          "seconds": 0.8239505069941515,
+          "initial_energy_MeV": 312.38613668321585,
+          "initial_moments": {
+            "Q20": -1.3960054561457078,
+            "Q22": 1.9768106474315317,
+            "Q21": 0.38554240063544903
+          },
+          "initial_projector_distance": 5.15069435364705,
+          "initial_orthogonality_error": 5.551115123125783e-16,
+          "initial_idempotency_error": 1.3877787807814457e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 9
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -99.25571446611627,
+          "iterations": 21,
+          "gradient_norm": 7.578857515493852e-07,
+          "energy_change_MeV": -7.219114195322618e-11,
+          "max_constraint_error": 6.706357691399489e-12,
+          "orthogonality_error": 1.3322676295501878e-15,
+          "idempotency_error": 1.4432899320127035e-15,
+          "protons": 8.000000000000007,
+          "neutrons": 9.000000000000007,
+          "fock_evaluations": 27,
+          "hessian_evaluations": 221,
+          "stability_checked": true,
+          "smallest_curvature": 0.018512172617834714,
+          "moments": [
+            0.9999999999962907,
+            0.49999999999329364,
+            1.7872994750867122e-12
+          ],
+          "constraint_values": {
+            "Q20": 0.9999999999962907,
+            "Q22": 0.49999999999329364,
+            "Q21": 1.7872994750867122e-12
+          },
+          "label": "random_1009",
+          "random_seed": 1009,
+          "seconds": 0.8186676740006078,
+          "initial_energy_MeV": 313.1631981844913,
+          "initial_moments": {
+            "Q20": -0.43100537694641794,
+            "Q22": -0.13748938630997132,
+            "Q21": -0.25356933424531547
+          },
+          "initial_projector_distance": 5.138486791841849,
+          "initial_orthogonality_error": 7.771561172376096e-16,
+          "initial_idempotency_error": 1.942890293094024e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 9
+          }
+        },
+        {
+          "converged": true,
+          "status": "converged",
+          "energy_MeV": -99.25571446611362,
+          "iterations": 20,
+          "gradient_norm": 4.5073587138484085e-08,
+          "energy_change_MeV": -1.1368683772161603e-13,
+          "max_constraint_error": 1.5210055437364645e-14,
+          "orthogonality_error": 1.3322676295501878e-15,
+          "idempotency_error": 1.2212453270876722e-15,
+          "protons": 8.0,
+          "neutrons": 9.000000000000005,
+          "fock_evaluations": 26,
+          "hessian_evaluations": 240,
+          "stability_checked": true,
+          "smallest_curvature": 0.01851217037249522,
+          "moments": [
+            0.9999999999999895,
+            0.5000000000000152,
+            -1.2628786905111156e-15
+          ],
+          "constraint_values": {
+            "Q20": 0.9999999999999895,
+            "Q22": 0.5000000000000152,
+            "Q21": -1.2628786905111156e-15
+          },
+          "label": "random_1010",
+          "random_seed": 1010,
+          "seconds": 0.8832150909947813,
+          "initial_energy_MeV": 309.4562985571837,
+          "initial_moments": {
+            "Q20": -0.5810831359570979,
+            "Q22": 0.5448119344705107,
+            "Q21": -0.4230532130981575
+          },
+          "initial_projector_distance": 5.066834764848276,
+          "initial_orthogonality_error": 6.661338147750939e-16,
+          "initial_idempotency_error": 2.7755575615628914e-16,
+          "phases": {
+            "initial": 1,
+            "diagonalization": 6,
+            "gradient": 6,
+            "newton_cg": 8
+          }
+        }
+      ]
+    }
+  ]
+}

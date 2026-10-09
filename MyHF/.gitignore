@@ -36,8 +36,37 @@ Interaction/*
 Output/*
 Input/*
 mesh/
-pythonscript/
+PythonScript/*
+!PythonScript/hybrid_hf.py
+!PythonScript/scan_hybrid_pes.py
+
+# Python caches
+__pycache__/
+*.py[cod]
 
 # Testing files
 Testing*
 
+
+# Ge76/Se76 IMSRG2 and IMSRG3f2 production workflow
+!PythonScript/run_ge76_se76_pes.py
+!PythonScript/plot_ge76_se76_pes.py
+!PythonScript/validate_ge76_se76_pes.py
+
+!PythonScript/hf_operators.py
+!PythonScript/scan_gcm_hf.py
+
+# Local Python environments
+.venv/
+venv/
+
+# Small, reproducible hybrid/GCM regression inputs
+!Interaction/FCI_HF_FCI_O17_e3_hw16_E39.snt
+!Interaction/hybrid_evolved_e2/
+Interaction/hybrid_evolved_e2/*
+!Interaction/hybrid_evolved_e2/*.snt
+!Interaction/hybrid_evolved_e2/provenance.json
+!Interaction/hybrid_evolved_e2/README.md
+
+# Readable calculation inputs
+!PythonScript/hf_input.py

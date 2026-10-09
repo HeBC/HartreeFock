@@ -193,10 +193,10 @@ def parse_text(text):
     if 'solver' in parser:
         integers = {'max_iterations', 'diagonalization_steps', 'gradient_steps', 'max_cg', 'seed'}
         floats = {'gradient_tolerance', 'constraint_tolerance', 'energy_tolerance',
-                  'trust_radius', 'curvature_tolerance'}
-        fields = _settings(parser['solver'], integers | floats | {'method', 'check_stability'})
+                  'trust_radius', 'curvature_tolerance', 'precondition_floor'}
+        fields = _settings(parser['solver'], integers | floats | {'method', 'check_stability', 'precondition'})
         config['solver'] = {key: _convert(fields, key, _integer if key in integers else
-            _number if key in floats else _boolean if key == 'check_stability' else str) for key in fields}
+            _number if key in floats else _boolean if key in ('check_stability', 'precondition') else str) for key in fields}
     specs = []
     declarations = dict(parser['constraints'])
     for name, value in declarations.items():

@@ -211,13 +211,20 @@ diagonalization_steps = 6
 gradient_steps        = 6
 trust_radius          = 0.3
 max_cg                = 35
+precondition          = yes
+precondition_floor    = 0.1       # minimum absolute orbital gap, MeV
 ```
 
 The scan driver uses six diagonalization steps for a fresh start and zero when
 continuing an accepted determinant, and adjusts the seed on retries/reverse
 passes. These per-attempt choices take precedence over those two input settings.
 Use `method = gradient` for the comparison solver. Stability checks should
-normally stay enabled. See [HYBRID_HF.md](../HYBRID_HF.md) for numerical details.
+normally stay enabled. The orbital-gap preconditioner accelerates the inner
+Newton-CG solve without changing acceptance tolerances. Its floor must be
+finite and positive; use `precondition = no` for diagnostic comparisons.
+See [PRECONDITIONING.md](PRECONDITIONING.md) for measured results and
+[HYBRID_HF.md](../HYBRID_HF.md) for numerical details. Use a fresh output
+directory after changing the solver: source hashes are part of the resume check.
 
 `[calculation]` requires `nucleus`, `interaction` and `hw`. Optional settings
 default to `basis = HO`, `memory_mb = 512`, `max_points = 10000`, and

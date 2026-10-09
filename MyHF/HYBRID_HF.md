@@ -48,7 +48,10 @@ and OpenMP. This is not a distributed-memory solver.
    a rank-revealing SVD. Empty/full species and dependent constraints are allowed.
 2. Try a few safeguarded diagonalizations, then projected gradient steps with
    spectral step-length estimates.
-3. Use truncated Newton CG in the feasible tangent space. Negative curvature
+3. Use truncated Newton CG in the feasible tangent space, with a positive
+   semicanonical orbital-gap preconditioner adapted from CC `hf_real`. Occupied
+   and virtual constrained-Fock blocks supply the gaps; the exact Hessian
+   response stays in the CG action. Negative curvature
    truncates the step at a radius bound; backtracking and nonlinear constraint
    restoration safeguard the energy descent. This is not a verbatim TRAH/Davidson
    implementation from the paper.
@@ -76,6 +79,15 @@ interaction response Gamma is linear for this two-body Hamiltonian. The CG and
 Lanczos steps therefore use the exact analytic Hessian action, without storing
 the particle-hole Hessian. `hessian_evaluations` counts these interaction responses
 separately from `fock_evaluations`; compare their sum when assessing work.
+
+Preconditioning defaults to `precondition = yes`, with a positive gap floor
+`precondition_floor = 0.1` MeV and `max_cg = 35`. The residual stopping test
+uses its unpreconditioned norm. `cg_iterations`, `cg_limit_hits` and
+`preconditioner_evaluations` expose the inner work. The additional storage
+is O(dp² + dn²). Set `precondition = no` only for an unpreconditioned
+comparison. See [the implementation and measured acceleration](docs/PRECONDITIONING.md):
+the hardest saved O16 start dropped from 863 to 71 iterations at unchanged
+tolerances, with all 40 random starts and 30 regression tests passing.
 
 Defaults: gradient 1e-6, moment error 1e-8, energy change 1e-8 MeV, negative
 curvature threshold -1e-5. Internal moment restoration is tighter (up to 1e-11).

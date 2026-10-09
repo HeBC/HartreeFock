@@ -21,6 +21,8 @@ class Options:
     energy_tolerance: float = 1e-8
     trust_radius: float = 0.3
     max_cg: int = 35
+    precondition: bool = True
+    precondition_floor: float = 0.1
     method: str = "hybrid"
     seed: int = 520
     check_stability: bool = True
@@ -33,9 +35,11 @@ class Options:
         for k in ("diagonalization_steps", "gradient_steps"):
             if not isinstance(getattr(self, k), int) or getattr(self, k) < 0:
                 raise ValueError(f"{k} must be a nonnegative integer")
-        for k in ("gradient_tolerance", "constraint_tolerance", "energy_tolerance", "trust_radius", "curvature_tolerance"):
+        for k in ("gradient_tolerance", "constraint_tolerance", "energy_tolerance", "trust_radius", "curvature_tolerance", "precondition_floor"):
             if not np.isfinite(getattr(self, k)) or getattr(self, k) <= 0:
                 raise ValueError(f"{k} must be finite and positive")
+        if not isinstance(self.precondition, bool):
+            raise ValueError("precondition must be true or false")
         if self.method not in ("hybrid", "gradient"):
             raise ValueError("method must be hybrid or gradient")
 
@@ -80,6 +84,7 @@ class Solver:
         self.scales=np.array([op.scale for op in self.constraints])
         self._constraint_cache=None
         self.fock_evaluations = self.hessian_evaluations = 0
+        self.cg_iterations = self.cg_limit_hits = self.preconditioner_evaluations = 0
 
     def pack(self, matrices):
         return np.concatenate([m.ravel() for m in matrices])
@@ -187,31 +192,82 @@ class Solver:
         dd = np.dot(d, d)
         return (-zd + np.sqrt(max(0., zd*zd + dd*(radius*radius-np.dot(z,z)))))/dd
 
+    def prepare_preconditioner(self, c, f, lambdas):
+        """Positive orbital-gap inverse, following the CC hf_real implementation.
+
+        Only the occupied/virtual Fock blocks are diagonalized. The exact
+        Hamiltonian and nonlinear-constraint response stays in the Hessian.
+        Storage is O(dp**2 + dn**2); no particle-hole Hessian is constructed.
+        """
+        self.preconditioner_evaluations += 1
+        pre = []
+        fields = self.constraint_data(c)[1]
+        for x, field, ops in zip(c, f, fields):
+            dim, occupied = x.shape
+            if occupied == 0 or occupied == dim:
+                pre.append(None)
+                continue
+            effective = field + np.einsum("k,kab->ab", lambdas, ops)
+            virtual = linalg.qr(x, mode="full", check_finite=False)[0][:, occupied:]
+            eo, uo = linalg.eigh(x.T @ effective @ x, check_finite=False)
+            ev, uv = linalg.eigh(virtual.T @ effective @ virtual, check_finite=False)
+            inverse = 0.5 / np.maximum(self.options.precondition_floor,
+                                       np.abs(ev[:, None] - eo[None, :]))
+            pre.append((virtual @ uv, uo, inverse))
+        return pre
+
+    def precondition_residual(self, c, r, u, pre):
+        """Apply P M P; r is already in the joint constraint tangent space."""
+        matrices = []
+        for w, block in zip(self.unpack(r), pre):
+            if block is None:
+                matrices.append(np.zeros_like(w))
+                continue
+            virtual, occupied, inverse = block
+            small = (virtual.T @ w @ occupied) * inverse
+            matrices.append(virtual @ small @ occupied.T)
+        z = self.tangent(c, self.pack(matrices))
+        return z - u @ (u.T @ z)
+
     def newton_step(self, c, f, lambdas, u, g, radius):
         def project(v):
             v = self.tangent(c, v)
             return v-u @ (u.T @ v)
         def action(v):
             return project(self.hessian(c, f, lambdas, project(v)))
-        z, r = np.zeros_like(g), -g.copy()
-        d, rr = r.copy(), np.dot(r, r)
-        tol = min(.3, np.sqrt(linalg.norm(g)))*linalg.norm(g)
+        pre = self.prepare_preconditioner(c, f, lambdas) if self.options.precondition else None
+        def metric(r):
+            if pre is None:
+                return r.copy()
+            z = self.precondition_residual(c, r, u, pre)
+            # The positive floor keeps M well-defined at indefinite points.
+            # Fall back to the identity if roundoff destroys a positive norm.
+            return z if np.dot(r, z) > np.finfo(float).tiny else r.copy()
+        step, r = np.zeros_like(g), -g.copy()
+        z = metric(r)
+        d, rz = z.copy(), np.dot(r, z)
+        gnorm = linalg.norm(g)
+        tol = max(1e-12, min(.3, np.sqrt(gnorm))*gnorm)
         for _ in range(self.options.max_cg):
             hd = action(d)
+            self.cg_iterations += 1
             curvature = np.dot(d, hd)
             if curvature <= 1e-14*np.dot(d, d):
-                return z+self.boundary(z, d, radius)*d
-            alpha = rr/curvature
-            if linalg.norm(z+alpha*d) >= radius:
-                return z+self.boundary(z, d, radius)*d
-            z += alpha*d
+                return step+self.boundary(step, d, radius)*d
+            alpha = rz/curvature
+            if linalg.norm(step+alpha*d) >= radius:
+                return step+self.boundary(step, d, radius)*d
+            step += alpha*d
             r = project(r-alpha*hd)
-            new_rr = np.dot(r, r)
-            if np.sqrt(new_rr) <= max(1e-12, tol):
-                break
-            d = r+(new_rr/rr)*d
-            rr = new_rr
-        return z
+            # Stop on the physical residual, not its preconditioned norm.
+            if linalg.norm(r) <= tol:
+                return step
+            z = metric(r)
+            new_rz = np.dot(r, z)
+            d = z+(new_rz/rz)*d
+            rz = new_rz
+        self.cg_limit_hits += 1
+        return step
 
     def lowest_curvature(self, c, f, lambdas, u):
         """Lanczos in the feasible tangent space; O(n*ncv), not O(n^2) memory."""
@@ -243,6 +299,7 @@ class Solver:
             raise ValueError("invalid starting orbitals")
         c = self.retract(c, np.zeros(self.size))
         self.fock_evaluations = self.hessian_evaluations = 0
+        self.cg_iterations = self.cg_limit_hits = self.preconditioner_evaluations = 0
         self.smallest_curvature = None
         self.stability_checked = False
         # Necessary spectral feasibility bounds, including empty/full species.
@@ -374,6 +431,8 @@ class Solver:
                     orthogonality_error=float(orth), idempotency_error=float(idem),
                     protons=float(np.sum(c[0]**2)), neutrons=float(np.sum(c[1]**2)),
                     fock_evaluations=self.fock_evaluations, hessian_evaluations=self.hessian_evaluations,
+                    cg_iterations=self.cg_iterations, cg_limit_hits=self.cg_limit_hits,
+                    preconditioner_evaluations=self.preconditioner_evaluations,
                     stability_checked=self.stability_checked, smallest_curvature=self.smallest_curvature,
                     moments=self.moments(c, True).tolist(),
                     constraint_values=dict(zip(self.constraint_names,self.moments(c).tolist())),occupied=c)

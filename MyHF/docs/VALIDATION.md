@@ -1,5 +1,13 @@
 # Hybrid HF validation — 2026-10-08
 
+The latest orbital-gap preconditioner passed **30/30 tests**, **40/40 random
+starts plus four references**, and **9/9 distinct example scan points**.
+The hardest saved O16 start fell from 863 to 71 iterations, with unchanged
+tolerances; the random O16 range is now 32–117. See
+[PRECONDITIONING.md](PRECONDITIONING.md) and
+[preconditioner_validation.json](preconditioner_validation.json). The
+earlier measurements below are historical results from before preconditioning.
+
 The readable-input follow-up passed **26 tests** and converged all **9 points**
 across four `.inp` examples, including a paired GCM path. The three original
 examples reproduce the earlier JSON-run energies within 1e-10 MeV, and resume
@@ -99,3 +107,12 @@ and code. The read-only `--check` option does not need an output directory;
 a real scan needs `output` in the file or a CLI `--output` override. Exact source hashes are stored in
 `convergence.json`. The main README describes limits of the real-HF space, dense
 Hamiltonian memory, operator normal ordering and the earlier beta-axis correction.
+
+## Independent random starts
+
+A subsequent test converged 40/40 fully randomized determinants at four selected
+targets. Some starts found lower local minima than the default initialization;
+the O16 iteration count originally ranged from 33 to 863 (now 32–117 with
+preconditioning, as documented above). See
+[RANDOM_STARTS.md](RANDOM_STARTS.md) for the procedure, per-case results and
+commands to reproduce the experiment. The production initialization is unchanged.
