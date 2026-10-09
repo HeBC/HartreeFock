@@ -4,7 +4,6 @@ MyHF is a C++/Python nuclear-structure code for real, unrestricted Hartree–Foc
 
 The Python workflow supports constrained triaxial potential-energy-surface (PES) calculations and exports Slater determinants for angular-momentum-projected generator-coordinate-method (GCM) calculations. Both bare multipole operators and IMSRG-evolved one- and two-body operators are supported.
 
-> **Scope:** The documented workflow performs real HF calculations without anomalous pairing density. Pairing and particle-number fluctuations require an HFB extension.
 
 ## Features
 
