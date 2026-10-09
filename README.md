@@ -1,4 +1,4 @@
-# MyHF: nuclear Hartree–Fock, constrained PES and GCM basis generation
+# MyHF: nuclear Hartree–Fock
 
 MyHF is a C++/Python nuclear-structure code for real, unrestricted Hartree–Fock
 (HF) calculations with proton and neutron orbitals. It reads spherical
